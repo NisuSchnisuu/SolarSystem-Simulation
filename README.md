@@ -202,6 +202,66 @@
             margin-top: 10px;
         }
 
+        /* --- NEU: Info-Popup --- */
+        #info-popup {
+            display: none; /* Standardmässig versteckt */
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 2000; /* Über allem, auch der UI */
+            width: 90%;
+            max-width: 400px;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        #info-popup-content {
+            width: 100%;
+            text-align: left;
+        }
+        #popup-title {
+            margin: 0 0 15px 0;
+            font-size: 20px;
+            font-weight: 600;
+            border-bottom: 1px solid #555;
+            padding-bottom: 10px;
+            text-align: center;
+            color: #ffc107; /* Akzentfarbe */
+        }
+        #popup-details p {
+            margin: 8px 0;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        #popup-details strong {
+            color: #fff; /* Statt gelb, für besseren Kontrast */
+            font-weight: 600;
+            min-width: 120px; /* Bessere Ausrichtung */
+            display: inline-block;
+        }
+        #popup-details span {
+            color: #ddd;
+        }
+        #popup-details .fun-fact {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px dashed #444;
+            font-style: italic;
+            color: #ccc;
+        }
+        #popup-close-btn {
+            margin-top: 20px;
+            width: 100%;
+        }
+        /* --- ENDE NEU --- */
+
     </style>
 </head>
 <body>
@@ -249,7 +309,7 @@
                 <button id="focus-ecliptic" class="btn btn-secondary">Ekliptik-Sicht</button>
             </div>
             <!-- NEU: Container für Planeten-Fokus-Buttons -->
-            <div id="planet-focus-buttons" class="btn-group" style="margin-top: 10px; display: none;">
+            <div id="planet-focus-buttons" class="btn-group" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #444; display: none;">
                 <!-- Wird per JS befüllt -->
             </div>
         </div>
@@ -257,8 +317,8 @@
         <div class="control-group">
             <h3>Ereignisse</h3>
             <div class="btn-group" id="demo-buttons">
-                <button id="demo-sofi" class="btn btn-warning">Demo: SoFi</button>
-                <button id="demo-mofi" class="btn btn-warning">Demo: MoFi</button>
+                <button id="demo-sofi" class="btn btn-warning">Sonnenfinsternis</button>
+                <button id="demo-mofi" class="btn btn-warning">Mondfinsternis</button>
             </div>
             <div class="btn-group" id="demo-control-buttons" style="display: none; margin-top: 10px;">
                 <button id="end-demo-btn" class="btn btn-danger">Demo beenden</button>
@@ -286,6 +346,18 @@
             </div>
         </div>
     </div>
+
+    <!-- NEU: Info-Popup (außerhalb von #container) -->
+    <div id="info-popup">
+        <div id="info-popup-content">
+            <h2 id="popup-title">Titel</h2>
+            <div id="popup-details">
+                <!-- Inhalt wird per JS geladen -->
+            </div>
+            <button id="popup-close-btn" class="btn btn-secondary">Schliessen</button>
+        </div>
+    </div>
+
 
     <script>
         // --- Globale Variablen ---
@@ -317,12 +389,31 @@
         let demoShadowBrightness = 0.0; 
         let demoRedOverlay = 0.0; 
         let earthDemoRotationOffset = 0.0;
+        
+        // --- NEU: Kamera-Animation (Tweening) ---
+        const clock = new THREE.Clock();
+        let isCameraTransitioning = false;
+        let cameraTransitionProgress = 0.0;
+        let cameraTransitionDuration = 1.0;
+        let cameraTransitionStartPos = new THREE.Vector3();
+        let cameraTransitionStartTarget = new THREE.Vector3();
+        let cameraTransitionEndPos = new THREE.Vector3();
+        let cameraTransitionEndTarget = new THREE.Vector3();
+        let cameraFocusAfterTransition = null;
+        // --- ENDE NEU ---
+        
+        // --- NEU: Raycasting (Klick-Erkennung) ---
+        let raycaster;
+        let mouse;
+        let clickableObjects = [];
+        // --- ENDE NEU ---
 
         // --- Konstanten ---
         const SCENE_SCALE = 1.0;
         const SUN_RADIUS = 20 * SCENE_SCALE; 
         const EARTH_RADIUS = 2.5 * SCENE_SCALE;
         const MOON_RADIUS = 0.7 * SCENE_SCALE;
+        const ERDE_RADIUS_KM = 6371; // NEU: Echter Erdradius für Vergleiche
         
         const EARTH_DISTANCE = 150 * SCENE_SCALE;
         const MOON_DISTANCE = 15 * SCENE_SCALE;
@@ -616,23 +707,30 @@
                 ONE: 0,
                 TWO: 2
             };
+            
+            // --- NEU: Raycaster initialisieren ---
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            // --- ENDE NEU ---
 
             definePlanetData();
             createSolarSystem();
             createOrbits();
             setupUI();
 
-            cameraFocus = sun; 
-
             animate();
             
             window.addEventListener('resize', onWindowResize);
+            // --- NEU: Klick-Listener hinzufügen ---
+            window.addEventListener('click', onObjectClick, false);
+            // --- ENDE NEU ---
             
             updatePositions(currentDay);
-            updateCamera(true); 
+            // MODIFIZIERT: Starte mit Sprung (Dauer 0), nicht mit updateCamera
+            setFocus(sun, 0); 
         }
         
-        // --- Planetendaten (MODIFIZIERT: Pluto hinzugefügt) ---
+        // --- Planetendaten (MODIFIZIERT: Pluto hinzugefügt + INFODATEN) ---
         function definePlanetData() {
             const textureBasePath = 'https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/';
             
@@ -644,7 +742,14 @@
                     yearDays: 88, 
                     texture: textureBasePath + '2k_mercury.jpg',
                     axialTilt: 0.03,
-                    rotationSpeed: 0.017 // NEU (1 / 58.6 Tage)
+                    rotationSpeed: 0.017,
+                    // NEU: Info-Daten
+                    name_de: 'Merkur',
+                    realRadius_km: 2439,
+                    earthCompareRadius: '0,38x Erde', // 2439 / 6371
+                    realDistance_Mio_km: 57.9,
+                    lightMinutes: 3.2,
+                    funFact_de: 'Auf Merkur dauert ein Tag (176 Erdtage) länger als ein Jahr (88 Erdtage).'
                 },
                 { 
                     name: 'Venus', 
@@ -653,7 +758,14 @@
                     yearDays: 225, 
                     texture: textureBasePath + '2k_venus_surface.jpg',
                     axialTilt: 177.0,
-                    rotationSpeed: -0.0041 // NEU (Retrograd, 1 / 243 Tage)
+                    rotationSpeed: -0.0041,
+                    // NEU: Info-Daten
+                    name_de: 'Venus',
+                    realRadius_km: 6051,
+                    earthCompareRadius: '0,95x Erde', // 6051 / 6371
+                    realDistance_Mio_km: 108.2,
+                    lightMinutes: 6.0,
+                    funFact_de: 'Die Venus dreht sich "rückwärts" (retrograd) und langsamer als jeder andere Planet.'
                 },
                 { 
                     name: 'Mars', 
@@ -662,7 +774,14 @@
                     yearDays: 687, 
                     texture: textureBasePath + '2k_mars.jpg',
                     axialTilt: 25.19,
-                    rotationSpeed: 0.97 // NEU (1 / 1.03 Tage)
+                    rotationSpeed: 0.97,
+                    // NEU: Info-Daten
+                    name_de: 'Mars',
+                    realRadius_km: 3389,
+                    earthCompareRadius: '0,53x Erde', // 3389 / 6371
+                    realDistance_Mio_km: 227.9,
+                    lightMinutes: 12.7,
+                    funFact_de: 'Der Mars beherbergt den Olympus Mons, den höchsten bekannten Vulkan im Sonnensystem.'
                 },
                 { 
                     name: 'Jupiter', 
@@ -671,7 +790,14 @@
                     yearDays: 4333, 
                     texture: textureBasePath + '2k_jupiter.jpg',
                     axialTilt: 3.13,
-                    rotationSpeed: 2.43 // NEU (Sehr schnell, 1 / 0.41 Tage)
+                    rotationSpeed: 2.43,
+                    // NEU: Info-Daten
+                    name_de: 'Jupiter',
+                    realRadius_km: 69911,
+                    earthCompareRadius: '10,97x Erde', // 69911 / 6371
+                    realDistance_Mio_km: 778.5,
+                    lightMinutes: 43.2,
+                    funFact_de: 'Jupiter hat über 90 bekannte Monde und einen Tag, der nur knapp 10 Stunden dauert.'
                 },
                 { 
                     name: 'Saturn', 
@@ -681,7 +807,14 @@
                     texture: textureBasePath + '2k_saturn.jpg',
                     ringTexture: textureBasePath + '2k_saturn_ring_alpha.png',
                     axialTilt: 26.73,
-                    rotationSpeed: 2.22 // NEU (Schnell, 1 / 0.45 Tage)
+                    rotationSpeed: 2.22,
+                    // NEU: Info-Daten
+                    name_de: 'Saturn',
+                    realRadius_km: 58232,
+                    earthCompareRadius: '9,14x Erde', // 58232 / 6371
+                    realDistance_Mio_km: 1433.5,
+                    lightMinutes: 79.6,
+                    funFact_de: 'Saturns Ringe bestehen hauptsächlich aus Eispartikeln, Staub und Gestein.'
                 },
                 { 
                     name: 'Uranus', 
@@ -690,7 +823,14 @@
                     yearDays: 30687, 
                     texture: textureBasePath + '2k_uranus.jpg',
                     axialTilt: 97.77,
-                    rotationSpeed: 1.38 // NEU (Retrograd, 1 / 0.72 Tage)
+                    rotationSpeed: 1.38,
+                    // NEU: Info-Daten
+                    name_de: 'Uranus',
+                    realRadius_km: 25362,
+                    earthCompareRadius: '3,98x Erde', // 25362 / 6371
+                    realDistance_Mio_km: 2872.5,
+                    lightMinutes: 159.6,
+                    funFact_de: 'Uranus "rollt" auf seiner Bahn um die Sonne, da seine Achse fast seitlich geneigt ist.'
                 },
                 { 
                     name: 'Neptune', 
@@ -699,7 +839,14 @@
                     yearDays: 60190, 
                     texture: textureBasePath + '2k_neptune.jpg',
                     axialTilt: 28.32,
-                    rotationSpeed: 1.49 // NEU (1 / 0.67 Tage)
+                    rotationSpeed: 1.49,
+                    // NEU: Info-Daten
+                    name_de: 'Neptun',
+                    realRadius_km: 24622,
+                    earthCompareRadius: '3,86x Erde', // 24622 / 6371
+                    realDistance_Mio_km: 4495.1,
+                    lightMinutes: 249.7,
+                    funFact_de: 'Auf Neptun herrschen die stärksten Winde im Sonnensystem (bis zu 2.100 km/h).'
                 },
                 // --- NEU: Pluto ---
                 {
@@ -707,22 +854,29 @@
                     radius: 0.5 * SCENE_SCALE, // Sehr klein
                     distance: 1300 * SCENE_SCALE, // Weiter weg als Neptun
                     yearDays: 90582, // ca. 248 Erdjahre
-                    texture: textureBasePath + '2k_pluto.jpg', // Platzhalter für deine Textur
+                    texture: textureBasePath + '2k_pluto.jpg', 
                     axialTilt: 122.5, // Extreme Achsenneigung
                     orbitalInclination: 17.16, // Starke Bahnneigung
-                    rotationSpeed: -0.156 // NEU (Retrograd, 1 / 6.39 Tage)
+                    rotationSpeed: -0.156,
+                    // NEU: Info-Daten
+                    name_de: 'Pluto (Zwergplanet)',
+                    realRadius_km: 1188,
+                    earthCompareRadius: '0,18x Erde', // 1188 / 6371
+                    realDistance_Mio_km: 5906.4,
+                    lightMinutes: 328.1,
+                    funFact_de: 'Pluto wurde 2006 zum Zwergplaneten "herabgestuft", ist aber immer noch faszinierend!'
                 }
                 // --- ENDE NEU ---
             ];
         }
 
         // --- Himmelskörper erstellen ---
-        // (MODIFIZIERT: Bahneigung für Pluto)
+        // (MODIFIZIERT: Bahneigung für Pluto + userData.info hinzugefügt)
         function createSolarSystem() {
             const textureLoader = new THREE.TextureLoader();
 
             // 1. Sternenhimmel
-            const starGeometry = new THREE.SphereGeometry(3000, 32, 32); 
+            const starGeometry = new THREE.SphereGeometry(3500, 32, 32); 
             const starTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/8k_stars.jpg');
             const starMaterial = new THREE.MeshBasicMaterial({
                 map: starTexture,
@@ -735,6 +889,20 @@
 	        const sunTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/2k_sun.jpg');
             const sunMaterial = new THREE.MeshBasicMaterial({ map: sunTexture });
 	        sun = new THREE.Mesh(new THREE.SphereGeometry(SUN_RADIUS, 32, 32), sunMaterial);
+            
+            // --- NEU: Info-Daten für Sonne ---
+            sun.userData.info = {
+                name: 'Sonne',
+                radius_km: '695.700',
+                earthCompareRadius: '109x Erde',
+                distance_Mio_km: '0',
+                distanceType: 'Abstand (Zentrum)',
+                lightTime: 'N/A',
+                funFact: 'Die Sonne macht 99,86% der gesamten Masse in unserem Sonnensystem aus.'
+            };
+            clickableObjects.push(sun); // Zum Klicken hinzufügen
+            // --- ENDE NEU ---
+            
             scene.add(sun);
             
             // 3. Erde
@@ -759,6 +927,20 @@
             earth.position.x = EARTH_DISTANCE;
             earth.rotation.order = 'YXZ'; 
             earth.rotation.z = EARTH_TILT_RAD; 
+            
+            // --- NEU: Info-Daten für Erde ---
+            earth.userData.info = {
+                name: 'Erde',
+                radius_km: '6.371',
+                earthCompareRadius: '1x Erde',
+                distance_Mio_km: '149,6',
+                distanceType: 'Abstand zur Sonne',
+                lightTime: '8,3 Minuten (von Sonne)',
+                funFact: 'Die Erde ist der einzige uns bekannte Planet, auf dem es flüssiges Wasser gibt.'
+            };
+            clickableObjects.push(earth); // Zum Klicken hinzufügen
+            // --- ENDE NEU ---
+            
             earthPivot.add(earth);
 
             // 4. Mond
@@ -785,6 +967,20 @@
             });
             moon = new THREE.Mesh(new THREE.SphereGeometry(MOON_RADIUS, 32, 32), originalMoonMaterial);
             moon.position.x = -MOON_DISTANCE; 
+            
+            // --- NEU: Info-Daten für Mond ---
+            moon.userData.info = {
+                name: 'Mond',
+                radius_km: '1.737',
+                earthCompareRadius: '0,27x Erde',
+                distance_Mio_km: '0,384 (im Schnitt)', // 384.400 km
+                distanceType: 'Abstand zur Erde',
+                lightTime: '1,3 Sekunden (von Erde)',
+                funFact: 'Der Mond entfernt sich jedes Jahr etwa 3,8 cm von der Erde.'
+            };
+            clickableObjects.push(moon); // Zum Klicken hinzufügen
+            // --- ENDE NEU ---
+            
             moonPivot.add(moon);
             
             // 5. Andere Planeten
@@ -792,7 +988,6 @@
                 const pivot = new THREE.Group();
                 
                 // --- NEU: Bahneigung (Inklination) ---
-                // Prüft, ob der Planet eine Bahneigung hat (z.B. Pluto)
                 if (data.orbitalInclination) {
                     pivot.rotation.x = (data.orbitalInclination * Math.PI) / 180;
                 }
@@ -820,6 +1015,19 @@
                 
                 planet.rotation.order = 'YXZ';
                 planet.rotation.z = (data.axialTilt * Math.PI) / 180;
+
+                // --- NEU: Info-Daten für Planeten ---
+                planet.userData.info = {
+                    name: data.name_de,
+                    radius_km: data.realRadius_km.toLocaleString('de-DE'),
+                    earthCompareRadius: data.earthCompareRadius,
+                    distance_Mio_km: data.realDistance_Mio_km.toLocaleString('de-DE'),
+                    distanceType: 'Abstand zur Sonne',
+                    lightTime: `${data.lightMinutes.toLocaleString('de-DE')} Minuten (von Sonne)`,
+                    funFact: data.funFact_de
+                };
+                clickableObjects.push(planet); // Zum Klicken hinzufügen
+                // --- ENDE NEU ---
 
                 // Speziell für Saturn: Ring hinzufügen
                 if (data.name === 'Saturn') {
@@ -907,7 +1115,7 @@
         }
 
         // --- UI-Einrichtung ---
-        // (MODIFIZIERT: Pluto-Button-Name)
+        // (MODIFIZIERT: Pluto-Button-Name + Popup-Schliessen-Listener)
         function setupUI() {
             //Verbergen Button toggle
              const uiContainer = document.getElementById('ui-container');
@@ -985,24 +1193,27 @@
             darknessLabel.textContent = initialBrightness.toFixed(2);
 
 
-            // Event Listener für Fokus
+            // Event Listener für Fokus (ruft jetzt setFocus mit Standard-Dauer auf)
             document.getElementById('focus-system').addEventListener('click', () => setFocus(sun));
             document.getElementById('focus-earth').addEventListener('click', () => setFocus(earth));
             document.getElementById('focus-moon').addEventListener('click', () => setFocus(moon));
 
-            // Listener für Ekliptik-Sicht
+            // Listener für Ekliptik-Sicht (MODIFIZIERT: nutzt flyTo)
             document.getElementById('focus-ecliptic').addEventListener('click', () => {
-                cameraFocus = 'ecliptic_side_view';
+                cameraFocus = 'ecliptic_side_view'; // Behält den Logik-Namen
                 
                 let earthPos = new THREE.Vector3();
                 earth.getWorldPosition(earthPos);
                 
-                controls.target.set(0, 0, 0); 
+                const target = new THREE.Vector3(0, 0, 0); // Schaut auf das Zentrum
                 
                 let offset = earthPos.clone().normalize().multiplyScalar(40);
                 let sideOffset = new THREE.Vector3(-earthPos.z, 0, earthPos.x).normalize().multiplyScalar(4); 
                 
-                camera.position.copy(earthPos).add(offset).add(sideOffset);
+                const endPos = earthPos.clone().add(offset).add(sideOffset);
+                endPos.y = 0; // Auf die Ekliptik-Ebene
+                
+                flyTo(endPos, target, 2.0, 'ecliptic_side_view'); // MODIFIZIERT: Dauer 1.0 -> 2.0
             });
 
             document.getElementById('demo-sofi').addEventListener('click', () => startDemo('sofi'));
@@ -1024,21 +1235,62 @@
                 btn.id = `focus-${data.name.toLowerCase()}`;
                 btn.className = 'btn btn-secondary';
                 
-                const germanNames = {
-                    'Mercury': 'Merkur', 'Venus': 'Venus', 'Mars': 'Mars', 
-                    'Jupiter': 'Jupiter', 'Saturn': 'Saturn', 'Uranus': 'Uranus', 'Neptune': 'Neptun',
-                    'Pluto': 'Pluto' // NEU
-                };
-                btn.textContent = germanNames[data.name] || data.name;
+                // --- MODIFIZY: Verwendet name_de und kürzt (Zwergplanet) ab ---
+                let btnName = data.name_de;
+                if (btnName.includes('(')) {
+                    btnName = btnName.split('(')[0].trim(); // "Pluto (Zwergplanet)" -> "Pluto"
+                }
+                btn.textContent = btnName;
+                // --- ENDE MODIFIZY ---
 
                 btn.addEventListener('click', () => {
-                    setFocus(otherPlanets[index]);
+                    setFocus(otherPlanets[index]); // Nutzt jetzt animiertes setFocus
                 });
                 planetFocusContainer.appendChild(btn);
             });
             
             // Initialen Status der Planeten-Fokus-Buttons setzen
             planetFocusContainer.style.display = planetsInitiallyVisible ? 'flex' : 'none';
+
+            // --- NEU: Listener für Popup-Schliessen-Button ---
+            document.getElementById('popup-close-btn').addEventListener('click', () => {
+                document.getElementById('info-popup').style.display = 'none';
+            });
+            // --- ENDE NEU ---
+        }
+        
+        // --- NEU: Kamera-Flug-Funktion ---
+        /**
+         * Startet eine sanfte Kamera-Transition (Flug).
+         * @param {THREE.Vector3} endPos - Die Zielposition der Kamera.
+         * @param {THREE.Vector3} endTarget - Das Ziel, auf das die Kamera schauen soll.
+         * @param {number} duration - Dauer des Flugs in Sekunden.
+         * @param {Object | string} newFocusTarget - Das Objekt oder der Modus, der nach dem Flug fokussiert bleiben soll.
+         */
+        function flyTo(endPos, endTarget, duration = 1.0, newFocusTarget = null) {
+            // --- NEU: Abfangen für sofortigen Sprung ---
+            if (duration <= 0) {
+                camera.position.copy(endPos);
+                controls.target.copy(endTarget);
+                lastCameraTargetPos.copy(endTarget);
+                isCameraTransitioning = false;
+                cameraFocus = newFocusTarget;
+                return; // Beendet die Funktion hier
+            }
+            // --- ENDE NEU ---
+            
+            isCameraTransitioning = true;
+            cameraTransitionProgress = 0.0;
+            cameraTransitionDuration = duration;
+            
+            cameraTransitionStartPos.copy(camera.position);
+            cameraTransitionStartTarget.copy(controls.target);
+            
+            cameraTransitionEndPos.copy(endPos);
+            cameraTransitionEndTarget.copy(endTarget);
+            
+            cameraFocusAfterTransition = newFocusTarget; // z.B. earth, moon, 'earthView'
+            cameraFocus = 'transitioning'; // Sperrt die updateCamera-Logik
         }
         
         // --- Event Handler ---
@@ -1071,11 +1323,6 @@
                 speed = normalSpeed + ((value - 90) / 10) * (maxSpeed - normalSpeed);
             }
             
-            // Diese Sonderregel ist durch die neue Skala nicht mehr nötig
-            // if (speedSlider.value === "45") {
-            //     speed = 0.5;
-            // }
-            
             speedLabel.textContent = speed.toFixed(4) + 'x'; 
         }
         
@@ -1093,8 +1340,36 @@
             demoSpeedLabel.textContent = demoLoopSpeed.toFixed(2) + 'x';
         }
 
-        function setFocus(targetObj) {
-            cameraFocus = targetObj;
+        /**
+         * MODIFIZIERT: Startet einen Kamera-Flug (animiert) oder Sprung (Dauer 0).
+         * @param {THREE.Object3D} targetObj - Das Zielobjekt.
+         * @param {number} duration - Dauer des Flugs in Sekunden. 0 für sofortigen Sprung.
+         */
+        function setFocus(targetObj, duration = 2.0) { // MODIFIZIERT: Dauer 1.0 -> 2.0
+            // --- NEU: Feste "Sonnensystem"-Ansicht ---
+            if (targetObj === sun) {
+                cameraFocus = sun; // Setzt das Ziel, das *nach* dem Flug verfolgt wird
+                // --- MODIFIZIERT: Kameraposition angepasst ---
+                // const homePos = new THREE.Vector3(-800, 600, 800); // ALT: "links-oben" Linie
+                const homePos = new THREE.Vector3(-600, 450, 600); // NEU: Noch näher dran
+                // --- ENDE MODIFIZIERT ---
+                const homeTarget = new THREE.Vector3(0, 0, 0); // Schaut auf die Sonne (Zentrum)
+                
+                if (duration === 0) { // Sofortiger Sprung
+                    camera.position.copy(homePos);
+                    controls.target.copy(homeTarget);
+                    lastCameraTargetPos.copy(homeTarget);
+                    isCameraTransitioning = false; 
+                    cameraFocus = sun; 
+                } else {
+                    flyTo(homePos, homeTarget, duration, sun); // Animierter Flug
+                }
+                controls.enableZoom = true;
+                return; // WICHTIG: Funktion hier beenden
+            }
+            // --- ENDE NEU ---
+
+            cameraFocus = targetObj; // Setzt das Ziel, das *nach* dem Flug verfolgt wird
             
             let zoomFactor;
             const radius = targetObj.geometry.parameters.radius;
@@ -1103,6 +1378,17 @@
                 zoomFactor = 10.0;
             } else if (targetObj === sun) {
                 zoomFactor = 0.2;
+            // --- NEU: Spezifischer Zoom für Jupiter und Saturn ---
+            } else if (targetObj === otherPlanets[3]) { // Jupiter
+                zoomFactor = 1.5; // Näher heran (war dynamisch ca. 0.39)
+            } else if (targetObj === otherPlanets[4]) { // Saturn
+                zoomFactor = 2.0; // Näher heran (war dynamisch ca. 0.48). Etwas näher als Saturn kleiner ist.
+            // --- ENDE NEU ---
+            // --- NEU: Spezifischer Zoom für die Erde ---
+            } else if (targetObj === earth) {
+                // Näher ran, sodass die Mondbahn (Radius 15) den Bildschirm fast ausfüllt
+                zoomFactor = 4.2; 
+            // --- ENDE NEU ---
             } else {
                 // Dynamischer Zoom basierend auf Planetengröße im Verhältnis zur Erde
                 zoomFactor = (EARTH_RADIUS / radius) * 2.5; 
@@ -1111,10 +1397,29 @@
             const targetPos = new THREE.Vector3();
             targetObj.getWorldPosition(targetPos);
             
-            const offset = camera.position.clone().sub(controls.target).normalize().multiplyScalar(EARTH_DISTANCE / zoomFactor);
-            camera.position.copy(targetPos).add(offset);
-            controls.target.copy(targetPos);
-            lastCameraTargetPos.copy(targetPos);
+            const endTarget = targetPos.clone();
+            
+            // --- MODIFIZIERT: Berechne Offset, um auf die belichtete Seite zu schauen ---
+            // Richtung vom Planeten zur Sonne (Sonne ist bei 0,0,0)
+            const offsetDir = new THREE.Vector3(0, 0, 0).sub(targetPos).normalize();
+            
+            // Füge eine "Y" (oben) Komponente hinzu, um schräg draufzuschauen
+            offsetDir.y = 0.5; // (kann angepasst werden, 0.5 ist ein guter Start)
+            offsetDir.normalize(); // Erneut normalisieren, um einen korrekten Richtungsvektor zu erhalten
+            // --- ENDE MODIFIZIERT ---
+            
+            const offset = offsetDir.multiplyScalar(EARTH_DISTANCE / zoomFactor);
+            const endPos = targetPos.clone().add(offset);
+
+            if (duration === 0) { // Sofortiger Sprung
+                camera.position.copy(endPos);
+                controls.target.copy(endTarget);
+                lastCameraTargetPos.copy(endTarget);
+                isCameraTransitioning = false; // Sicherstellen, dass keine Transition läuft
+                cameraFocus = targetObj; // Fokus direkt setzen
+            } else {
+                flyTo(endPos, endTarget, duration, targetObj); // Animierter Flug
+            }
 
             controls.enableZoom = true;
         }
@@ -1141,6 +1446,7 @@
             }
         }
         
+        // --- MODIFIZIERT: Nutzt jetzt flyTo für spezielle Kamerapositionen ---
         function startDemo(type) {
             pauseSimulation(); 
             resetToRealMode(); 
@@ -1157,41 +1463,60 @@
             
             if (type === 'sofi') {
                 earth.rotation.z = -EARTH_TILT_RAD;
-            } else {
-                earth.rotation.z = 0;
-            }
-            
-            let demoDurationDays;
-
-            if (type === 'sofi') {
+                
                 demoDurationDays = 2; 
                 currentDay = LUNAR_MONTH_DAYS * 0.0 - (demoDurationDays / 2); 
                 demoLoopStartDay = currentDay;
                 demoLoopEndDay = LUNAR_MONTH_DAYS * 0.0 + (demoDurationDays / 2); 
                 
                 earth.material.uniforms.uSofiDemoActive.value = true;
-                
-                earthDemoRotationOffset = 4 * Math.PI / 4; 
-                
+                earthDemoRotationOffset = 3.7 * Math.PI / 4; 
                 moon.position.y = 0.3; 
 
-                setFocus(earth);
+                // setFocus(earth); // ALT
             } else if (type === 'mofi') {
+                earth.rotation.z = 0;
+                
                 demoDurationDays = 17.5 - 14.3; 
                 currentDay = 14.3; 
                 demoLoopStartDay = currentDay;
                 demoLoopEndDay = 17.5; 
 
                 moonPivot.position.y = MOON_RADIUS * 1.0; 
-                
                 originalMoonMaterial.uniforms.uDemoActive.value = true;
                 
-                setFocus(moon);
+                // setFocus(moon); // ALT
             }
             
-            updatePositions(currentDay);
+            updatePositions(currentDay); // Wichtig: Positionen setzen
             daySlider.value = currentDay;
             updateUI();
+
+            // --- NEU: Kamera-Flug (NACH updatePositions) ---
+            if (type === 'sofi') {
+                const earthPos = new THREE.Vector3();
+                earth.getWorldPosition(earthPos);
+                const sunPos = new THREE.Vector3(0,0,0); // Sonne ist im Zentrum
+                
+                const target = earthPos.clone();
+                // Positioniere Kamera zwischen Erde und Sonne (auf der belichteten Seite)
+                const direction = sunPos.clone().sub(earthPos).normalize();
+                const endPos = earthPos.clone().add(direction.multiplyScalar(EARTH_RADIUS * 5)); // 5 Radien davor
+                
+                flyTo(endPos, target, 3.0, earth); // MODIFIZIERT: 1.5s -> 3.0s Flug, dann Erde fokussieren
+
+            } else if (type === 'mofi') {
+                const moonPos = new THREE.Vector3();
+                moon.getWorldPosition(moonPos);
+                const sunPos = new THREE.Vector3(0,0,0); // Sonne ist im Zentrum
+                
+                const target = moonPos.clone();
+                // Positioniere Kamera "vor" den Mond (aus Sicht der Sonne)
+                const direction = sunPos.clone().sub(moonPos).normalize();
+                const endPos = moonPos.clone().add(direction.multiplyScalar(MOON_RADIUS * 12)); // 12 Radien davor
+                
+                flyTo(endPos, target, 3.0, moon); // MODIFIZIERT: 1.5s -> 3.0s Flug, dann Mond fokussieren
+            }
         }
 
         function endDemo() {
@@ -1207,6 +1532,7 @@
             updateUI();
         }
         
+        // --- MODIFIZIERT: Nutzt jetzt flyTo ---
         function jumpToPhase(index) {
             pauseSimulation(); 
             resetToRealMode(); 
@@ -1230,29 +1556,53 @@
             daySlider.value = currentDay;
             updateUI();
 
-            cameraFocus = 'earthView';
-            
+            // MODIFIZIERT: Fliege zur "Erdsicht auf Mond"-Position
             let earthPos = new THREE.Vector3();
             let moonPos = new THREE.Vector3();
             earth.getWorldPosition(earthPos);
             moon.getWorldPosition(moonPos);
             
-            camera.position.copy(earthPos); 
-            controls.target.copy(moonPos); 
-            lastCameraTargetPos.copy(moonPos);
+            // Fliege zur Erde (Position) und schaue auf den Mond (Target)
+            // flyTo(earthPos, moonPos, 2.0, 'earthView'); // MODIFIZIERT: Dauer 1.0 -> 2.0 // ALT
+            flyTo(earthPos, moonPos, 0, 'earthView'); // NEU: Dauer 0 für sofortigen Sprung
         }
 
-        // --- Animations-Loop ---
+        // --- Animations-Loop (MODIFIZIERT: Verwaltet Kamera-Transition) ---
         function animate() {
             requestAnimationFrame(animate);
+            const deltaTime = clock.getDelta(); // NEU: Zeitdelta holen
 
+            // 1. Kamera-Transition-Logik
+            if (isCameraTransitioning) {
+                cameraTransitionProgress += deltaTime / cameraTransitionDuration;
+                
+                // Sanftes Ein- und Ausblenden (Ease-In-Out)
+                const t = cameraTransitionProgress < 0.5 
+                    ? 4 * cameraTransitionProgress * cameraTransitionProgress * cameraTransitionProgress 
+                    : 1 - Math.pow(-2 * cameraTransitionProgress + 2, 3) / 2;
+
+                if (cameraTransitionProgress >= 1.0) {
+                    // Übergang beendet
+                    isCameraTransitioning = false;
+                    camera.position.copy(cameraTransitionEndPos);
+                    controls.target.copy(cameraTransitionEndTarget);
+                    cameraFocus = cameraFocusAfterTransition; // Fokus wiederherstellen
+                    lastCameraTargetPos.copy(controls.target);
+                } else {
+                    // Während des Übergangs: Position und Ziel interpolieren
+                    camera.position.lerpVectors(cameraTransitionStartPos, cameraTransitionEndPos, t);
+                    controls.target.lerpVectors(cameraTransitionStartTarget, cameraTransitionEndTarget, t);
+                }
+            }
+
+            // 2. Simulations-Logik (läuft auch während des Kameraflugs)
             let actualSpeed = speed;
-
             if (isDemoActive) {
                 actualSpeed = demoLoopSpeed;
             }
 
             if (isPlaying) {
+                // Originale, Framerate-abhängige Zeitlogik
                 const deltaDays = (actualSpeed * (1 / 60)) * (isDemoActive ? 1 : EARTH_YEAR_DAYS / 60); 
                 currentDay += deltaDays;
                 
@@ -1268,8 +1618,9 @@
                 updateUI();
             }
 
+            // 3. Updates (laufen immer)
             updatePositions(currentDay);
-            updateCamera(false);
+            updateCamera(false); // updateCamera wird jetzt nur aktiv, wenn *nicht* getransitiont wird
             
             controls.update();
             renderer.render(scene, camera);
@@ -1400,60 +1751,69 @@
             }
         }
 
+        // --- MODIFIZIERT: Führt nur noch das "Folgen" aus, kein Springen/Fliegen ---
         function updateCamera(isJump = false) {
-            let targetObj;
-            let currentTargetPos = new THREE.Vector3();
-
-            if (cameraFocus === 'earthView') {
-                earth.getWorldPosition(currentTargetPos); 
-                
-                if (isJump) {
-                    lastCameraTargetPos.copy(currentTargetPos);
-                } else if (isPlaying) { 
-                    const delta = currentTargetPos.clone().sub(lastCameraTargetPos);
-                    camera.position.add(delta);
-                }
-                lastCameraTargetPos.copy(currentTargetPos);
-                
-                let moonPos = new THREE.Vector3();
-                moon.getWorldPosition(moonPos);
-                controls.target.copy(moonPos);
+            // Wenn wir fliegen oder springen (isJump=true, wird von init nicht mehr genutzt), 
+            // wird die Kamera an anderer Stelle gesteuert.
+            if (isCameraTransitioning || isJump) {
                 return;
             }
-
-            if (cameraFocus === 'ecliptic_side_view') {
-                targetObj = earth;
-                
-                targetObj.getWorldPosition(currentTargetPos);
-
-                if (isJump) {
-                    lastCameraTargetPos.copy(currentTargetPos);
-                } else if (isPlaying || isDemoActive) { 
-                    let offset = currentTargetPos.clone().normalize().multiplyScalar(40);
-                    let sideOffset = new THREE.Vector3(-currentTargetPos.z, 0, currentTargetPos.x).normalize().multiplyScalar(4); 
+            
+            // Wenn der Fokus ein String-Name für eine Logik ist (z.B. 'transitioning' oder 'earthView')
+            if (typeof cameraFocus === 'string') {
+                if (cameraFocus === 'earthView') {
+                    // Logik für "von Erde auf Mond schauen"
+                    let earthPos = new THREE.Vector3();
+                    let moonPos = new THREE.Vector3();
+                    earth.getWorldPosition(earthPos);
+                    moon.getWorldPosition(moonPos);
                     
-                    camera.position.copy(currentTargetPos).add(offset).add(sideOffset); 
-                    camera.position.y = 0;
+                    // Halte die Kameraposition = Erdposition
+                    camera.position.copy(earthPos); 
+                    // Halte das Target = Mondposition
+                    controls.target.copy(moonPos);
+                    lastCameraTargetPos.copy(moonPos);
+                    return;
                 }
-                lastCameraTargetPos.copy(currentTargetPos);
                 
-                controls.target.set(0, 0, 0);
+                if (cameraFocus === 'ecliptic_side_view') {
+                    // Logik für Ekliptik-Sicht (folgt der Erde von der Seite)
+                    let earthPos = new THREE.Vector3();
+                    earth.getWorldPosition(earthPos);
+                    
+                    let offset = earthPos.clone().normalize().multiplyScalar(40);
+                    let sideOffset = new THREE.Vector3(-earthPos.z, 0, earthPos.x).normalize().multiplyScalar(4); 
+                    
+                    const endPos = earthPos.clone().add(offset).add(sideOffset);
+                    endPos.y = 0; // Auf die Ekliptik-Ebene
+                    
+                    camera.position.copy(endPos);
+                    controls.target.set(0, 0, 0);
+                    lastCameraTargetPos.copy(controls.target);
+                    return;
+                }
+                
+                // Wenn 'transitioning' oder unbekannter String, tu nichts (oder setze Standard)
+                if (cameraFocus === 'transitioning') return;
+                
+                // Fallback, falls Fokus-String unbekannt ist
+                setFocus(sun, 0); // Springe zur Sonne
                 return;
             }
             
-            targetObj = cameraFocus; 
+            // Wenn der Fokus ein Objekt ist (Standard-Folgen-Logik)
+            let targetObj = cameraFocus; 
             
-            if (!targetObj || typeof targetObj === 'string') {
+            if (!targetObj) {
                 targetObj = sun;
                 cameraFocus = sun;
             }
             
+            let currentTargetPos = new THREE.Vector3();
             targetObj.getWorldPosition(currentTargetPos);
 
-            if (isJump) {
-                lastCameraTargetPos.copy(currentTargetPos);
-            }
-            else if (isPlaying || isDemoActive) {
+            // Dies ist die "Folgen"-Logik
+            if (isPlaying || isDemoActive) {
                 const delta = currentTargetPos.clone().sub(lastCameraTargetPos);
                 camera.position.add(delta);
                 controls.target.add(delta);
@@ -1470,6 +1830,7 @@
             let moonPos = new THREE.Vector3();
             
             sun.getWorldPosition(sunPos);
+            // KORREKTUR: Das 'f' wurde hier entfernt
             earth.getWorldPosition(earthPos);
             moon.getWorldPosition(moonPos);
 
@@ -1519,6 +1880,68 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
+
+        // --- NEUE FUNKTIONEN FÜR INFO-POPUP ---
+
+        /**
+         * Wird bei einem Klick auf die Szene aufgerufen.
+         */
+        function onObjectClick(event) {
+            // Verhindern, dass Klicks auf die UI (oder das Popup selbst) die Szene durchdringen
+            const uiContainer = document.getElementById('ui-container');
+            const popup = document.getElementById('info-popup');
+            
+            if (uiContainer.contains(event.target) || popup.contains(event.target)) {
+                return;
+            }
+
+            // Mausposition normalisieren (von -1 bis +1)
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            // Raycaster von der Kamera durch die Mausposition aktualisieren
+            raycaster.setFromCamera(mouse, camera);
+
+            // Schnittpunkte mit den klickbaren Objekten berechnen
+            const intersects = raycaster.intersectObjects(clickableObjects);
+
+            if (intersects.length > 0) {
+                // Das erste getroffene Objekt nehmen
+                const clickedObject = intersects[0].object;
+                
+                // Prüfen, ob das Objekt Info-Daten hat
+                if (clickedObject.userData.info) {
+                    showInfoPopup(clickedObject.userData.info);
+                }
+            }
+        }
+
+        /**
+         * Zeigt das Info-Popup mit den Daten des übergebenen Objekts an.
+         * @param {object} info - Das info-Objekt aus userData.
+         */
+        function showInfoPopup(info) {
+            const popup = document.getElementById('info-popup');
+            const titleEl = document.getElementById('popup-title');
+            const detailsEl = document.getElementById('popup-details');
+
+            titleEl.textContent = info.name;
+            
+            // HTML-Inhalt für die Details erstellen
+            detailsEl.innerHTML = `
+                <p><strong>Radius:</strong> <span>${info.radius_km} km</span></p>
+                <p><strong>Größe:</strong> <span>${info.earthCompareRadius}</span></p>
+                <p><strong>${info.distanceType}:</strong> <span>${info.distance_Mio_km} Mio. km</span></p>
+                <p><strong>Lichtlaufzeit:</strong> <span>${info.lightTime}</span></p>
+                <p class="fun-fact">${info.funFact}</p>
+            `;
+            
+            // Popup anzeigen
+            popup.style.display = 'flex';
+        }
+
+        // --- ENDE NEUE FUNKTIONEN ---
+
 
         // --- Start ---
         init();
