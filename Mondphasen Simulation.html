@@ -250,15 +250,11 @@
             color: #ddd;
         }
         #popup-details .fun-fact {
-            margin-top: 15px;
-            padding-top: 10px;
-            border-top: 1px dashed #444;
+            margin-top: 8px; /* Reduziert von 15px, da jetzt mehrere Fakten existieren */
+            padding-top: 0; /* Entfernt, da die Trennlinie jetzt per JS hinzugefügt wird */
+            border-top: none; /* Entfernt */
             font-style: italic;
             color: #ccc;
-        }
-        #popup-close-btn {
-            margin-top: 20px;
-            width: 100%;
         }
         /* --- ENDE NEU --- */
 
@@ -290,11 +286,17 @@
                 Erd-/Mondbahn anzeigen
             </label>
             
-            <!-- MODIFIZIERT: Label-Text geändert -->
-            <label class="checkbox-label" style="margin-top: 10px;">
-                <input type="checkbox" id="planets-checkbox" checked>
-                Andere Planeten & Bahnen
-            </label>
+            <!-- MODIFIZIERT: Aufgeteilt in zwei Checkboxen -->
+            <div style="display: flex; gap: 15px; margin-top: 10px;">
+                <label class="checkbox-label" style="flex: 1;">
+                    <input type="checkbox" id="planets-visible-checkbox" checked>
+                    Planeten
+                </label>
+                <label class="checkbox-label" style="flex: 1;">
+                    <input type="checkbox" id="planets-orbit-checkbox" checked>
+                    Planetenbahnen
+                </label>
+            </div>
             
             <label for="darkness-slider" style="margin-top: 10px;">Helligkeit (Nachtseite): <span id="darkness-label">0.30</span></label>
             <input type="range" id="darkness-slider" min="0" max="0.9" value="0.3" step="0.01">
@@ -407,6 +409,13 @@
         let mouse;
         let clickableObjects = [];
         // --- ENDE NEU ---
+        
+        // --- NEU: Touch-Handling für Popup ---
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isDragging = false;
+        const dragThreshold = 10; // Pixel-Toleranz für Drag vs. Tap
+        // --- ENDE NEU ---
 
         // --- Konstanten ---
         const SCENE_SCALE = 1.0;
@@ -447,7 +456,9 @@
         const orbitCheckbox = document.getElementById('orbit-checkbox');
         const infoBox = document.getElementById('info-box');
         
-        const planetsCheckbox = document.getElementById('planets-checkbox');
+        // MODIFIZIERT: Aufgeteilte Checkboxen
+        const planetsVisibleCheckbox = document.getElementById('planets-visible-checkbox');
+        const planetsOrbitCheckbox = document.getElementById('planets-orbit-checkbox');
         const planetFocusContainer = document.getElementById('planet-focus-buttons');
 
         const darknessSlider = document.getElementById('darkness-slider');
@@ -721,9 +732,13 @@
             animate();
             
             window.addEventListener('resize', onWindowResize);
-            // --- NEU: Klick-Listener hinzufügen ---
-            window.addEventListener('click', onObjectClick, false);
-            // --- ENDE NEU ---
+            
+            // --- MODIFIZIERT: Klick- und Touch-Listener ---
+            window.addEventListener('click', onMouseClick, false);      // Für Maus
+            window.addEventListener('touchstart', onTouchStart, false); // Für Touch-Beginn
+            window.addEventListener('touchmove', onTouchMove, false);   // Für Touch-Bewegung
+            window.addEventListener('touchend', onTouchEnd, false);     // Für Touch-Ende (Tippen)
+            // --- ENDE MODIFIZIERT ---
             
             updatePositions(currentDay);
             // MODIFIZIERT: Starte mit Sprung (Dauer 0), nicht mit updateCamera
@@ -734,6 +749,7 @@
         function definePlanetData() {
             const textureBasePath = 'https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/';
             
+            // --- MODIFIZIERT: funFact zu funFacts Array geändert + Hardfacts ---
             planetsData = [
                 { 
                     name: 'Mercury', 
@@ -746,10 +762,16 @@
                     // NEU: Info-Daten
                     name_de: 'Merkur',
                     realRadius_km: 2439,
-                    earthCompareRadius: '0,38x Erde', // 2439 / 6371
+                    earthCompareRadius: '0,38x Erde',
                     realDistance_Mio_km: 57.9,
                     lightMinutes: 3.2,
-                    funFact_de: 'Auf Merkur dauert ein Tag (176 Erdtage) länger als ein Jahr (88 Erdtage).'
+                    taglaenge: '176 Erdtage',
+                    temperatur: '-173°C bis 427°C',
+                    funFacts: [
+                        'Auf Merkur dauert ein Tag (176 Erdtage) länger als ein Jahr (88 Erdtage).',
+                        'Er hat keine Monde und keine nennenswerte Atmosphäre.',
+                        'Trotz seiner Nähe zur Sonne ist er nicht der heisseste Planet (das ist die Venus).'
+                    ]
                 },
                 { 
                     name: 'Venus', 
@@ -762,10 +784,17 @@
                     // NEU: Info-Daten
                     name_de: 'Venus',
                     realRadius_km: 6051,
-                    earthCompareRadius: '0,95x Erde', // 6051 / 6371
+                    earthCompareRadius: '0,95x Erde',
                     realDistance_Mio_km: 108.2,
                     lightMinutes: 6.0,
-                    funFact_de: 'Die Venus dreht sich "rückwärts" (retrograd) und langsamer als jeder andere Planet.'
+                    taglaenge: '243 Erdtage (retrograd)',
+                    atmosphaere: '96% CO2',
+                    temperatur: '464°C (Durchschnitt)',
+                    funFacts: [
+                        'Die Venus dreht sich "rückwärts" (retrograd).',
+                        'Ein Tag auf der Venus (243 Erdtage) ist länger als ihr Jahr (225 Erdtage).',
+                        'Ihre dichte Atmosphäre aus Kohlendioxid erzeugt einen extremen Treibhauseffekt (heissester Planet).'
+                    ]
                 },
                 { 
                     name: 'Mars', 
@@ -778,10 +807,17 @@
                     // NEU: Info-Daten
                     name_de: 'Mars',
                     realRadius_km: 3389,
-                    earthCompareRadius: '0,53x Erde', // 3389 / 6371
+                    earthCompareRadius: '0,53x Erde',
                     realDistance_Mio_km: 227.9,
                     lightMinutes: 12.7,
-                    funFact_de: 'Der Mars beherbergt den Olympus Mons, den höchsten bekannten Vulkan im Sonnensystem.'
+                    taglaenge: '24,6 Stunden',
+                    atmosphaere: '95% CO2 (sehr dünn)',
+                    temperatur: '-63°C (Durchschnitt)',
+                    funFacts: [
+                        'Der Mars beherbergt den Olympus Mons, den höchsten Vulkan im Sonnensystem (ca. 22 km hoch).',
+                        'Er hat zwei kleine Monde: Phobos und Deimos.',
+                        'Seine rote Farbe stammt von Eisenoxid (Rost) auf der Oberfläche.'
+                    ]
                 },
                 { 
                     name: 'Jupiter', 
@@ -794,10 +830,17 @@
                     // NEU: Info-Daten
                     name_de: 'Jupiter',
                     realRadius_km: 69911,
-                    earthCompareRadius: '10,97x Erde', // 69911 / 6371
+                    earthCompareRadius: '10,97x Erde',
                     realDistance_Mio_km: 778.5,
                     lightMinutes: 43.2,
-                    funFact_de: 'Jupiter hat über 90 bekannte Monde und einen Tag, der nur knapp 10 Stunden dauert.'
+                    taglaenge: '9,9 Stunden',
+                    atmosphaere: 'H, He',
+                    schwerkraft: '2,53 g',
+                    funFacts: [
+                        'Jupiter hat über 90 bekannte Monde, darunter die vier "Galileischen Monde".',
+                        'Ein Tag auf Jupiter dauert nur knapp 10 Stunden (schnellste Rotation).',
+                        'Der "Große Rote Fleck" ist ein riesiger Sturm, der größer ist als die Erde.'
+                    ]
                 },
                 { 
                     name: 'Saturn', 
@@ -811,10 +854,17 @@
                     // NEU: Info-Daten
                     name_de: 'Saturn',
                     realRadius_km: 58232,
-                    earthCompareRadius: '9,14x Erde', // 58232 / 6371
+                    earthCompareRadius: '9,14x Erde',
                     realDistance_Mio_km: 1433.5,
                     lightMinutes: 79.6,
-                    funFact_de: 'Saturns Ringe bestehen hauptsächlich aus Eispartikeln, Staub und Gestein.'
+                    taglaenge: '10,7 Stunden',
+                    atmosphaere: 'H, He',
+                    ringe: '99,9% Wassereis',
+                    funFacts: [
+                        'Saturns Ringe bestehen hauptsächlich aus Eispartikeln, Staub und Gestein.',
+                        'Er hat die geringste Dichte aller Planeten – er würde auf Wasser schwimmen.',
+                        'Saturn hat über 80 Monde, der größte ist Titan, der eine eigene Atmosphäre besitzt.'
+                    ]
                 },
                 { 
                     name: 'Uranus', 
@@ -827,10 +877,17 @@
                     // NEU: Info-Daten
                     name_de: 'Uranus',
                     realRadius_km: 25362,
-                    earthCompareRadius: '3,98x Erde', // 25362 / 6371
+                    earthCompareRadius: '3,98x Erde',
                     realDistance_Mio_km: 2872.5,
                     lightMinutes: 159.6,
-                    funFact_de: 'Uranus "rollt" auf seiner Bahn um die Sonne, da seine Achse fast seitlich geneigt ist.'
+                    taglaenge: '17,2 Stunden',
+                    atmosphaere: 'H, He, Methan',
+                    achsneigung: '97,8°',
+                    funFacts: [
+                        'Uranus "rollt" auf seiner Bahn, da seine Achse um 98 Grad geneigt ist.',
+                        'Er ist ein "Eisriese", dessen Atmosphäre hauptsächlich aus Wasserstoff, Helium und Methan besteht.',
+                        'Sein Methan absorbiert rotes Licht, was ihm seine blaugrüne Farbe gibt.'
+                    ]
                 },
                 { 
                     name: 'Neptune', 
@@ -843,10 +900,17 @@
                     // NEU: Info-Daten
                     name_de: 'Neptun',
                     realRadius_km: 24622,
-                    earthCompareRadius: '3,86x Erde', // 24622 / 6371
+                    earthCompareRadius: '3,86x Erde',
                     realDistance_Mio_km: 4495.1,
                     lightMinutes: 249.7,
-                    funFact_de: 'Auf Neptun herrschen die stärksten Winde im Sonnensystem (bis zu 2.100 km/h).'
+                    taglaenge: '16,1 Stunden',
+                    atmosphaere: 'H, He, Methan',
+                    wind: 'Bis 2.100 km/h',
+                    funFacts: [
+                        'Auf Neptun herrschen die stärksten Winde im Sonnensystem (bis zu 2.100 km/h).',
+                        'Er ist der am weitesten von der Sonne entfernte Planet.',
+                        'Seit seiner Entdeckung im Jahr 1846 hat er 2011 erst einen vollen Sonnenumlauf vollendet.'
+                    ]
                 },
                 // --- NEU: Pluto ---
                 {
@@ -861,10 +925,17 @@
                     // NEU: Info-Daten
                     name_de: 'Pluto (Zwergplanet)',
                     realRadius_km: 1188,
-                    earthCompareRadius: '0,18x Erde', // 1188 / 6371
+                    earthCompareRadius: '0,18x Erde',
                     realDistance_Mio_km: 5906.4,
                     lightMinutes: 328.1,
-                    funFact_de: 'Pluto wurde 2006 zum Zwergplaneten "herabgestuft", ist aber immer noch faszinierend!'
+                    taglaenge: '6,4 Erdtage',
+                    atmosphaere: 'N, Methan, CO (dünn)',
+                    temperatur: '-229°C (Durchschnitt)',
+                    funFacts: [
+                        'Pluto wurde 2006 zum "Zwergplaneten" herabgestuft.',
+                        'Er hat 5 bekannte Monde, der größte (Charon) ist fast halb so groß wie Pluto selbst.',
+                        'Seine Umlaufbahn ist so elliptisch, dass er der Sonne manchmal näher ist als Neptun.'
+                    ]
                 }
                 // --- ENDE NEU ---
             ];
@@ -890,18 +961,23 @@
             const sunMaterial = new THREE.MeshBasicMaterial({ map: sunTexture });
 	        sun = new THREE.Mesh(new THREE.SphereGeometry(SUN_RADIUS, 32, 32), sunMaterial);
             
-            // --- NEU: Info-Daten für Sonne ---
+            // --- MODIFIZIERT: Info-Daten für Sonne ---
             sun.userData.info = {
                 name: 'Sonne',
                 radius_km: '695.700',
                 earthCompareRadius: '109x Erde',
-                distance_Mio_km: '0',
-                distanceType: 'Abstand (Zentrum)',
-                lightTime: 'N/A',
-                funFact: 'Die Sonne macht 99,86% der gesamten Masse in unserem Sonnensystem aus.'
+                oberflaeche_temp: 'ca. 5.500 °C',
+                kerntemperatur: 'ca. 15 Mio. °C',
+                zusammensetzung: '74% Wasserstoff, 24% Helium',
+                alter: 'ca. 4,6 Mrd. Jahre',
+                funFacts: [
+                    'Die Sonne macht 99,86% der Masse unseres Sonnensystems aus.',
+                    'Sie ist ein Stern vom Typ "Gelber Zwerg".',
+                    'Das Licht der Sonne braucht ca. 8,3 Minuten bis zur Erde.'
+                ]
             };
             clickableObjects.push(sun); // Zum Klicken hinzufügen
-            // --- ENDE NEU ---
+            // --- ENDE MODIFIZIERT ---
             
             scene.add(sun);
             
@@ -928,7 +1004,7 @@
             earth.rotation.order = 'YXZ'; 
             earth.rotation.z = EARTH_TILT_RAD; 
             
-            // --- NEU: Info-Daten für Erde ---
+            // --- MODIFIZIERT: Info-Daten für Erde ---
             earth.userData.info = {
                 name: 'Erde',
                 radius_km: '6.371',
@@ -936,10 +1012,17 @@
                 distance_Mio_km: '149,6',
                 distanceType: 'Abstand zur Sonne',
                 lightTime: '8,3 Minuten (von Sonne)',
-                funFact: 'Die Erde ist der einzige uns bekannte Planet, auf dem es flüssiges Wasser gibt.'
+                taglaenge: '23,9 Stunden',
+                atmosphaere: '78% N, 21% O2',
+                temperatur: '15°C (Durchschnitt)',
+                funFacts: [ 
+                    'Die Erde ist der einzige uns bekannte Planet, auf dem es flüssiges Wasser an der Oberfläche gibt.',
+                    'Sie ist der dichteste Planet im Sonnensystem.',
+                    'Das Magnetfeld der Erde schützt uns vor Sonnenwinden.'
+                ]
             };
             clickableObjects.push(earth); // Zum Klicken hinzufügen
-            // --- ENDE NEU ---
+            // --- ENDE MODIFIZIERT ---
             
             earthPivot.add(earth);
 
@@ -968,18 +1051,25 @@
             moon = new THREE.Mesh(new THREE.SphereGeometry(MOON_RADIUS, 32, 32), originalMoonMaterial);
             moon.position.x = -MOON_DISTANCE; 
             
-            // --- NEU: Info-Daten für Mond ---
+            // --- MODIFIZIERT: Info-Daten für Mond ---
             moon.userData.info = {
                 name: 'Mond',
                 radius_km: '1.737',
                 earthCompareRadius: '0,27x Erde',
-                distance_Mio_km: '0,384 (im Schnitt)', // 384.400 km
+                distance_Mio_km: '384.400 km (im Schnitt)', // 384.400 km
                 distanceType: 'Abstand zur Erde',
                 lightTime: '1,3 Sekunden (von Erde)',
-                funFact: 'Der Mond entfernt sich jedes Jahr etwa 3,8 cm von der Erde.'
+                umlaufzeit: '27,3 Erdtage',
+                taglaenge: '27,3 Erdtage',
+                temperatur: '-173°C (Nacht) bis 127°C (Tag)',
+                funFacts: [ 
+                    'Der Mond entfernt sich jedes Jahr etwa 3,8 cm von der Erde.',
+                    'Er hat eine "gebundene Rotation", weshalb wir immer dieselbe Seite sehen.',
+                    'Die Schwerkraft des Mondes verursacht die Gezeiten (Ebbe und Flut) auf der Erde.'
+                ]
             };
             clickableObjects.push(moon); // Zum Klicken hinzufügen
-            // --- ENDE NEU ---
+            // --- ENDE MODIFIZIERT ---
             
             moonPivot.add(moon);
             
@@ -1016,18 +1106,25 @@
                 planet.rotation.order = 'YXZ';
                 planet.rotation.z = (data.axialTilt * Math.PI) / 180;
 
-                // --- NEU: Info-Daten für Planeten ---
-                planet.userData.info = {
-                    name: data.name_de,
-                    radius_km: data.realRadius_km.toLocaleString('de-DE'),
-                    earthCompareRadius: data.earthCompareRadius,
-                    distance_Mio_km: data.realDistance_Mio_km.toLocaleString('de-DE'),
-                    distanceType: 'Abstand zur Sonne',
-                    lightTime: `${data.lightMinutes.toLocaleString('de-DE')} Minuten (von Sonne)`,
-                    funFact: data.funFact_de
-                };
+                // --- MODIFIZIERT: Info-Daten für Planeten ---
+                // Kopiert alle Daten aus dem planetsData-Eintrag in userData.info
+                planet.userData.info = { ...data }; 
+                
+                // (Diese Felder werden nicht im Popup gebraucht)
+                delete planet.userData.info.name; 
+                delete planet.userData.info.radius;
+                delete planet.userData.info.distance;
+                delete planet.userData.info.yearDays;
+                delete planet.userData.info.texture;
+                delete planet.userData.info.ringTexture;
+                delete planet.userData.info.axialTilt;
+                delete planet.userData.info.orbitalInclination;
+                delete planet.userData.info.rotationSpeed;
+                
+                planet.userData.info.name = data.name_de; // Sicherstellen, dass der deutsche Name da ist
+                
                 clickableObjects.push(planet); // Zum Klicken hinzufügen
-                // --- ENDE NEU ---
+                // --- ENDE MODIFIZIERT ---
 
                 // Speziell für Saturn: Ring hinzufügen
                 if (data.name === 'Saturn') {
@@ -1134,20 +1231,36 @@
             earthOrbitLine.visible = orbitCheckbox.checked;
             moonOrbitLine.visible = orbitCheckbox.checked;
 
-            // Checkbox für andere Planeten
-            planetsCheckbox.addEventListener('change', (e) => {
+            // --- MODIFIZIERT: Geteilte Checkboxen für Planeten und Bahnen ---
+
+            // 1. Checkbox für Planeten-Sichtbarkeit
+            planetsVisibleCheckbox.addEventListener('change', (e) => {
                 const isVisible = e.target.checked;
                 otherPlanetPivots.forEach(pivot => {
                     pivot.visible = isVisible;
                 });
+                // Das Anzeigen/Verbergen der Fokus-Buttons hängt nur von den Planeten ab
+                planetFocusContainer.style.display = isVisible ? 'flex' : 'none';
+            });
+
+            // 2. Checkbox für Planetenbahn-Sichtbarkeit
+            planetsOrbitCheckbox.addEventListener('change', (e) => {
+                const isVisible = e.target.checked;
                 otherPlanetOrbits.forEach(orbit => {
                     orbit.visible = isVisible;
                 });
-                planetFocusContainer.style.display = isVisible ? 'flex' : 'none';
             });
-            const planetsInitiallyVisible = planetsCheckbox.checked;
+
+            // 3. Initialen Status für BEIDE setzen
+            const planetsInitiallyVisible = planetsVisibleCheckbox.checked;
             otherPlanetPivots.forEach(pivot => { pivot.visible = planetsInitiallyVisible; });
-            otherPlanetOrbits.forEach(orbit => { orbit.visible = planetsInitiallyVisible; });
+            
+            const orbitsInitiallyVisible = planetsOrbitCheckbox.checked;
+            otherPlanetOrbits.forEach(orbit => { orbit.visible = orbitsInitiallyVisible; });
+
+            // 4. Initialen Status der Planeten-Fokus-Buttons setzen (ersetzt die alte Logik am Ende von setupUI)
+            planetFocusContainer.style.display = planetsInitiallyVisible ? 'flex' : 'none';
+            // --- ENDE MODIFIKATION ---
 
             
             // Event-Listener für Dunkelheits-Slider
@@ -1249,9 +1362,6 @@
                 planetFocusContainer.appendChild(btn);
             });
             
-            // Initialen Status der Planeten-Fokus-Buttons setzen
-            planetFocusContainer.style.display = planetsInitiallyVisible ? 'flex' : 'none';
-
             // --- NEU: Listener für Popup-Schliessen-Button ---
             document.getElementById('popup-close-btn').addEventListener('click', () => {
                 document.getElementById('info-popup').style.display = 'none';
@@ -1564,7 +1674,13 @@
             
             // Fliege zur Erde (Position) und schaue auf den Mond (Target)
             // flyTo(earthPos, moonPos, 2.0, 'earthView'); // MODIFIZIERT: Dauer 1.0 -> 2.0 // ALT
-            flyTo(earthPos, moonPos, 0, 'earthView'); // NEU: Dauer 0 für sofortigen Sprung
+            // flyTo(earthPos, moonPos, 0, 'earthView'); // NEU: Dauer 0 für sofortigen Sprung // ALT 2
+            
+            // MODIFIZIERT: Springe zur Erd-Position, schaue auf den Mond, aber setze den
+            // Kamera-Fokus auf 'earth'. Da die Simulation pausiert ist, wird
+            // die Kamera nicht mehr "festgeklebt" (wie bei 'earthView')
+            // und der Nutzer kann frei orbiten.
+            flyTo(earthPos, moonPos, 0, earth); 
         }
 
         // --- Animations-Loop (MODIFIZIERT: Verwaltet Kamera-Transition) ---
@@ -1881,23 +1997,91 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // --- NEUE FUNKTIONEN FÜR INFO-POPUP ---
+        // --- NEUE/MODIFIZIERTE FUNKTIONEN FÜR INFO-POPUP ---
 
         /**
-         * Wird bei einem Klick auf die Szene aufgerufen.
+         * NEU: Start des Touch-Events. Speichert die Startposition.
          */
-        function onObjectClick(event) {
+        function onTouchStart(event) {
+            // Nur den ersten Finger berücksichtigen
+            if (event.touches.length === 1) {
+                touchStartX = event.touches[0].clientX;
+                touchStartY = event.touches[0].clientY;
+                isDragging = false; // Zurücksetzen bei jedem neuen Touch
+            }
+        }
+        
+        /**
+         * NEU: Bewegung des Touch-Events. Prüft, ob es ein "Drag" ist.
+         */
+        function onTouchMove(event) {
+            if (isDragging || event.touches.length !== 1) {
+                return; // Entweder schon als Drag markiert or Multi-Touch
+            }
+            
+            const deltaX = Math.abs(event.touches[0].clientX - touchStartX);
+            const deltaY = Math.abs(event.touches[0].clientY - touchStartY);
+            
+            // Wenn der Finger sich mehr als den Schwellenwert bewegt, ist es ein Drag
+            if (deltaX > dragThreshold || deltaY > dragThreshold) {
+                isDragging = true;
+            }
+        }
+        
+        /**
+         * NEU: Ende des Touch-Events (Tap-Logik)
+         */
+        function onTouchEnd(event) {
+            // event.target ist beim 'touchend' das Element, auf dem der Touch *gestartet* wurde
+            const targetElement = event.target;
+            
+            // Wenn 'isDragging' true ist, war es eine Wischgeste (Kamerasteuerung), kein Tap.
+            if (isDragging) {
+                isDragging = false; // Reset
+                return;
+            }
+            
+            // Es war ein Tap. Holen der Koordinaten.
+            // Wichtig: 'changedTouches' verwenden, da 'touches' bei 'touchend' leer ist.
+            const touch = event.changedTouches[0];
+            if (!touch) return; 
+            
+            // Führe die Klick/Tap-Logik aus
+            const popupOpened = handleInteraction(touch.clientX, touch.clientY, targetElement);
+            
+            // "Ghost Click" verhindern: Wenn das Popup geöffnet wurde,
+            // verhindern wir das 300ms verzögerte 'click'-Event.
+            if (popupOpened) {
+                event.preventDefault();
+            }
+        }
+
+        /**
+         * NEU: Klick-Event (nur für Maus)
+         */
+        function onMouseClick(event) {
+            // Führe die Klick/Tap-Logik aus
+            handleInteraction(event.clientX, event.clientY, event.target);
+        }
+
+        /**
+         * NEU: Zentrale Logik für Klick/Tap-Verarbeitung (Raycasting)
+         * Prüft UI-Kollision und führt Raycasting aus.
+         * Gibt true zurück, wenn das Popup geöffnet wurde.
+         */
+        function handleInteraction(x, y, targetElement) {
             // Verhindern, dass Klicks auf die UI (oder das Popup selbst) die Szene durchdringen
             const uiContainer = document.getElementById('ui-container');
             const popup = document.getElementById('info-popup');
             
-            if (uiContainer.contains(event.target) || popup.contains(event.target)) {
-                return;
+            // Prüfen, ob das Ziel-Element (wo geklickt/getippt wurde) Teil der UI oder des Popups ist
+            if (uiContainer.contains(targetElement) || popup.contains(targetElement)) {
+                return false; // Interaktion war auf der UI, nicht in der Szene
             }
 
-            // Mausposition normalisieren (von -1 bis +1)
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            // Maus-/Touch-Position normalisieren (von -1 bis +1)
+            mouse.x = (x / window.innerWidth) * 2 - 1;
+            mouse.y = -(y / window.innerHeight) * 2 + 1;
 
             // Raycaster von der Kamera durch die Mausposition aktualisieren
             raycaster.setFromCamera(mouse, camera);
@@ -1912,33 +2096,78 @@
                 // Prüfen, ob das Objekt Info-Daten hat
                 if (clickedObject.userData.info) {
                     showInfoPopup(clickedObject.userData.info);
+                    return true; // Popup wurde geöffnet
                 }
             }
+            return false; // Nichts getroffen oder kein Info-Objekt
         }
+
 
         /**
          * Zeigt das Info-Popup mit den Daten des übergebenen Objekts an.
          * @param {object} info - Das info-Objekt aus userData.
          */
+        // --- MODIFIZIERT: showInfoPopup für neue dynamische Datenstruktur ---
         function showInfoPopup(info) {
             const popup = document.getElementById('info-popup');
             const titleEl = document.getElementById('popup-title');
             const detailsEl = document.getElementById('popup-details');
 
             titleEl.textContent = info.name;
-            
-            // HTML-Inhalt für die Details erstellen
-            detailsEl.innerHTML = `
+
+            // Mapping von internen Schlüsseln zu angezeigten Labels
+            const factMap = {
+                oberflaeche_temp: 'Oberflächentemp.',
+                kerntemperatur: 'Kerntemperatur',
+                zusammensetzung: 'Zusammensetzung',
+                alter: 'Alter',
+                distance_Mio_km: 'Abstand (Sonne)', // Standard
+                lightTime: 'Lichtlaufzeit',
+                taglaenge: 'Tageslänge',
+                temperatur: 'Temperatur',
+                atmosphaere: 'Atmosphäre (Haupt.)',
+                schwerkraft: 'Schwerkraft (Vergl. Erde)',
+                ringe: 'Ringe (Zus.)',
+                achsneigung: 'Achsenneigung',
+                wind: 'Windgeschwindigkeit',
+                umlaufzeit: 'Umlaufzeit'
+            };
+
+            // Spezielle Labels für Erde und Mond
+            if (info.distanceType) {
+                factMap['distance_Mio_km'] = info.distanceType; // z.B. "Abstand zur Erde"
+            }
+            if (info.name === 'Erde') {
+                 factMap['temperatur'] = 'Durchschnittstemp.';
+            }
+
+            let detailsHTML = `
                 <p><strong>Radius:</strong> <span>${info.radius_km} km</span></p>
                 <p><strong>Größe:</strong> <span>${info.earthCompareRadius}</span></p>
-                <p><strong>${info.distanceType}:</strong> <span>${info.distance_Mio_km} Mio. km</span></p>
-                <p><strong>Lichtlaufzeit:</strong> <span>${info.lightTime}</span></p>
-                <p class="fun-fact">${info.funFact}</p>
             `;
+
+            // Dynamisch alle "Hardfacts" hinzufügen, die im Mapping definiert sind
+            for (const key in info) {
+                if (factMap[key] && info[key]) {
+                    detailsHTML += `<p><strong>${factMap[key]}:</strong> <span>${info[key]}</span></p>`;
+                }
+            }
+            
+            // Fun Facts hinzufügen (jetzt ein Array)
+            if (info.funFacts && info.funFacts.length > 0) {
+                info.funFacts.forEach((fact, index) => {
+                    // Füge eine Trennlinie vor dem ersten Fakt hinzu
+                    const style = (index === 0) ? 'margin-top: 15px; padding-top: 10px; border-top: 1px dashed #444;' : '';
+                    detailsHTML += `<p class="fun-fact" style="${style}">${fact}</p>`;
+                });
+            }
+
+            detailsEl.innerHTML = detailsHTML;
             
             // Popup anzeigen
             popup.style.display = 'flex';
         }
+        // --- ENDE MODIFIKATION ---
 
         // --- ENDE NEUE FUNKTIONEN ---
 
