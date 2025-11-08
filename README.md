@@ -445,6 +445,9 @@
             LUNAR_MONTH_DAYS * 0.85  + PHASE_OFFSET_DAYS, // Abn. Halbmond (Index 6)
             LUNAR_MONTH_DAYS * 0.97  + PHASE_OFFSET_DAYS  // Abn. Sichel (Index 7)
         ];
+
+        // --- NEU: Variable um manuelle Kamerasteuerung zu erkennen ---
+        let isUserControllingCamera = false;
         
         // --- DOM-Elemente ---
         const container = document.getElementById('container');
@@ -718,6 +721,12 @@
                 ONE: 0,
                 TWO: 2
             };
+            
+            // NEU: Hinzufügen eines Listeners, der merkt, wenn der Benutzer
+            // die Kamera manuell bewegt.
+            controls.addEventListener('start', () => {
+                isUserControllingCamera = true;
+            });
             
             // --- NEU: Raycaster initialisieren ---
             raycaster = new THREE.Raycaster();
@@ -1378,6 +1387,10 @@
          * @param {Object | string} newFocusTarget - Das Objekt oder der Modus, der nach dem Flug fokussiert bleiben soll.
          */
         function flyTo(endPos, endTarget, duration = 1.0, newFocusTarget = null) {
+            // NEU: Jede automatische Kamerabewegung setzt den manuellen
+            // Steuerungs-Flag zurück.
+            isUserControllingCamera = false;
+
             // --- NEU: Abfangen für sofortigen Sprung ---
             if (duration <= 0) {
                 camera.position.copy(endPos);
@@ -1672,15 +1685,9 @@
             earth.getWorldPosition(earthPos);
             moon.getWorldPosition(moonPos);
             
-            // Fliege zur Erde (Position) und schaue auf den Mond (Target)
-            // flyTo(earthPos, moonPos, 2.0, 'earthView'); // MODIFIZIERT: Dauer 1.0 -> 2.0 // ALT
-            // flyTo(earthPos, moonPos, 0, 'earthView'); // NEU: Dauer 0 für sofortigen Sprung // ALT 2
-            
-            // MODIFIZIERT: Springe zur Erd-Position, schaue auf den Mond, aber setze den
-            // Kamera-Fokus auf 'earth'. Da die Simulation pausiert ist, wird
-            // die Kamera nicht mehr "festgeklebt" (wie bei 'earthView')
-            // und der Nutzer kann frei orbiten.
-            flyTo(earthPos, moonPos, 0, earth); 
+            // MODIFIZIERT: Springe zur Erd-Position, schaue auf den Mond
+            // und aktiviere den 'earthView'-Modus (Kamera-Lock).
+            flyTo(earthPos, moonPos, 0, 'earthView'); 
         }
 
         // --- Animations-Loop (MODIFIZIERT: Verwaltet Kamera-Transition) ---
@@ -1878,18 +1885,40 @@
             // Wenn der Fokus ein String-Name für eine Logik ist (z.B. 'transitioning' oder 'earthView')
             if (typeof cameraFocus === 'string') {
                 if (cameraFocus === 'earthView') {
-                    // Logik für "von Erde auf Mond schauen"
-                    let earthPos = new THREE.Vector3();
-                    let moonPos = new THREE.Vector3();
-                    earth.getWorldPosition(earthPos);
-                    moon.getWorldPosition(moonPos);
+                    // NEUE LOGIK:
+                    // Die Kamera bleibt auf der Erde (Position) und schaut 
+                    // zum Mond (Target). ABER: Wenn der Benutzer die 
+                    // Kamera selbst bewegt, wird dieser Lock aufgehoben.
                     
-                    // Halte die Kameraposition = Erdposition
-                    camera.position.copy(earthPos); 
-                    // Halte das Target = Mondposition
-                    controls.target.copy(moonPos);
-                    lastCameraTargetPos.copy(moonPos);
-                    return;
+                    if (isUserControllingCamera) {
+                        // 1. Der Benutzer hat die Steuerung übernommen.
+                        // Wir wechseln den Fokus zum MOND.
+                        cameraFocus = moon; 
+                        
+                        // 2. WICHTIG: Wir setzen 'lastCameraTargetPos' sofort auf den MOND,
+                        //    damit kein Sprung im nächsten Frame entsteht.
+                        moon.getWorldPosition(lastCameraTargetPos);
+                        
+                        // 3. WICHTIG: Wir kehren sofort zurück, damit wir in DIESEM Frame
+                        //    nicht noch die Standard-Logik ausführen, die evtl. mit
+                        //    der manuellen Steuerung kollidiert.
+                        return; 
+
+                    } else {
+                        // 4. Der Benutzer steuert nicht. Wir wenden den Lock an.
+                        //    (Das ist die "von Erde auf Mond schauen"-Logik)
+                        let earthPos = new THREE.Vector3();
+                        let moonPos = new THREE.Vector3();
+                        earth.getWorldPosition(earthPos);
+                        moon.getWorldPosition(moonPos);
+                        
+                        // Halte die Kameraposition = Erdposition
+                        camera.position.copy(earthPos); 
+                        // Halte das Target = Mondposition
+                        controls.target.copy(moonPos);
+                        lastCameraTargetPos.copy(moonPos);
+                        return; // Wichtig: updateCamera hier beenden
+                    }
                 }
                 
                 if (cameraFocus === 'ecliptic_side_view') {
