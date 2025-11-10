@@ -34,10 +34,11 @@
             width: calc(100% - 40px);
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            max-height: calc(100vh - 20px);
+            max-height: 90vh;
             overflow-y: auto;
             transition: max-width 0.3s ease, padding 0.3s ease;
-            z-index: 1000; 
+            z-index: 1000;
+            padding-bottom: 120px; 
         }
 
         #toggle-ui {
@@ -405,7 +406,14 @@
             box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
         }
 
-        /* Styles für Realitätscheck Controls */
+        /* --- REALITÄTSCHECK STYLES --- */
+        hr.separator {
+            width: 100%;
+            border: 0;
+            border-top: 1px dashed #555;
+            margin: 5px 0;
+        }
+
         #real-scale-controls {
             display: flex;
             flex-direction: column;
@@ -414,17 +422,83 @@
             padding-top: 10px;
             border-top: 1px dashed #555;
         }
-        #real-dist-label {
+
+        #real-scale-controls #planet-focus-buttons { order: 1; }
+        #real-scale-controls #real-scale-sep1 { order: 2; }
+        #real-scale-controls #real-dist-btn { order: 3; }
+        #real-scale-controls #real-scale-sep2 { order: 4; }
+        #real-scale-controls #real-scale-btn { order: 5; }
+
+        #distance-label {
             display: none; 
-            color: #ff9999;
-            animation: fadeIn 0.5s ease;
+            position: absolute;
+            top: 0;
+            left: 0;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            white-space: nowrap;
+            pointer-events: none; 
+            text-shadow: 
+                -1px -1px 2px #000,  
+                 1px -1px 2px #000,
+                -1px  1px 2px #000,
+                 1px  1px 2px #000; 
+            z-index: 500; 
         }
+
+        /* --- Jahreszeiten-Button-Stile --- */
+        .btn-spring {
+            background-color: #66BB6A; /* Grün */
+            color: white;
+        }
+        .btn-spring:hover {
+            background-color: #4CAF50;
+        }
+        .btn-summer {
+            background-color: #FFA726; /* Hellorange */
+            color: #000;
+        }
+        .btn-summer:hover {
+            background-color: #FB8C00;
+        }
+        .btn-autumn {
+            background-color: #8D6E63; /* Braun */
+            color: white;
+        }
+        .btn-autumn:hover {
+            background-color: #6D4C41;
+        }
+        .btn-winter {
+            background-color: #E0E0E0; /* Weiss/Hellgrau */
+            color: #000;
+        }
+        .btn-winter:hover {
+            background-color: #BDBDBD;
+        }
+        
+        /* --- NEU: Indikator für aktive Knöpfe --- */
+        .btn-focus.active,
+        .btn-spring.active,
+        .btn-summer.active,
+        .btn-autumn.active,
+        .btn-winter.active,
+        .btn-planet.active,
+        .btn-moon.active {
+            border: 2px solid #ffc107 !important; /* !important to override default borders */
+            box-shadow: 0 0 8px 1px rgba(255, 193, 7, 0.7);
+        }
+        /* --- Ende NEU --- */
+
 
     </style>
 </head>
 <body>
 
     <div id="container"></div>
+
+    <div id="distance-label">0 Mio. km</div>
 
     <div id="ui-container">
         <button id="toggle-ui" class="btn btn-secondary" title="Menü verbergen">✕</button>
@@ -439,7 +513,7 @@
                 <label for="day-slider">Tag im Jahr: (Eingabe)</label>
                 <input type="range" id="day-slider" min="0" max="365" value="0" step="0.1">
                 
-                <label for="speed-slider" style="margin-top: 10px;">Geschwindigkeit:</label>
+                <label for="speed-slider" style="margin-top: 10px;">Geschwindigkeit: <span id="speed-label"></span></label>
                 <input type="range" id="speed-slider" min="0" max="100" value="10" step="1">
             </div>
 
@@ -520,14 +594,27 @@
             </div>
         </div>
 
+        <div class="control-group" id="seasons-group">
+            <h3>Jahreszeiten</h3>
+            <div class="btn-group">
+                <button id="season-spring" class="btn btn-spring">Frühling</button>
+                <button id="season-summer" class="btn btn-summer">Sommer</button>
+                <button id="season-autumn" class="btn btn-autumn">Herbst</button>
+                <button id="season-winter" class="btn btn-winter">Winter</button>
+            </div>
+        </div>
         <div class="control-group" id="real-scale-group">
              <div id="real-scale-controls">
-                <button id="real-scale-btn" class="btn btn-secondary" style="width: 100%; order: 1;">
-                    🔍 Reale Grössen
-                </button>
-                
-                <button id="real-dist-btn" class="btn btn-secondary" style="width: 100%; margin-top: 5px; display: none; order: 2;">
+                <hr class="separator" id="real-scale-sep1" style="display: none;">
+
+                <button id="real-dist-btn" class="btn btn-secondary" style="width: 100%; margin-top: 5px; display: none;">
                     🚀 Reale Distanz
+                </button>
+
+                <hr class="separator" id="real-scale-sep2" style="display: none;">
+                
+                <button id="real-scale-btn" class="btn btn-secondary" style="width: 100%;">
+                    🔍 Reale Grössen
                 </button>
             </div>
         </div>
@@ -543,7 +630,6 @@
         </div>
     </div>
 
-    <!-- UFO Dialog -->
     <div id="ufo-dialog">
         <h3>🛸 Unbekanntes Flugobjekt</h3>
         <div id="ufo-dialog-text">Wir sind auf dem Weg zur Erde um diese zu übernehmen. Weißt du wo die ist?</div>
@@ -564,6 +650,10 @@
         let sun, earth, moon, moonPivot;
         let earthTiltPivot;
         
+        // --- NEU: Globale Variable für Achsenlinie ---
+        let earthAxisLine = null;
+        // --- Ende NEU ---
+        
         let earthOrbitLine, moonOrbitLine;
         let starField;
         
@@ -572,9 +662,9 @@
         let otherPlanetOrbits = [];
         let otherMoons = []; 
         let planetsData = [];
-        let saturnRingMaterial;
-        let saturnPlanetMaterial;
         
+        let planetRingMaterials = []; 
+
         let isPlaying = true;
         let currentDay = 0;
         let speed = 1.0;
@@ -587,14 +677,15 @@
         // --- Animations-Variablen für Realitätscheck ---
         let isRealScaleActive = false;
         let isRealDistanceActive = false;
-        let realityCheckPhase = 'idle'; // 'idle', 'positioning', 'growing', 'active', 'flying_out', 'flying_in'
+        let realityCheckPhase = 'idle'; 
 
-        let flightStartState = { startDist: 0, startMoonDist: 0, progress: 0, duration: 4.0 };
+        let flightStartState = { startDist: 0, startMoonDist: 0, progress: 0, duration: 10.0 };
         
-        let referenceLine = null;
-        let referenceTicks = null; // NEU: Ticks für den roten Faden
-        let referenceFadeTimer = 0; // NEU: Timer fürs Ausblenden
         let sunGhost = null;
+        let rulerGroup = null; 
+        let rulerFadeTimer = 0;
+        
+        let distanceLabelEl = null;
 
         let targetSunScale = 1.0;
         let targetEarthDistance; 
@@ -661,19 +752,14 @@
         // --- Konstanten für reale Verhältnisse ---
         const REAL_SUN_SCALE_FACTOR = (109 * EARTH_RADIUS) / SUN_RADIUS; 
         const REAL_EARTH_DIST_VALUE = 23400 * EARTH_RADIUS; 
-        const COMPARE_EARTH_DIST_VALUE = 300 * SCENE_SCALE;
+        
+        let COMPARE_EARTH_DIST_VALUE = 400 * SCENE_SCALE; 
+        
         const REAL_MOON_DIST_VALUE = 60 * EARTH_RADIUS; 
         // -----------------------------------------
         
         const RING_SHADOW_SOFTNESS = 10 * SCENE_SCALE;
-        const SATURN_RING_C_INNER = 1.00 * EARTH_RADIUS; 
-        const SATURN_RING_B_OUTER = 2.05 * EARTH_RADIUS; 
-        const SATURN_RING_A_INNER = 2.25 * EARTH_RADIUS; 
-        const SATURN_RING_A_OUTER = 2.70 * EARTH_RADIUS; 
         
-        const RING_INNER_RADIUS_SCALE = 1.2; 
-        const RING_OUTER_RADIUS_SCALE = 2.7; 
-
         const PHASE_DAY_MAP = [
             LUNAR_MONTH_DAYS * 0.02  + PHASE_OFFSET_DAYS, 
             LUNAR_MONTH_DAYS * 0.145 + PHASE_OFFSET_DAYS, 
@@ -1072,6 +1158,75 @@
             }
         `;
 
+        // UPDATE: Generic Ring Fragment Shader
+        const ringFragmentShader = `
+            uniform sampler2D ringTexture;
+            uniform vec3 uSunPosition;
+            uniform vec3 uRingParentPosition; // Genericized from uSaturnPosition
+            uniform float uRingParentRadius;  // Genericized from uSaturnRadius
+            uniform float uNightBrightness;
+            varying vec2 vUv;
+            varying vec3 vWorldPosition;
+            float getShadow(vec3 fragPos, vec3 shadowCasterPos, float casterRadius, vec3 sunPos) {
+                vec3 sunToCaster = normalize(shadowCasterPos - sunPos);
+                vec3 casterToFrag = fragPos - shadowCasterPos;
+                float distOnAxis = dot(casterToFrag, sunToCaster);
+                if (distOnAxis < 0.0) return 1.0;
+                vec3 closestPointOnAxis = shadowCasterPos + sunToCaster * distOnAxis;
+                float distToAxis = distance(fragPos, closestPointOnAxis);
+                return smoothstep(casterRadius * 0.9, casterRadius * 1.1, distToAxis);
+            }
+            void main() {
+                vec4 texColor = texture2D(ringTexture, vUv);
+                float shadowIntensity = getShadow(vWorldPosition, uRingParentPosition, uRingParentRadius, uSunPosition);
+                vec4 nightColor = vec4(texColor.rgb * uNightBrightness, texColor.a);
+                gl_FragColor = mix(nightColor, texColor, shadowIntensity);
+                gl_FragColor.a *= texColor.a;
+            }
+        `;
+
+        // UPDATE: Generic Planet Fragment Shader with Ring Shadows
+        const planetWithRingFragmentShader = `
+            uniform sampler2D dayTexture;
+            uniform vec3 uSunPosition;
+            uniform vec3 uObjectWorldPosition; 
+            uniform float uNightBrightness;
+            uniform vec3 uRingNormal;
+            uniform float uRingInnerRadius;
+            uniform float uRingOuterRadius;
+            uniform float uRingShadowSoftness;
+            const float uShadowIntensityFactor = 0.85;
+            varying vec2 vUv;
+            varying vec3 vWorldPosition; 
+            float calculateRingShadow(vec3 fragPos, vec3 sunPos, vec3 planetPos, vec3 ringNormal, float innerR, float outerR, float softness) {
+                vec3 lightDir = normalize(sunPos - fragPos);
+                float denom = dot(lightDir, ringNormal);
+                if (abs(denom) < 0.0001) return 0.0; 
+                float t = dot(planetPos - fragPos, ringNormal) / denom;
+                if (t < 0.0) return 0.0; 
+                vec3 intersectPos = fragPos + t * lightDir;
+                float distToCenter = distance(intersectPos, planetPos);
+                float shadow = smoothstep(innerR - softness, innerR, distToCenter) * (1.0 - smoothstep(outerR, outerR + softness, distToCenter));
+                return clamp(shadow, 0.0, 1.0);
+            }
+            void main() {
+                vec3 objectToSun = normalize(uSunPosition - uObjectWorldPosition);
+                vec3 objectToFragment = normalize(vWorldPosition - uObjectWorldPosition);
+                float intensity = (dot(objectToFragment, objectToSun) + 1.0) / 2.0;
+                float nightBrightness = uNightBrightness;
+                float lightMix = smoothstep(0.48, 0.59, intensity);
+                vec4 dayColor = texture2D(dayTexture, vUv);
+                vec4 nightColor = dayColor * nightBrightness;
+                vec4 finalColor = mix(nightColor, dayColor, lightMix);
+                if (intensity > 0.48) { 
+                    float ringShadowMask = calculateRingShadow(vWorldPosition, uSunPosition, uObjectWorldPosition, uRingNormal, uRingInnerRadius, uRingOuterRadius, uRingShadowSoftness);
+                    vec3 shadowedColor = mix(finalColor.rgb, nightColor.rgb * uShadowIntensityFactor, ringShadowMask);
+                    finalColor.rgb = shadowedColor;
+                }
+                gl_FragColor = finalColor;
+            }
+        `;
+
         const genericMoonFragmentShader = `
             uniform sampler2D dayTexture;
             uniform vec3 uSunPosition;
@@ -1182,33 +1337,45 @@
                 gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
             }
         `;
-        const ringFragmentShader = `
-            uniform sampler2D ringTexture;
-            uniform vec3 uSunPosition;
-            uniform vec3 uSaturnPosition;
-            uniform float uSaturnRadius;
-            uniform float uNightBrightness;
-            varying vec2 vUv;
-            varying vec3 vWorldPosition;
-            float getShadow(vec3 fragPos, vec3 shadowCasterPos, float casterRadius, vec3 sunPos) {
-                vec3 sunToCaster = normalize(shadowCasterPos - sunPos);
-                vec3 casterToFrag = fragPos - shadowCasterPos;
-                float distOnAxis = dot(casterToFrag, sunToCaster);
-                if (distOnAxis < 0.0) return 1.0;
-                vec3 closestPointOnAxis = shadowCasterPos + sunToCaster * distOnAxis;
-                float distToAxis = distance(fragPos, closestPointOnAxis);
-                return smoothstep(casterRadius * 0.9, casterRadius * 1.1, distToAxis);
+
+        // ### ÄNDERUNG: Hilfsfunktion zum Beenden von Demos ###
+        function checkAndEndDemo() {
+            if (isDemoActive) {
+                endDemo();
             }
-            void main() {
-                vec4 texColor = texture2D(ringTexture, vUv);
-                float shadowIntensity = getShadow(vWorldPosition, uSaturnPosition, uSaturnRadius, uSunPosition);
-                vec4 nightColor = vec4(texColor.rgb * uNightBrightness, texColor.a);
-                gl_FragColor = mix(nightColor, texColor, shadowIntensity);
-                gl_FragColor.a *= texColor.a;
+        }
+        
+        // --- NEU: Hilfsfunktion zum Zurücksetzen von UI-Indikatoren ---
+        function resetActiveIndicators() {
+            // 1. Achsenlinie verstecken
+            if (earthAxisLine) earthAxisLine.visible = false;
+
+            // 2. Aktive Mondphasen-Klasse entfernen
+            moonPhaseButtons.forEach(btn => btn.classList.remove('active'));
+
+            // 3. Aktive Fokus/Jahreszeiten/Planeten-Klassen entfernen
+            const groups = [
+                document.getElementById('focus-system').parentElement, // Fokus-Gruppe
+                document.getElementById('planet-focus-buttons'),      // Planeten-Gruppe
+                document.getElementById('moon-focus-container'),    // Mond-Gruppe
+                document.getElementById('seasons-group').querySelector('.btn-group') // Jahreszeiten-Gruppe
+            ];
+            
+            try {
+                groups.forEach(group => {
+                    if (group) {
+                        group.querySelectorAll('.btn').forEach(btn => btn.classList.remove('active'));
+                    }
+                });
+            } catch (e) {
+                console.warn("Fehler beim Zurücksetzen der Indikatoren:", e);
             }
-        `;
+        }
+        // --- Ende NEU ---
 
         function init() {
+            distanceLabelEl = document.getElementById('distance-label');
+
             infoToastButton = document.getElementById('info-toast-button');
             followCometBtn = document.getElementById('follow-comet-btn'); 
             cometControls = document.getElementById('comet-controls');
@@ -1401,12 +1568,17 @@
                     distance: 1350 * SCENE_SCALE, 
                     yearDays: 10759, 
                     texture: textureBasePath + '2k_saturn.jpg', 
-                    ringTexture: textureBasePath + '2k_saturn_ring_alpha.png', 
                     axialTilt: 26.73, 
                     rotationSpeed: 2.22,
                     ecc: 0.057, 
                     perihelionAngle: 92.43 * degToRad, 
                     orbitalInclination: 2.49,
+                    // UPDATE: Ring-Daten nun generisch hier
+                    ring: {
+                        texture: textureBasePath + '2k_saturn_ring_alpha.png',
+                        innerRadius: 1.2, // Multiplikator vom Planetenradius
+                        outerRadius: 2.7, // Multiplikator vom Planetenradius
+                    },
                     moons: [
                         { 
                             name: 'Titan', 
@@ -1429,14 +1601,20 @@
                     radius: 10.0 * SCENE_SCALE, 
                     distance: 1620 * SCENE_SCALE, 
                     yearDays: 30687, 
-                    texture: textureBasePath + '2k_uranus.jpg', 
+                    texture: textureBasePath + '2k_uranus_dunkler.jpg', 
                     axialTilt: 97.77, rotationSpeed: 1.38,
                     ecc: 0.046, 
                     perihelionAngle: 170.96 * degToRad, 
                     orbitalInclination: 0.77,
+                    // UPDATE: Uranus hat jetzt auch Ringe!
+                    ring: {
+                        texture: textureBasePath + 'Uranus_Rings_2.png', // Platzhalter-Textur (die gleiche wie Saturn)
+                        innerRadius: 1.3, 
+                        outerRadius: 2.0, 
+                    },
                     //Fakten
                     name_de: 'Uranus', earthCompareRadius: '4,0x Erde', radius_km: '25.362', distance_Mio_km: '2,87 Mrd. km', umlaufzeit: '84 Jahre', taglaenge: '17h 14min', temperatur: 'ca. -197°C',
-                    funFacts: ['Uranus "rollt" auf seiner Bahn, da seine Achse um fast 98 Grad geneigt ist.', 'Er ist ein Eisriese und erscheint durch Methan in seiner Atmosphäre blau-grün.']
+                    funFacts: ['Uranus "rollt" auf seiner Bahn, da seine Achse um fast 98 Grad geneigt ist.', 'Er ist ein Eisriese und erscheint durch Methan in seiner Atmosphäre blau-grün.', 'Auch Uranus hat Ringe, sie sind aber viel dunkler und dünner als die des Saturn.']
                 },
                 { 
                     name: 'Neptune', 
@@ -1471,7 +1649,6 @@
         }
 
         function easeInOutCubic(t) {
-            // Helper für sanftes Beschleunigen und Abbremsen
             return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
         }
 
@@ -1479,12 +1656,12 @@
             const textureLoader = new THREE.TextureLoader();
 
             const starGeometry = new THREE.SphereGeometry(4000, 32, 32); 
-            const starTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/8k_stars.jpg');
+            const starTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/8k_stars_milky_way.jpg');
             const starMaterial = new THREE.MeshBasicMaterial({ map: starTexture, side: THREE.BackSide });
             starField = new THREE.Mesh(starGeometry, starMaterial);
             scene.add(starField);
 
-	        const sunTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/2k_sun.jpg');
+	        const sunTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/8k_sun.jpg');
             const sunMaterial = new THREE.MeshBasicMaterial({ map: sunTexture });
 	        sun = new THREE.Mesh(new THREE.SphereGeometry(SUN_RADIUS, 32, 32), sunMaterial);
             
@@ -1519,6 +1696,18 @@
             };
             clickableObjects.push(earth); 
             earthTiltPivot.add(earth); 
+            
+            // --- NEU: Achsenlinie erstellen ---
+            const axisMat = new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 2 }); // Helles Gelb
+            const axisPoints = [
+                new THREE.Vector3(0, -EARTH_RADIUS * 1.5, 0),
+                new THREE.Vector3(0, EARTH_RADIUS * 1.5, 0)
+            ];
+            const axisGeo = new THREE.BufferGeometry().setFromPoints(axisPoints);
+            earthAxisLine = new THREE.Line(axisGeo, axisMat);
+            earthAxisLine.visible = false; // Standardmässig unsichtbar
+            earthTiltPivot.add(earthAxisLine); // Zur Pivot-Gruppe hinzufügen
+            // --- Ende NEU ---
 
             moonPivot = new THREE.Group();
             moonPivot.rotation.x = MOON_TILT_RAD; 
@@ -1556,19 +1745,20 @@
                 planetSystemContainer.add(planetTiltPivot);
 
                 let material;
-                if (data.name === 'Saturn') {
+                // UPDATE: Generischer Check auf Ringe
+                if (data.ring) {
                      material = new THREE.ShaderMaterial({
-                        vertexShader: earthVertexShader, fragmentShader: saturnFragmentShader, 
+                        vertexShader: earthVertexShader, fragmentShader: planetWithRingFragmentShader, 
                         uniforms: {
                             dayTexture: { value: textureLoader.load(data.texture) }, uSunPosition: { value: new THREE.Vector3(0, 0, 0) }, uObjectWorldPosition: { value: new THREE.Vector3() },
                             uNightBrightness: { value: 0.3 }, 
                             uRingNormal: { value: new THREE.Vector3(0, 1, 0) }, 
-                            uRingInnerRadius: { value: data.radius * RING_INNER_RADIUS_SCALE },
-                            uRingOuterRadius: { value: data.radius * RING_OUTER_RADIUS_SCALE },
+                            uRingInnerRadius: { value: data.radius * data.ring.innerRadius },
+                            uRingOuterRadius: { value: data.radius * data.ring.outerRadius },
                             uRingShadowSoftness: { value: RING_SHADOW_SOFTNESS }
                         }
                     });
-                    saturnPlanetMaterial = material;
+                    planetRingMaterials.push({ mat: material, pivot: planetTiltPivot });
                 } else {
                     material = new THREE.ShaderMaterial({
                         vertexShader: earthVertexShader, fragmentShader: earthFragmentShader, 
@@ -1583,24 +1773,31 @@
                 planet.position.set(0, 0, 0); 
 
                 planet.userData.info = { ...data }; 
-                delete planet.userData.info.name; delete planet.userData.info.radius; delete planet.userData.info.distance; delete planet.userData.info.yearDays; delete planet.userData.info.texture; delete planet.userData.info.ringTexture; delete planet.userData.info.axialTilt; delete planet.userData.info.orbitalInclination; delete planet.userData.info.rotationSpeed; delete planet.userData.info.moons; delete planet.userData.info.ecc; delete planet.userData.info.perihelionAngle;
+                delete planet.userData.info.name; delete planet.userData.info.radius; delete planet.userData.info.distance; delete planet.userData.info.yearDays; delete planet.userData.info.texture; delete planet.userData.info.ring; delete planet.userData.info.axialTilt; delete planet.userData.info.orbitalInclination; delete planet.userData.info.rotationSpeed; delete planet.userData.info.moons; delete planet.userData.info.ecc; delete planet.userData.info.perihelionAngle;
                 planet.userData.info.name = data.name_de;
                 clickableObjects.push(planet);
 
-                if (data.name === 'Saturn') {
-                    const ringTexture = textureLoader.load(data.ringTexture);
+                // UPDATE: Generische Ringerstellung
+                if (data.ring) {
+                    const ringTexture = textureLoader.load(data.ring.texture);
                     ringTexture.wrapT = THREE.RepeatWrapping;
-                    saturnRingMaterial = new THREE.ShaderMaterial({
+                    
+                    const ringMat = new THREE.ShaderMaterial({
                         vertexShader: ringVertexShader, fragmentShader: ringFragmentShader, 
                         uniforms: {
-                            ringTexture: { value: ringTexture }, uSunPosition: { value: new THREE.Vector3(0, 0, 0) }, uSaturnPosition: { value: new THREE.Vector3() },
-                            uSaturnRadius: { value: data.radius }, uNightBrightness: { value: 0.3 }
+                            ringTexture: { value: ringTexture }, uSunPosition: { value: new THREE.Vector3(0, 0, 0) }, uRingParentPosition: { value: new THREE.Vector3() },
+                            uRingParentRadius: { value: data.radius }, uNightBrightness: { value: 0.3 }
                         },
                         transparent: true, side: THREE.DoubleSide
                     });
-                    const ringGeometry = new THREE.RingGeometry(data.radius * RING_INNER_RADIUS_SCALE, data.radius * RING_OUTER_RADIUS_SCALE, 64);
+                    // Speichern für Updates
+                    planetRingMaterials.push({ ringMat: ringMat, parentPlanet: planet });
+
+                    const ringGeometry = new THREE.RingGeometry(data.radius * data.ring.innerRadius, data.radius * data.ring.outerRadius, 64);
                     ringGeometry.rotateX(Math.PI / 2); 
-                    const pos = ringGeometry.attributes.position; const uv = ringGeometry.attributes.uv; const innerRadius = data.radius * RING_INNER_RADIUS_SCALE; const outerRadius = data.radius * RING_OUTER_RADIUS_SCALE; const repeatFactor = 10; 
+                    const pos = ringGeometry.attributes.position; const uv = ringGeometry.attributes.uv; 
+                    const innerRadius = data.radius * data.ring.innerRadius; const outerRadius = data.radius * data.ring.outerRadius; 
+                    const repeatFactor = 10; 
                     for (let i = 0; i < pos.count; i++) {
                         const x = pos.getX(i); const z = pos.getZ(i);
                         let angle = 1.0 - ((Math.atan2(z, x) / (Math.PI * 2)) + 0.5);
@@ -1608,7 +1805,7 @@
                         let u = (r - innerRadius) / (outerRadius - innerRadius);
                         uv.setXY(i, u, v);
                     }
-                    const ringMesh = new THREE.Mesh(ringGeometry, saturnRingMaterial);
+                    const ringMesh = new THREE.Mesh(ringGeometry, ringMat);
                     planetTiltPivot.add(ringMesh); 
                 }
                 planetTiltPivot.add(planet); 
@@ -1724,7 +1921,12 @@
                 originalMoonMaterial.uniforms.uNightBrightness.value = brightness;
                 otherPlanets.forEach(planet => { planet.material.uniforms.uNightBrightness.value = brightness; });
                 otherMoons.forEach(moonObj => { moonObj.mesh.material.uniforms.uNightBrightness.value = brightness; });
-                if (saturnRingMaterial) saturnRingMaterial.uniforms.uNightBrightness.value = brightness;
+                
+                // UPDATE: Loop durch alle Ring-Materials
+                planetRingMaterials.forEach(entry => {
+                    if (entry.ringMat) entry.ringMat.uniforms.uNightBrightness.value = brightness;
+                });
+                
                 darknessLabel.textContent = brightness.toFixed(2);
             });
             
@@ -1745,11 +1947,20 @@
             originalMoonMaterial.uniforms.uNightBrightness.value = initialBrightness;
             otherPlanets.forEach(planet => { planet.material.uniforms.uNightBrightness.value = initialBrightness; });
             otherMoons.forEach(moonObj => { moonObj.mesh.material.uniforms.uNightBrightness.value = initialBrightness; });
-            if (saturnRingMaterial) saturnRingMaterial.uniforms.uNightBrightness.value = initialBrightness;
+            
+            planetRingMaterials.forEach(entry => {
+                if (entry.ringMat) entry.ringMat.uniforms.uNightBrightness.value = initialBrightness;
+            });
+
             darknessLabel.textContent = initialBrightness.toFixed(2);
 
-            document.getElementById('focus-system').addEventListener('click', () => setFocus(sun));
+            // ### ÄNDERUNG: checkAndEndDemo() zu allen Fokus-Buttons hinzugefügt ###
+            document.getElementById('focus-system').addEventListener('click', () => {
+                checkAndEndDemo();
+                setFocus(sun);
+            });
             document.getElementById('focus-earth').addEventListener('click', () => {
+                checkAndEndDemo();
                 if (isRealScaleActive) {
                     let earthPos = new THREE.Vector3();
                     earth.getWorldPosition(earthPos); 
@@ -1763,6 +1974,7 @@
                 }
             });
             document.getElementById('focus-moon').addEventListener('click', () => {
+                checkAndEndDemo();
                 if (isRealScaleActive) {
                     let moonPos = new THREE.Vector3();
                     moon.getWorldPosition(moonPos);
@@ -1777,6 +1989,13 @@
             });
 
             document.getElementById('focus-ecliptic').addEventListener('click', () => {
+                checkAndEndDemo();
+                
+                // --- NEU: Indikatoren-Logik ---
+                resetActiveIndicators();
+                document.getElementById('focus-ecliptic').classList.add('active');
+                // --- Ende NEU ---
+                
                 cameraFocus = 'ecliptic_side_view'; 
                 let earthPos = new THREE.Vector3();
                 earth.getWorldPosition(earthPos);
@@ -1791,14 +2010,29 @@
             document.getElementById('demo-sofi').addEventListener('click', () => startDemo('sofi'));
             document.getElementById('demo-mofi').addEventListener('click', () => startDemo('mofi'));
             endDemoBtn.addEventListener('click', endDemo);
-            document.getElementById('real-scale-btn').addEventListener('click', toggleRealScale);
-            document.getElementById('real-dist-btn').addEventListener('click', toggleRealDistance); 
+            
+            document.getElementById('real-scale-btn').addEventListener('click', () => {
+                checkAndEndDemo();
+                toggleRealScale();
+            });
+            
+            // --- NEU: Listener für Real-Dist-Button ---
+            document.getElementById('real-dist-btn').addEventListener('click', () => {
+                // checkAndEndDemo() wird nicht benötigt, da es bereits in toggleRealScale() passiert
+                // und dieser Knopf nur dann sichtbar ist.
+                toggleRealDistance();
+            }); 
+            // --- Ende NEU ---
+            
             demoSpeedSlider.addEventListener('input', onDemoSpeedSliderChange);
             onDemoSpeedSliderChange();
 
             document.querySelectorAll('#moon-phases-ui button').forEach(btn => {
                 const index = parseInt(btn.dataset.phaseIndex);
-                btn.addEventListener('click', () => jumpToPhase(index));
+                btn.addEventListener('click', () => {
+                    checkAndEndDemo();
+                    jumpToPhase(index);
+                });
                 moonPhaseButtons.push(btn);
             });
 
@@ -1825,7 +2059,10 @@
                 }
 
                 btn.textContent = btnName;
-                btn.addEventListener('click', () => setFocus(otherPlanets[index]));
+                btn.addEventListener('click', () => {
+                    checkAndEndDemo();
+                    setFocus(otherPlanets[index]);
+                });
                 planetFocusContainer.appendChild(btn);
             });
             
@@ -1879,6 +2116,31 @@
                 };
             });
             // --------------------------------
+            
+            // --- NEU: Jahreszeiten-Listener (überarbeitet) ---
+            const SEASON_SPRING_DAY = 79.7;  // Frühlingsäquinoktium (ca. 20. März)
+            const SEASON_SUMMER_DAY = 355.45; // Sommersonnenwende (ca. 21. Juni)
+            const SEASON_AUTUMN_DAY = 265.13; // Herbstäquinoktium (ca. 23. September)
+            const SEASON_WINTER_DAY = 171.93; // Wintersonnenwende (ca. 21. Dezember)
+            
+            const seasonSpringBtn = document.getElementById('season-spring');
+            const seasonSummerBtn = document.getElementById('season-summer');
+            const seasonAutumnBtn = document.getElementById('season-autumn');
+            const seasonWinterBtn = document.getElementById('season-winter');
+
+            seasonSpringBtn.addEventListener('click', () => {
+                jumpToSeason(SEASON_SPRING_DAY, seasonSpringBtn);
+            });
+            seasonSummerBtn.addEventListener('click', () => {
+                jumpToSeason(SEASON_SUMMER_DAY, seasonSummerBtn);
+            });
+            seasonAutumnBtn.addEventListener('click', () => {
+                jumpToSeason(SEASON_AUTUMN_DAY, seasonAutumnBtn);
+            });
+            seasonWinterBtn.addEventListener('click', () => {
+                jumpToSeason(SEASON_WINTER_DAY, seasonWinterBtn);
+            });
+            // --- Ende NEU ---
         }
 
         // --- Komet Funktionen ---
@@ -1889,8 +2151,14 @@
             comet = new Comet(scene);
             cometSpawnTimer = THREE.MathUtils.randFloat(600, 1200); 
             
-            if (cometControls) cometControls.style.display = 'block';
-            if (followCometBtn) followCometBtn.style.display = 'block';
+            // UPDATE: Nur anzeigen wenn NICHT im Real-Scale-Modus
+            if (!isRealScaleActive) {
+                if (cometControls) cometControls.style.display = 'block';
+                if (followCometBtn) followCometBtn.style.display = 'block';
+            } else {
+                // Merken, dass es eigentlich sichtbar sein sollte
+                if (cometControls) cometControls.dataset.wasVisible = 'true';
+            }
 
             document.getElementById('comet-speed-checkbox').checked = false;
             cometTimeScale = 1.0;
@@ -2101,6 +2369,29 @@
                 const normalizedValue = (value - 90) / 10;
                 speed = fastSpeed + normalizedValue * (maxSpeed - fastSpeed);
             }
+
+            // NEU: Label-Update-Logik
+            const daysPerSecondFactor = EARTH_YEAR_DAYS / 60.0; // 6.0875
+            const daysPerSecond = speed * daysPerSecondFactor;
+            
+            let labelText = "";
+            if (daysPerSecond < (1/3600)) { // Weniger als 1 Tag pro Stunde
+                const hoursPerDay = (1.0 / daysPerSecond) / 3600.0;
+                 labelText = `~${hoursPerDay.toFixed(0)} Std. = 1 Tag`;
+            } else if (daysPerSecond < (1/60)) { // Weniger als 1 Tag pro Minute
+                const minutesPerDay = (1.0 / daysPerSecond) / 60.0;
+                labelText = `~${minutesPerDay.toFixed(1)} Min. = 1 Tag`;
+            } else if (daysPerSecond < 1.0) { // Weniger als 1 Tag pro Sekunde
+                const secondsPerDay = 1.0 / daysPerSecond;
+                labelText = `~${secondsPerDay.toFixed(1)} Sek. = 1 Tag`;
+            } else { // Mehr als 1 Tag pro Sekunde
+                labelText = `1 Sek. = ~${daysPerSecond.toFixed(1)} Tage`;
+            }
+            
+            const labelEl = document.getElementById('speed-label');
+            if (labelEl) {
+                labelEl.textContent = labelText;
+            }
         }
         
         function onDemoSpeedSliderChange() {
@@ -2114,12 +2405,24 @@
             demoSpeedLabel.textContent = demoLoopSpeed.toFixed(2) + 'x';
         }
 
+        // ### ÄNDERUNG: setFocus() überarbeitet für Indikatoren ###
         function setFocus(targetObj, duration = 2.0) { 
+            
+            // --- NEU: Alle Indikatoren zu Beginn zurücksetzen ---
+            resetActiveIndicators();
+            // --- Ende NEU ---
+
+            // Spezialfall für 'Sonnensystem'-Button
             if (targetObj === sun) {
                 cameraFocus = sun; 
                 const homePos = new THREE.Vector3(-600, 450, 600); 
                 const homeTarget = new THREE.Vector3(0, 0, 0); 
                 document.getElementById('moon-focus-container').style.display = 'none';
+                
+                // --- NEU: Aktiven Knopf setzen ---
+                document.getElementById('focus-system').classList.add('active');
+                // --- Ende NEU ---
+                
                 if (duration === 0) { 
                     camera.position.copy(homePos);
                     controls.target.copy(homeTarget);
@@ -2132,55 +2435,98 @@
                 controls.enableZoom = true;
                 return; 
             }
+            
             cameraFocus = targetObj; 
             const moonContainer = document.getElementById('moon-focus-container');
             moonContainer.style.display = 'none';
             moonContainer.innerHTML = ''; 
-            let activePlanetIndex = -1;
-            if (targetObj === otherPlanets[3]) activePlanetIndex = 3;
-            else if (targetObj === otherPlanets[4]) activePlanetIndex = 4;
-            else {
-                const moonEntry = otherMoons.find(m => m.mesh === targetObj);
-                if (moonEntry) {
-                     if (moonEntry.parentPlanet === otherPlanets[3]) activePlanetIndex = 3;
-                     if (moonEntry.parentPlanet === otherPlanets[4]) activePlanetIndex = 4;
+            
+            // Im Real-Scale-Modus keine Mond-Buttons anzeigen
+            if (!isRealScaleActive) {
+                let activePlanetIndex = -1;
+                if (targetObj === otherPlanets[3]) activePlanetIndex = 3; // Jupiter
+                else if (targetObj === otherPlanets[4]) activePlanetIndex = 4; // Saturn
+                else {
+                    // Prüfen, ob ein Mond von Jup/Sat fokussiert ist
+                    const moonEntry = otherMoons.find(m => m.mesh === targetObj);
+                    if (moonEntry) {
+                         if (moonEntry.parentPlanet === otherPlanets[3]) activePlanetIndex = 3;
+                         if (moonEntry.parentPlanet === otherPlanets[4]) activePlanetIndex = 4;
+                    }
                 }
-            }
-            if (activePlanetIndex !== -1) {
-                moonContainer.style.display = 'flex';
-                const planetData = planetsData[activePlanetIndex];
-                const parentPlanetMesh = otherPlanets[activePlanetIndex];
-                if (planetData.moons) {
-                    planetData.moons.forEach(moonData => {
-                        const moonEntry = otherMoons.find(m => m.data.name === moonData.name && m.parentPlanet === parentPlanetMesh);
-                        if (moonEntry) {
-                            const btn = document.createElement('button');
-                            btn.className = 'btn btn-moon';
-                            btn.textContent = moonData.name;
-                            btn.addEventListener('click', () => setFocus(moonEntry.mesh));
-                            moonContainer.appendChild(btn);
-                        }
-                    });
+                
+                // Wenn Jupiter oder Saturn (oder deren Monde) aktiv sind, zeige Mond-Buttons
+                if (activePlanetIndex !== -1) {
+                    moonContainer.style.display = 'flex';
+                    const planetData = planetsData[activePlanetIndex];
+                    const parentPlanetMesh = otherPlanets[activePlanetIndex];
+                    if (planetData.moons) {
+                        planetData.moons.forEach(moonData => {
+                            const moonEntry = otherMoons.find(m => m.data.name === moonData.name && m.parentPlanet === parentPlanetMesh);
+                            if (moonEntry) {
+                                const btn = document.createElement('button');
+                                btn.className = 'btn btn-moon';
+                                btn.textContent = moonData.name;
+                                btn.addEventListener('click', () => {
+                                    checkAndEndDemo();
+                                    setFocus(moonEntry.mesh);
+                                });
+                                moonContainer.appendChild(btn);
+                                
+                                // --- NEU: Indikator für Monde setzen ---
+                                if (targetObj === moonEntry.mesh) {
+                                    btn.classList.add('active');
+                                }
+                                // --- Ende NEU ---
+                            }
+                        });
+                    }
                 }
             }
             
-            let zoomFactor;
+            // --- NEU: Passenden Knopf für Indikator finden ---
+            let matchingBtn = null;
+            if (targetObj === earth) {
+                matchingBtn = document.getElementById('focus-earth');
+            } else if (targetObj === moon) {
+                matchingBtn = document.getElementById('focus-moon');
+            } else {
+                const planetIndex = otherPlanets.indexOf(targetObj);
+                if (planetIndex > -1) {
+                    matchingBtn = document.getElementById(`focus-${planetsData[planetIndex].name.toLowerCase()}`);
+                }
+                // Mond-Logik ist schon oben im "if (activePlanetIndex !== -1)"-Block
+            }
+            if (matchingBtn) matchingBtn.classList.add('active');
+            // --- Ende NEU ---
+            
+            
             const radius = targetObj.geometry ? targetObj.geometry.parameters.radius : (targetObj.radius ? targetObj.radius : 1.0); 
-            if (targetObj === moon) zoomFactor = 10.0;
-            else if (targetObj === sun) zoomFactor = 0.2;
-            else if (targetObj === otherPlanets[3]) zoomFactor = 1.5; 
-            else if (targetObj === otherPlanets[4]) zoomFactor = 2.0; 
-            else if (targetObj === earth) zoomFactor = 4.2; 
-            else if (targetObj.userData.info.name.includes('Komet')) zoomFactor = 6.0; 
-            else zoomFactor = (EARTH_RADIUS / radius) * 2.5; 
 
             const targetPos = new THREE.Vector3();
             targetObj.getWorldPosition(targetPos);
+            
+            // Kamera-Ausrichtung im Real-Scale-Modus (bleibt wie es war)
+            if (isRealScaleActive && targetObj !== sun) {
+                const sunPos = new THREE.Vector3(0,0,0);
+                const planetToSun = new THREE.Vector3().subVectors(sunPos, targetPos).normalize();
+                const camOffset = planetToSun.clone().negate().multiplyScalar(radius * 5); 
+                camOffset.y += radius * 2; 
+                
+                const endPos = targetPos.clone().add(camOffset);
+                flyTo(endPos, targetPos, duration, targetObj);
+                return;
+            }
+
+            // Dynamische Zoom-Berechnung
             const endTarget = targetPos.clone();
+            const fovInRad = THREE.MathUtils.degToRad(camera.fov);
+            const distance = (radius / 0.3) / Math.tan(fovInRad / 2); 
+            
             const offsetDir = new THREE.Vector3(0, 0, 0).sub(targetPos).normalize();
             offsetDir.y = 0.5; 
             offsetDir.normalize(); 
-            const offset = offsetDir.multiplyScalar(EARTH_DISTANCE / zoomFactor);
+            const offset = offsetDir.multiplyScalar(distance); 
             const endPos = targetPos.clone().add(offset);
 
             if (duration === 0) { 
@@ -2214,6 +2560,10 @@
         }
         
         function startDemo(type) {
+            // --- NEU: Indikatoren zurücksetzen ---
+            resetActiveIndicators();
+            // --- Ende NEU ---
+            
             pauseSimulation(); 
             resetToRealMode(); 
             isDemoActive = true;
@@ -2270,6 +2620,10 @@
         }
 
         function endDemo() {
+            // --- NEU: Indikatoren zurücksetzen ---
+            resetActiveIndicators();
+            // --- Ende NEU ---
+            
             resetToRealMode();
             currentDay = 0; 
             const daySlider = document.getElementById('day-slider');
@@ -2281,9 +2635,13 @@
             updateUI();
         }
 
-        // --- NEU: Sequenzieller Realitätscheck ---
+        // --- Sequenzieller Realitätscheck ---
         function toggleRealScale() {
             pauseSimulation();
+            
+            // --- NEU: Indikatoren zurücksetzen ---
+            resetActiveIndicators();
+            // --- Ende NEU ---
             
             if (isRealScaleActive) {
                 deactivateRealScale();
@@ -2304,6 +2662,15 @@
             
             document.getElementById('real-dist-btn').style.display = 'block';
             
+            const planetButtons = document.getElementById('planet-focus-buttons');
+            document.getElementById('real-scale-controls').prepend(planetButtons); // Verschiebt das Element
+            planetButtons.style.display = 'flex'; // Sicherstellen, dass es sichtbar ist
+            planetButtons.style.marginTop = '0px'; // Margin zurücksetzen
+
+            // Trennlinien anzeigen
+            document.getElementById('real-scale-sep1').style.display = 'block';
+            document.getElementById('real-scale-sep2').style.display = 'block';
+
             infoBox.textContent = "MAẞSTAB: Kamera fliegt zur Position für Grössenvergleich...";
 
             // UI aufräumen & Bahnen verstecken
@@ -2312,30 +2679,18 @@
             moonOrbitLine.visible = false;
             otherPlanetOrbits.forEach(o => o.visible = false);
 
+            otherMoons.forEach(moonObj => { moonObj.mesh.visible = false; });
+            
+            // --- NEU: Planeten explizit sichtbar machen ---
+            otherPlanetControls.forEach(ctrl => { ctrl.orbit.visible = true; });
+            // --- Ende NEU ---
+
             // --- NEUE REFERENZ-OBJEKTE ---
             // 1. Geister-Sonne für Grössenvergleich (wächst mit)
             const ghostGeo = new THREE.SphereGeometry(SUN_RADIUS, 32, 32);
             const ghostMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.3 });
             sunGhost = new THREE.Mesh(ghostGeo, ghostMat);
             scene.add(sunGhost);
-
-            // 2. Referenz-Linie (Roter Faden) mit Ticks
-            const lineMat = new THREE.LineBasicMaterial({ color: 0xff3333, transparent: true, opacity: 0.8, linewidth: 2 });
-            const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0)]);
-            referenceLine = new THREE.Line(lineGeo, lineMat);
-            referenceLine.visible = false; 
-            scene.add(referenceLine);
-
-            // Ticks für den Faden
-            const tickGeo = new THREE.BufferGeometry();
-            const tickCount = 20;
-            const positions = new Float32Array(tickCount * 3);
-            tickGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            const tickMat = new THREE.PointsMaterial({ color: 0xffaaaa, size: 4 * SCENE_SCALE, sizeAttenuation: false, transparent: true, opacity: 0.9 });
-            referenceTicks = new THREE.Points(tickGeo, tickMat);
-            referenceTicks.visible = false;
-            scene.add(referenceTicks);
-            // --- ENDE ---
 
             // Originalwerte sichern
             sun.userData.originalScale = sun.scale.clone();
@@ -2353,13 +2708,37 @@
             earthTiltPivot.position.set(targetEarthDistance, 0, 0);
             currentEarthDistance = targetEarthDistance;
 
-            let earthPos = new THREE.Vector3(targetEarthDistance, 0, 0);
-            let sunToEarth = earthPos.clone().normalize();
-            let camTargetPos = earthPos.clone().add(sunToEarth.multiplyScalar(50)); 
-            camTargetPos.y += 10;
-            let camTargetTarget = new THREE.Vector3(0,0,0);
+            const planetCount = otherPlanetControls.length;
+            otherPlanetControls.forEach((ctrl, index) => {
+                const angle = Math.PI/3 + (index / (planetCount-1)) * (Math.PI * 4/3);
+                
+                // UPDATE: ALLE Planeten auf Abstand 400!
+                const dist = COMPARE_EARTH_DIST_VALUE;
+                const x = Math.cos(angle) * dist;
+                const z = Math.sin(angle) * dist;
+                
+                ctrl.container.position.set(x, 0, z);
+                ctrl.tiltPivot.rotation.z = 0; 
+            });
 
-            flyTo(camTargetPos, camTargetTarget, 1.5, null, () => {
+            // UPDATE: Kamera fliegt weit weg, um alles zu sehen, BEVOR Sonne wächst.
+            // Ziel ist, dass die fertige Sonne (Radius ~272.5) ganz drauf passt.
+            // Wir berechnen den nötigen Abstand für 80% Füllung.
+            const finalSunRadius = REAL_SUN_SCALE_FACTOR * SUN_RADIUS;
+            const fovInRad = THREE.MathUtils.degToRad(camera.fov);
+            // Formel: distance = radius / sin(fov/2) -> das wäre für volle Breite/Höhe.
+            // Besser: tan(fov/2) = (visible_height / 2) / distance
+            // Wir wollen visible_height = finalSunDiameter / 0.8
+            const visibleHeightNeeded = (finalSunRadius * 2) / 0.8;
+            const requiredDist = (visibleHeightNeeded / 2) / Math.tan(fovInRad / 2);
+
+            let earthPos = new THREE.Vector3(targetEarthDistance, 0, 0);
+            let sunToEarthDir = earthPos.clone().normalize();
+            let camTargetPos = sunToEarthDir.multiplyScalar(requiredDist); 
+            // camTargetPos.y += 100 * SCENE_SCALE; // Keine Höhe mehr, direkt von vorne drauf schauen
+            let camTargetTarget = new THREE.Vector3(0,0,0); // Blick auf Zentrum
+
+            flyTo(camTargetPos, camTargetTarget, 2.0, null, () => {
                 realityCheckPhase = 'growing';
                 targetSunScale = REAL_SUN_SCALE_FACTOR;
                 infoBox.textContent = "MAẞSTAB: Sonne wächst auf reale Grösse...";
@@ -2375,27 +2754,47 @@
             scaleBtn.textContent = '🔍 Reale Grössen';
             scaleBtn.classList.remove('btn-danger');
             scaleBtn.classList.add('btn-secondary');
-            scaleBtn.style.order = 1; // Reset order
-
+            
             document.getElementById('real-dist-btn').style.display = 'none';
             const distBtn = document.getElementById('real-dist-btn');
             distBtn.textContent = "🚀 Reale Distanz";
             distBtn.classList.remove('btn-warning');
             distBtn.classList.add('btn-secondary');
-            distBtn.style.order = 2; // Reset order
-
+            
             // --- Referenz-Objekte entfernen ---
             if (sunGhost) { scene.remove(sunGhost); sunGhost.geometry.dispose(); sunGhost.material.dispose(); sunGhost = null; }
-            if (referenceLine) { scene.remove(referenceLine); referenceLine.geometry.dispose(); referenceLine.material.dispose(); referenceLine = null; }
-            if (referenceTicks) { scene.remove(referenceTicks); referenceTicks.geometry.dispose(); referenceTicks.material.dispose(); referenceTicks = null; }
-            // --- ENDE ---
+            if (rulerGroup) { scene.remove(rulerGroup); rulerGroup = null; } 
+            // Label verstecken
+            if (distanceLabelEl) {
+                 distanceLabelEl.style.display = 'none';
+            }
+
+            const planetButtons = document.getElementById('planet-focus-buttons');
+            const cameraGroup = document.querySelectorAll('.control-group')[1]; 
+            cameraGroup.appendChild(planetButtons); 
+            planetButtons.style.display = planetsVisibleCheckbox.checked ? 'flex' : 'none';
+            planetButtons.style.marginTop = '10px'; 
+
+            document.getElementById('real-scale-sep1').style.display = 'none';
+            document.getElementById('real-scale-sep2').style.display = 'none';
 
             setRealScaleUiVisibility(true);
             
-            // Bahnen wiederherstellen basierend auf Checkboxen
+            // --- NEU: Planeten-Sichtbarkeit basierend auf Checkbox wiederherstellen ---
+            const planetsShouldBeVisible = planetsVisibleCheckbox.checked;
+            otherPlanetControls.forEach(ctrl => { ctrl.orbit.visible = planetsShouldBeVisible; });
+            // --- Ende NEU ---
+            
             earthOrbitLine.visible = orbitCheckbox.checked;
             moonOrbitLine.visible = orbitCheckbox.checked;
             otherPlanetOrbits.forEach(o => o.visible = planetsOrbitCheckbox.checked);
+
+            otherMoons.forEach(moonObj => { moonObj.mesh.visible = true; });
+
+            otherPlanetControls.forEach((ctrl, index) => {
+                const data = planetsData[index];
+                ctrl.tiltPivot.rotation.z = (data.axialTilt * Math.PI) / 180;
+            });
 
             earthTiltPivot.visible = true;
             if (sun.userData.originalScale) sun.scale.copy(sun.userData.originalScale);
@@ -2421,7 +2820,7 @@
             const flexStyle = visible ? 'flex' : 'none';
 
             document.getElementById('focus-ecliptic').style.display = displayStyle;
-            document.getElementById('planet-focus-buttons').style.display = visible && planetsVisibleCheckbox.checked ? 'flex' : 'none';
+            
             document.getElementById('orbit-checkbox').parentElement.style.display = flexStyle;
             document.getElementById('planets-visible-checkbox').parentElement.parentElement.style.display = flexStyle; 
             document.getElementById('demo-buttons').style.display = flexStyle;
@@ -2429,21 +2828,110 @@
             document.getElementById('play-group').style.display = flexStyle;
             document.getElementById('time-controls').style.display = displayStyle;
             
-            if (cometControls.style.display !== 'none' && !visible) {
-                 cometControls.dataset.wasVisible = 'true';
+            // --- NEU: Jahreszeiten-Gruppe auch verstecken ---
+            document.getElementById('seasons-group').style.display = displayStyle;
+            // --- Ende NEU ---
+            
+            // UPDATE: Kometen-Kontrollen sicher verbergen
+            if (!visible) {
+                 if (cometControls.style.display !== 'none') {
+                      cometControls.dataset.wasVisible = 'true';
+                 }
                  cometControls.style.display = 'none';
-            } else if (visible && cometControls.dataset.wasVisible === 'true') {
-                 cometControls.style.display = 'block';
+            } else {
+                 if (cometControls.dataset.wasVisible === 'true') {
+                      cometControls.style.display = 'block';
+                 }
             }
         }
 
+        // --- Dynamisches HTML-Label (Lösung 2) ---
+        function updateDynamicLabel(km) {
+            if (!distanceLabelEl) return;
+
+            // 1. Text aktualisieren
+            distanceLabelEl.textContent = Math.round(km / 1000000).toLocaleString('de-DE') + " Mio. km";
+
+            // 2. 3D-Position der Erde holen
+            // Wir nehmen earthTiltPivot, da es die Orbitalposition ist.
+            let earthPos = new THREE.Vector3();
+            // earth.getWorldPosition(earthPos); // Alternativ: exakte Position inkl. Tilt
+            // Da das Label über der Erde schweben soll, nehmen wir die Orbitalposition (Pivot)
+            earthTiltPivot.getWorldPosition(earthPos);
+
+            // Offset nach oben (in 3D-Einheiten), damit es über der Erde schwebt
+            earthPos.y += 15 * SCENE_SCALE;
+
+            // 3. In 2D-Bildschirmkoordinaten umwandeln
+            earthPos.project(camera);
+
+            // Wenn der Punkt hinter der Kamera ist (z > 1), ausblenden
+            if (earthPos.z > 1) {
+                distanceLabelEl.style.display = 'none';
+                return;
+            }
+
+            // Koordinaten von [-1, 1] auf [0, windowWidth/Height] umrechnen
+            const x = (earthPos.x * .5 + .5) * window.innerWidth;
+            const y = (earthPos.y * -.5 + .5) * window.innerHeight;
+
+            // 4. Positionieren
+            distanceLabelEl.style.display = 'block';
+            // Nutze transform für bessere Performance als top/left
+            distanceLabelEl.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+        }
+
+        // UPDATE: Echtes Grid mit VIELEN Querstrichen (gleichmäßiger Abstand)
+        function createGrid() {
+             if (rulerGroup) scene.remove(rulerGroup);
+             rulerGroup = new THREE.Group();
+             
+             const gridColor = 0xaaaaaa; 
+             // Wir nutzen LineSegments für bessere Performance bei vielen Linien
+             const material = new THREE.LineBasicMaterial({ color: gridColor, transparent: true, opacity: 0.8 });
+             const points = [];
+
+             const startX = COMPARE_EARTH_DIST_VALUE * 0.5;
+             const endX = REAL_EARTH_DIST_VALUE * 1.05;
+             const widthZ = 200 * SCENE_SCALE; 
+             const yPos = -30 * SCENE_SCALE;
+             const step = 50 * SCENE_SCALE; // Einheitlicher Abstand für Quadrate
+
+             // Längslinien (X-Richtung)
+             for (let z = -widthZ; z <= widthZ; z += step) {
+                 points.push(new THREE.Vector3(startX, yPos, z));
+                 points.push(new THREE.Vector3(endX, yPos, z));
+             }
+
+             // Querlinien (Z-Richtung) - Jetzt mit gleichem 'step'
+             for (let x = startX; x <= endX; x += step) {
+                 points.push(new THREE.Vector3(x, yPos, -widthZ));
+                 points.push(new THREE.Vector3(x, yPos, widthZ));
+             }
+             
+             const geometry = new THREE.BufferGeometry().setFromPoints(points);
+             const grid = new THREE.LineSegments(geometry, material);
+             rulerGroup.add(grid);
+
+             scene.add(rulerGroup);
+        }
+
         function toggleRealDistance() {
+            // --- NEU: Indikatoren zurücksetzen ---
+            resetActiveIndicators();
+            // --- Ende NEU ---
+            
             isRealDistanceActive = !isRealDistanceActive;
             const distBtn = document.getElementById('real-dist-btn');
-            const scaleBtn = document.getElementById('real-scale-btn');
+            const planetButtons = document.getElementById('planet-focus-buttons'); 
             
+            // UPDATE: Duration auf 10.0s erhöht (halb so schnell)
             flightStartState.progress = 0;
-            flightStartState.duration = 5.0; // Etwas länger für den weiten Weg
+            if (isRealDistanceActive) {
+                 flightStartState.duration = 10.0;
+            } else {
+                 flightStartState.duration = 3.0;
+            }
             flightStartState.startDist = currentEarthDistance;
             flightStartState.startMoonDist = currentMoonDistance; 
 
@@ -2454,23 +2942,14 @@
                 realityCheckPhase = 'flying_out';
                 controls.enabled = false;
                 
-                // Knopf anpassen: Gelb, Sonne-Emoji, Wichtig -> Oben
                 distBtn.textContent = "☀️ Zurück zur Sonne";
                 distBtn.classList.remove('btn-secondary');
                 distBtn.classList.add('btn-warning');
-                distBtn.style.order = 1; // Nach oben
-                scaleBtn.style.order = 2; // Nach unten
+                
+                planetButtons.style.display = 'none';
 
-                // Roter Faden sichtbar machen
-                if (referenceLine) {
-                     referenceLine.visible = true;
-                     referenceLine.material.opacity = 0.8;
-                }
-                if (referenceTicks) {
-                    referenceTicks.visible = true;
-                    referenceTicks.material.opacity = 0.9;
-                }
-                referenceFadeTimer = 0;
+                createGrid(); 
+                rulerFadeTimer = 0;
 
             } else {
                 targetEarthDistance = COMPARE_EARTH_DIST_VALUE;
@@ -2479,29 +2958,35 @@
                 realityCheckPhase = 'flying_in';
                 controls.enabled = false;
                 
-                // Knopf zurücksetzen
                 distBtn.textContent = "🚀 Reale Distanz";
                 distBtn.classList.remove('btn-warning');
                 distBtn.classList.add('btn-secondary');
-                distBtn.style.order = 2; // Wieder nach unten
-                scaleBtn.style.order = 1; // Wieder nach oben
 
-                // Faden sofort ausblenden beim Rückflug
-                if (referenceLine) referenceLine.visible = false;
-                if (referenceTicks) referenceTicks.visible = false;
+                if (rulerGroup) {
+                    scene.remove(rulerGroup);
+                    rulerGroup = null;
+                }
+                // Label wird am Ende der Animation (in animate) entfernt
             }
         }
 
         function jumpToPhase(index) {
             pauseSimulation(); 
             resetToRealMode(); 
+            
+            // --- NEU: Indikatoren zurücksetzen ---
+            resetActiveIndicators();
+            // --- Ende NEU ---
+            
             earthDemoRotationOffset = 0.0; 
             moonPivot.position.y = 0; 
             moon.position.y = 0;
             currentDay = PHASE_DAY_MAP[index];
-            moonPhaseButtons.forEach(btn => { btn.classList.remove('active'); });
+            
+            // moonPhaseButtons.forEach(btn => { btn.classList.remove('active'); }); // Wird jetzt von resetActiveIndicators() erledigt
             const clickedButton = moonPhaseButtons.find(btn => parseInt(btn.dataset.phaseIndex) === index);
-            if (clickedButton) clickedButton.classList.add('active');
+            if (clickedButton) clickedButton.classList.add('active'); // Neuen Indikator setzen
+            
             updatePositions(currentDay);
             const daySlider = document.getElementById('day-slider');
             daySlider.value = currentDay;
@@ -2513,13 +2998,58 @@
             flyTo(earthPos, moonPos, 0, 'earthView'); 
         }
 
+        // --- NEU: Funktion zum Springen zu Jahreszeiten (überarbeitet) ---
+        function jumpToSeason(day, clickedBtn) {
+            // 1. Demos & Realitätscheck beenden
+            checkAndEndDemo(); 
+            if (isRealScaleActive) {
+                deactivateRealScale(); 
+            }
+            // 2. Simulation stoppen
+            pauseSimulation();
+
+            // 3. Alle Indikatoren zurücksetzen
+            resetActiveIndicators();
+
+            // 4. Tag setzen
+            currentDay = day;
+            const daySlider = document.getElementById('day-slider');
+            daySlider.value = currentDay;
+
+            // 5. Positionen aktualisieren
+            updatePositions(currentDay);
+            updateUI();
+
+            // 6. Neue Indikatoren setzen
+            if (clickedBtn) clickedBtn.classList.add('active');
+            if (earthAxisLine) earthAxisLine.visible = true;
+
+            // 7. Manuell zur Erde fliegen (um setFocus() mit seinem reset zu umgehen)
+            let earthPos = new THREE.Vector3();
+            earth.getWorldPosition(earthPos);
+            const radius = EARTH_RADIUS;
+            const fovInRad = THREE.MathUtils.degToRad(camera.fov);
+            // Distanz = (Radius / 0.8) / tan(FOV/2)
+            const distance = (radius / 0.3) / Math.tan(fovInRad / 2); 
+            
+            // Behalte die Kamerarichtung bei (von der Sonne weg, leicht erhöht)
+            const offsetDir = new THREE.Vector3(0, 0, 0).sub(earthPos).normalize();
+            offsetDir.y = 0.5; 
+            offsetDir.normalize(); 
+            const offset = offsetDir.multiplyScalar(distance); // Setze die berechnete Distanz
+            const endPos = earthPos.clone().add(offset);
+            
+            flyTo(endPos, earthPos, 1.5, earth); // Fliegt zur Erde, setzt intern cameraFocus = earth
+        }
+        // --- Ende NEU ---
+
         function animate() {
             requestAnimationFrame(animate);
             const deltaTime = clock.getDelta(); 
             
             if (isRealScaleActive) {
                 if (realityCheckPhase === 'growing') {
-                    const growthSpeed = 0.4; 
+                    const growthSpeed = 2.0; 
                     currentSunScale += growthSpeed * deltaTime;
                     
                     if (currentSunScale >= targetSunScale) {
@@ -2527,41 +3057,30 @@
                         realityCheckPhase = 'active';
                         infoBox.textContent = "MAẞSTAB: Reale Grösse erreicht.";
 
-                        // ALT (sofort ausblenden):
-                        // if (sunGhost) sunGhost.visible = false;
-
-                        // NEU (mit 2 Sekunden Verzögerung):
                         if (sunGhost) {
                             setTimeout(() => {
-                                // Wir prüfen nochmal, ob sunGhost noch existiert,
-                                // falls der Modus vorher beendet wurde.
                                 if (sunGhost) { 
                                     sunGhost.visible = false;
                                 }
-                            }, 2000); // 2000ms = 2 Sekunden
+                            }, 2000); 
                         }
                     }
                     sun.scale.set(currentSunScale, currentSunScale, currentSunScale);
                     if (sunGhost) sunGhost.scale.set(currentSunScale, currentSunScale, currentSunScale);
 
-                    // Automatischer Kamera-Zoom während des Wachstums, damit Sonne sichtbar bleibt
-                    const fovFactor = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-                    // Benötigte Distanz, um die ganze Sonne zu sehen (plus 10% Margin)
-                    const requiredCamDist = (SUN_RADIUS * currentSunScale * 1.4) / fovFactor;
-                    
-                    // Wir bewegen die Kamera entlang des Vektors von der Sonne zur aktuellen Kameraposition
-                    const sunToCam = camera.position.clone().normalize();
-                    // Wir nehmen mindestens die aktuelle Distanz oder die benötigte, je nachdem was größer ist
-                    const currentDist = camera.position.length();
-                    const newDist = Math.max(currentDist, requiredCamDist);
-                    camera.position.copy(sunToCam.multiplyScalar(newDist));
+                    // UPDATE: Keine Kamerabewegung mehr während des Wachstums!
                 }
                 else if (realityCheckPhase === 'flying_out') {
-                    const earthOrbitAngle = (currentDay / EARTH_YEAR_DAYS) * Math.PI * 2;
+                    // UPDATE: Erde bleibt bei Winkel 0
+                    const earthOrbitAngle = 0;
                     flightStartState.progress += deltaTime / flightStartState.duration;
                     const easing = easeInOutCubic(Math.min(1.0, flightStartState.progress)); 
                     currentEarthDistance = THREE.MathUtils.lerp(flightStartState.startDist, targetEarthDistance, easing);
                     
+                    // NEU: Dynamisches Label updaten
+                    const currentKm = (currentEarthDistance / REAL_EARTH_DIST_VALUE) * 149600000;
+                    updateDynamicLabel(currentKm);
+
                     if (flightStartState.progress >= 1.0) {
                         currentEarthDistance = targetEarthDistance; 
                         realityCheckPhase = 'active_distant';
@@ -2571,7 +3090,6 @@
                         let earthPos = new THREE.Vector3(Math.cos(earthOrbitAngle) * currentEarthDistance, 0, -Math.sin(earthOrbitAngle) * currentEarthDistance);
                         controls.target.copy(earthPos);
                     } else {
-                         // Während des Fluges nah an der Erde bleiben
                          let earthPos = new THREE.Vector3(Math.cos(earthOrbitAngle) * currentEarthDistance, 0, -Math.sin(earthOrbitAngle) * currentEarthDistance);
                          const offsetDir = earthPos.clone().normalize();
                          offsetDir.y = 0.2; offsetDir.normalize();
@@ -2582,53 +3100,67 @@
                     currentMoonDistance = THREE.MathUtils.lerp(flightStartState.startMoonDist, targetMoonDistance, easing);
                 }
                 else if (realityCheckPhase === 'active_distant') {
-                    // Roter Faden nach 3 Sekunden ausblenden
-                    if (referenceLine && referenceLine.visible) {
-                        referenceFadeTimer += deltaTime;
-                        if (referenceFadeTimer > 3.0) {
-                            const fadeDuration = 1.0;
-                            const opacity = Math.max(0, 0.8 * (1.0 - (referenceFadeTimer - 3.0) / fadeDuration));
-                            referenceLine.material.opacity = opacity;
-                            referenceTicks.material.opacity = opacity;
-                            if (opacity <= 0) {
-                                referenceLine.visible = false;
-                                referenceTicks.visible = false;
-                            }
+                    if (rulerGroup) {
+                        rulerFadeTimer += deltaTime;
+                        if (rulerFadeTimer > 2.0) {
+                             const fadeDuration = 1.0;
+                             const opacity = Math.max(0, 0.8 * (1.0 - (rulerFadeTimer - 2.0) / fadeDuration));
+                             rulerGroup.traverse(child => {
+                                 if (child.material) {
+                                     child.material.opacity = opacity;
+                                 }
+                             });
+                             // Auch das Label ausblenden (durch CSS opacity)
+                             if (distanceLabelEl) {
+                                 distanceLabelEl.style.opacity = opacity;
+                             }
+                             
+                             if (opacity <= 0) {
+                                 scene.remove(rulerGroup);
+                                 rulerGroup = null;
+                                 if (distanceLabelEl) {
+                                      distanceLabelEl.style.display = 'none';
+                                      distanceLabelEl.style.opacity = 1.0; // Reset für nächsten Flug
+                                 }
+                             }
                         }
                     }
                 }
                 else if (realityCheckPhase === 'flying_in') {
-                    const earthOrbitAngle = (currentDay / EARTH_YEAR_DAYS) * Math.PI * 2;
+                    // UPDATE: Erde bleibt bei Winkel 0
+                    const earthOrbitAngle = 0;
                     flightStartState.progress += deltaTime / flightStartState.duration;
                     const easing = easeInOutCubic(Math.min(1.0, flightStartState.progress)); 
                     currentEarthDistance = THREE.MathUtils.lerp(flightStartState.startDist, targetEarthDistance, easing);
+
+                    // NEU: Dynamisches Label updaten (Rückflug)
+                    const currentKm = (currentEarthDistance / REAL_EARTH_DIST_VALUE) * 149600000;
+                    updateDynamicLabel(currentKm);
 
                     if (flightStartState.progress >= 1.0) {
                         currentEarthDistance = targetEarthDistance;
                         realityCheckPhase = 'active';
                         infoBox.textContent = "Wieder beim Grössenvergleich.";
-                        let earthPos = new THREE.Vector3(Math.cos(earthOrbitAngle) * currentEarthDistance, 0, -Math.sin(earthOrbitAngle) * currentEarthDistance);
-                        // Kamera zurücksetzen, weit genug weg für die grosse Sonne
-                        const fovFactor = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-                        // 1. Berechne den Fortschritt des Wachstums (von 0.0 bis 1.0)
-                        const growthProgress = (currentSunScale - 1.0) / (targetSunScale - 1.0);
-
-                        // 2. Definiere den Start- und End-Puffer
-                        const startBuffer = 20.0; // Starte mit 200% Puffer (Faktor 3.0)
-                        const endBuffer = 1.1;   // Ende mit 10% Puffer (Faktor 1.1)
-
-                        // 3. Berechne den aktuellen Puffer basierend auf dem Fortschritt
-                        const currentBuffer = THREE.MathUtils.lerp(startBuffer, endBuffer, Math.min(growthProgress, 1.0));
-
-                        // 4. Nutze den neuen, dynamischen Puffer für die Distanzberechnung
-                        const requiredCamDist = (SUN_RADIUS * currentSunScale * currentBuffer) / fovFactor;
-                        // --- ENDE NEU ---
                         
-                        // Position relativ zur Erde, aber weit weg
-                        const camEndPos = earthPos.clone().normalize().multiplyScalar(requiredCamDist);
-                        camEndPos.y += 50; // Etwas Höhe
+                        document.getElementById('planet-focus-buttons').style.display = 'flex';
+
+                        let earthPos = new THREE.Vector3(Math.cos(earthOrbitAngle) * currentEarthDistance, 0, -Math.sin(earthOrbitAngle) * currentEarthDistance);
+                        
+                        const finalSunRadius = REAL_SUN_SCALE_FACTOR * SUN_RADIUS;
+                        const fovInRad = THREE.MathUtils.degToRad(camera.fov);
+                        const visibleHeightNeeded = (finalSunRadius * 2) / 0.8;
+                        const requiredDist = (visibleHeightNeeded / 2) / Math.tan(fovInRad / 2);
+                        
+                        let sunToEarthDir = earthPos.clone().normalize();
+                        let camEndPos = sunToEarthDir.multiplyScalar(requiredDist); 
                         
                         flyTo(camEndPos, new THREE.Vector3(0,0,0), 1.5, null, () => { controls.enabled = true; });
+                        
+                        // Label verstecken am Ende
+                        if (distanceLabelEl) {
+                             distanceLabelEl.style.display = 'none';
+                        }
+
                     } else {
                          let earthPos = new THREE.Vector3(Math.cos(earthOrbitAngle) * currentEarthDistance, 0, -Math.sin(earthOrbitAngle) * currentEarthDistance);
                          const offsetDir = earthPos.clone().normalize();
@@ -2674,9 +3206,18 @@
             }
             let actualSpeed = speed;
             if (isDemoActive) actualSpeed = demoLoopSpeed;
+
             if (isPlaying) {
-                const deltaDays = (actualSpeed * (1 / 60)) * (isDemoActive ? 1 : EARTH_YEAR_DAYS / 60); 
+                let daysPerSecondFactor;
+                if (isDemoActive) {
+                    daysPerSecondFactor = 1.0;
+                } else {
+                    daysPerSecondFactor = EARTH_YEAR_DAYS / 60.0;
+                }
+                
+                const deltaDays = actualSpeed * daysPerSecondFactor * deltaTime;
                 currentDay += deltaDays;
+                
                 if (isDemoActive) {
                     if (currentDay > demoLoopEndDay) currentDay = demoLoopStartDay; 
                     else if (currentDay < demoLoopStartDay) currentDay = demoLoopEndDay;
@@ -2685,6 +3226,7 @@
                 daySlider.value = currentDay % EARTH_YEAR_DAYS;
                 updateUI();
             }
+            
             updatePositions(currentDay);
             updateCamera(false); 
             controls.update();
@@ -2703,7 +3245,13 @@
         }
 
         function updatePositions(day) {
-            const earthOrbitAngle = (day / EARTH_YEAR_DAYS) * Math.PI * 2;
+            // UPDATE: Im Real-Modus Erde immer auf Winkel 0 fixieren
+            let earthOrbitAngle;
+            if (isRealScaleActive) {
+                earthOrbitAngle = 0;
+            } else {
+                earthOrbitAngle = (day / EARTH_YEAR_DAYS) * Math.PI * 2;
+            }
             earthTiltPivot.position.set(Math.cos(earthOrbitAngle) * currentEarthDistance, 0, -Math.sin(earthOrbitAngle) * currentEarthDistance);
 
             let rotationFactor = 1.0;
@@ -2727,19 +3275,33 @@
             otherPlanetControls.forEach((ctrl, index) => {
                 const data = planetsData[index];
                 const planet = otherPlanets[index];
-                const pos = calculateEllipticalPosition(data.distance, data.ecc, data.perihelionAngle, day, data.yearDays);
-                ctrl.container.position.set(pos.x, 0, pos.z);
+                
+                // Wenn nicht im Real-Scale-Modus ODER wenn wir uns im Idle-Zustand befinden (d.h. vor dem Klick auf "Reale Grösse"),
+                // dann normale Bahnbewegung.
+                // WICHTIG: Während 'flying_out'/'flying_in' wollen wir, dass sie stehen bleiben!
+                if (!isRealScaleActive || realityCheckPhase === 'idle') {
+                    const pos = calculateEllipticalPosition(data.distance, data.ecc, data.perihelionAngle, day, data.yearDays);
+                    ctrl.container.position.set(pos.x, 0, pos.z);
+                }
+                // Sonst (während Real Scale aktiv ist), bleiben sie einfach da stehen, wo activateRealScaleSequence sie hingestellt hat.
+                
                 planet.rotation.y = (day * data.rotationSpeed) * Math.PI * 2;
                 let tempVec = new THREE.Vector3();
                 planet.getWorldPosition(tempVec);
                 planet.material.uniforms.uObjectWorldPosition.value.copy(tempVec);
                 
-                if (data.name === 'Saturn') {
-                     if (saturnRingMaterial) saturnRingMaterial.uniforms.uSaturnPosition.value.copy(tempVec);
+                // UPDATE: Generisches Ring-Update
+                if (data.ring) {
+                     const ringEntry = planetRingMaterials.find(e => e.parentPlanet === planet);
+                     if (ringEntry && ringEntry.ringMat) {
+                         ringEntry.ringMat.uniforms.uRingParentPosition.value.copy(tempVec);
+                     }
                      
-                     if (saturnPlanetMaterial) {
+                     // Für den Planet-Shader (Schatten auf Planet)
+                     const planetEntry = planetRingMaterials.find(e => e.pivot === ctrl.tiltPivot && e.mat);
+                     if (planetEntry && planetEntry.mat) {
                         const ringNormalWorld = new THREE.Vector3(0, 1, 0).applyQuaternion(ctrl.tiltPivot.getWorldQuaternion(new THREE.Quaternion()));
-                        saturnPlanetMaterial.uniforms.uRingNormal.value.copy(ringNormalWorld);
+                        planetEntry.mat.uniforms.uRingNormal.value.copy(ringNormalWorld);
                      }
                 }
             });
@@ -2796,24 +3358,6 @@
                 originalMoonMaterial.uniforms.uObjectWorldPosition.value.copy(tempVec);
                 earth.getWorldPosition(tempVec); 
                 originalMoonMaterial.uniforms.uEarthPosition.value.copy(tempVec);
-            }
-
-            // --- NEU: Referenz-Linie & Ticks aktualisieren ---
-            if (isRealScaleActive && referenceLine && referenceLine.visible) {
-                const earthPos = earthTiltPivot.position;
-                // Linie
-                const positions = referenceLine.geometry.attributes.position;
-                positions.setXYZ(1, earthPos.x, earthPos.y, earthPos.z);
-                positions.needsUpdate = true;
-
-                // Ticks entlang der Linie verteilen
-                const tickPosAttr = referenceTicks.geometry.attributes.position;
-                const tickCount = tickPosAttr.count;
-                for (let i = 0; i < tickCount; i++) {
-                    const t = (i + 1) / (tickCount + 1); // 0 = Sonne, 1 = Erde. Ticks dazwischen.
-                    tickPosAttr.setXYZ(i, earthPos.x * t, earthPos.y * t, earthPos.z * t);
-                }
-                tickPosAttr.needsUpdate = true;
             }
         }
 
