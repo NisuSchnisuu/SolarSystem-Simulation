@@ -429,30 +429,44 @@
     <div id="ui-container">
         <button id="toggle-ui" class="btn btn-secondary" title="Menü verbergen">✕</button>
 
-        <div class="control-group">
+        <div class="control-group" id="controls-general">
             <h3>Steuerung</h3>
-            <div class="btn-group" style="margin-bottom: 15px;">
+            <div class="btn-group" style="margin-bottom: 15px;" id="play-group">
                 <button id="play-pause-btn" class="btn">Pause</button>
             </div>
             
-            <label for="day-slider">Tag im Jahr: (Eingabe)</label>
-            <input type="range" id="day-slider" min="0" max="365" value="0" step="0.1">
-            
-            <label for="speed-slider" style="margin-top: 10px;">Geschwindigkeit:</label>
-            <input type="range" id="speed-slider" min="0" max="100" value="10" step="1"> <label class="checkbox-label" style="margin-top: 15px;">
-                <input type="checkbox" id="orbit-checkbox" checked>
-                Erd-/Mondbahn anzeigen
-            </label>
-            
-            <div style="display: flex; gap: 15px; margin-top: 10px;">
-                <label class="checkbox-label" style="flex: 1;">
-                    <input type="checkbox" id="planets-visible-checkbox" checked>
-                    Planeten
+            <div id="time-controls">
+                <label for="day-slider">Tag im Jahr: (Eingabe)</label>
+                <input type="range" id="day-slider" min="0" max="365" value="0" step="0.1">
+                
+                <label for="speed-slider" style="margin-top: 10px;">Geschwindigkeit:</label>
+                <input type="range" id="speed-slider" min="0" max="100" value="10" step="1">
+            </div>
+
+            <div id="comet-controls" style="display: none; margin-top: 15px; border-top: 1px dashed #444; padding-top: 10px;">
+                <button id="follow-comet-btn" class="btn btn-info btn-pulse" style="width: 100%; margin-bottom: 10px;">🔭 Komet verfolgen!</button>
+                <label class="checkbox-label" style="color: #00ffff;">
+                    <input type="checkbox" id="comet-speed-checkbox">
+                    Komet-Zeitraffer (3x)
                 </label>
-                <label class="checkbox-label" style="flex: 1;">
-                    <input type="checkbox" id="planets-orbit-checkbox" checked>
-                    Planetenbahnen
+            </div>
+
+            <div id="visibility-controls">
+                 <label class="checkbox-label" style="margin-top: 15px;">
+                    <input type="checkbox" id="orbit-checkbox" checked>
+                    Erd-/Mondbahn anzeigen
                 </label>
+                
+                <div style="display: flex; gap: 15px; margin-top: 10px;">
+                    <label class="checkbox-label" style="flex: 1;">
+                        <input type="checkbox" id="planets-visible-checkbox" checked>
+                        Planeten
+                    </label>
+                    <label class="checkbox-label" style="flex: 1;">
+                        <input type="checkbox" id="planets-orbit-checkbox" checked>
+                        Bahnen
+                    </label>
+                </div>
             </div>
             
             <label for="darkness-slider" style="margin-top: 10px;">Helligkeit (Nachtseite): <span id="darkness-label">0.30</span></label>
@@ -468,9 +482,9 @@
                 <button id="focus-ecliptic" class="btn btn-focus">Ekliptik-Sicht</button>
             </div>
             <div id="planet-focus-buttons" class="btn-group" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #444; display: none;">
-                </div>
+            </div>
             <div id="moon-focus-container">
-                </div>
+            </div>
         </div>
 
         <div class="control-group">
@@ -478,21 +492,6 @@
             <div class="btn-group" id="demo-buttons">
                 <button id="demo-sofi" class="btn btn-warning">Sonnenfinsternis</button>
                 <button id="demo-mofi" class="btn btn-warning">Mondfinsternis</button>
-            </div>
-            
-            <div id="real-scale-controls">
-                <button id="real-scale-btn" class="btn btn-danger" style="width: 100%;">Grössen-Check (animiert)</button>
-                <label class="checkbox-label" id="real-dist-label">
-                    <input type="checkbox" id="real-dist-checkbox"> 🚀 Reale Distanz (Flug)
-                </label>
-            </div>
-
-            <div id="comet-controls" style="display: none; margin-top: 15px; border-top: 1px dashed #444; padding-top: 10px;">
-                <button id="follow-comet-btn" class="btn btn-info btn-pulse" style="width: 100%; margin-bottom: 10px;">🔭 Komet verfolgen!</button>
-                <label class="checkbox-label" style="color: #00ffff;">
-                    <input type="checkbox" id="comet-speed-checkbox">
-                    Komet-Zeitraffer (3x)
-                </label>
             </div>
             
             <div class="btn-group" id="demo-control-buttons" style="display: none; margin-top: 10px;">
@@ -507,7 +506,7 @@
             <div id="info-box">Mondphase: Neumond</div>
         </div>
 
-        <div class="control-group">
+        <div class="control-group" id="moon-phases-group">
             <h3>Mondphasen</h3>
             <div id="moon-phases-ui">
                 <button id="phase-0" data-phase-index="0" class="moon-phase-btn" title="Neumond (Springen)">🌑</button>
@@ -520,6 +519,19 @@
                 <button id="phase-7" data-phase-index="7" class="moon-phase-btn" title="Abnehmende Sichel (Springen)">🌘</button>
             </div>
         </div>
+
+        <div class="control-group" id="real-scale-group">
+             <div id="real-scale-controls">
+                <button id="real-scale-btn" class="btn btn-secondary" style="width: 100%; order: 1;">
+                    🔍 Reale Grössen
+                </button>
+                
+                <button id="real-dist-btn" class="btn btn-secondary" style="width: 100%; margin-top: 5px; display: none; order: 2;">
+                    🚀 Reale Distanz
+                </button>
+            </div>
+        </div>
+        
     </div>
 
     <div id="info-popup">
@@ -575,7 +587,14 @@
         // --- Animations-Variablen für Realitätscheck ---
         let isRealScaleActive = false;
         let isRealDistanceActive = false;
-        let realityCheckPhase = 'idle'; // 'idle', 'positioning', 'growing', 'active'
+        let realityCheckPhase = 'idle'; // 'idle', 'positioning', 'growing', 'active', 'flying_out', 'flying_in'
+
+        let flightStartState = { startDist: 0, startMoonDist: 0, progress: 0, duration: 4.0 };
+        
+        let referenceLine = null;
+        let referenceTicks = null; // NEU: Ticks für den roten Faden
+        let referenceFadeTimer = 0; // NEU: Timer fürs Ausblenden
+        let sunGhost = null;
 
         let targetSunScale = 1.0;
         let targetEarthDistance; 
@@ -623,12 +642,12 @@
 
         // --- Konstanten ---
         const SCENE_SCALE = 1.0;
-        const SUN_RADIUS = 20 * SCENE_SCALE; 
+        const SUN_RADIUS = 62.5 * SCENE_SCALE; 
         const EARTH_RADIUS = 2.5 * SCENE_SCALE;
-        const MOON_RADIUS = 0.7 * SCENE_SCALE;
+        const MOON_RADIUS = 0.68 * SCENE_SCALE;
         const ERDE_RADIUS_KM = 6371;
         
-        const EARTH_DISTANCE = 150 * SCENE_SCALE;
+        const EARTH_DISTANCE = 270 * SCENE_SCALE;
         const MOON_DISTANCE = 15 * SCENE_SCALE;
 
         const EARTH_TILT_RAD = (23.5 * Math.PI) / 180;
@@ -687,11 +706,11 @@
         // --- Komet Variablen und Klasse ---
         let comet; 
         let cometSpawnTimer = THREE.MathUtils.randFloat(600, 1200); 
-        const COMET_SPAWN_DIST = 2000 * SCENE_SCALE; 
-        const COMET_DESTROY_DIST = 1600 * SCENE_SCALE; 
-        const COMET_CAMERA_RESET_DIST = 1500 * SCENE_SCALE; 
+        const COMET_SPAWN_DIST = 2500 * SCENE_SCALE; 
+        const COMET_DESTROY_DIST = 2500 * SCENE_SCALE; 
+        const COMET_CAMERA_RESET_DIST = 2400 * SCENE_SCALE; 
         
-        const GRAVITY_STRENGTH = 50000 * SCENE_SCALE; 
+        const GRAVITY_STRENGTH = 100000 * SCENE_SCALE; 
         const GRAVITY_FACTOR = 0.05; 
         const MIN_PERIHELION_DISTANCE = 110 * SCENE_SCALE; 
         
@@ -1195,7 +1214,7 @@
             cometControls = document.getElementById('comet-controls');
 
             scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 8000);
             camera.position.set(EARTH_DISTANCE * 1.5, EARTH_DISTANCE * 0.7, EARTH_DISTANCE * 1.5);
             camera.lookAt(0, 0, 0);
 
@@ -1276,89 +1295,190 @@
             
             planetsData = [
                 { 
-                    name: 'Mercury', radius: 1.0 * SCENE_SCALE, distance: 60 * SCENE_SCALE, yearDays: 88, texture: textureBasePath + '2k_mercury.jpg', axialTilt: 0.03, rotationSpeed: 0.017,
-                    ecc: 0.205, perihelionAngle: 77.45 * degToRad, orbitalInclination: 7.0,
+                    name: 'Mercury', 
+                    radius: 0.95 * SCENE_SCALE, 
+                    distance: 110 * SCENE_SCALE, 
+                    yearDays: 88, 
+                    texture: textureBasePath + '2k_mercury.jpg', 
+                    axialTilt: 0.03, 
+                    rotationSpeed: 0.017,
+                    ecc: 0.205, 
+                    perihelionAngle: 77.45 * degToRad, 
+                    orbitalInclination: 7.0,
+                    //Fakten
                     name_de: 'Merkur', earthCompareRadius: '0,38x Erde', radius_km: '2.439', distance_Mio_km: '57,9 Mio. km', umlaufzeit: '88 Erdtage', taglaenge: '176 Erdtage', temperatur: 'ca. 167°C',
                     funFacts: ['Auf Merkur dauert ein Tag (176 Erdtage) länger als ein Jahr (88 Erdtage).', 'Er hat keine Monde und keine nennenswerte Atmosphäre.', 'Trotz seiner Nähe zur Sonne ist er nicht der heisseste Planet.']
                 },
                 { 
-                    name: 'Venus', radius: 2.2 * SCENE_SCALE, distance: 110 * SCENE_SCALE, yearDays: 225, texture: textureBasePath + '2k_venus_surface.jpg', axialTilt: 177.0, rotationSpeed: -0.0041,
-                    ecc: 0.007, perihelionAngle: 131.53 * degToRad, orbitalInclination: 3.39,
+                    name: 'Venus', 
+                    radius: 2.4 * SCENE_SCALE, 
+                    distance: 200 * SCENE_SCALE, 
+                    yearDays: 225, 
+                    texture: textureBasePath + '2k_venus_surface.jpg', 
+                    axialTilt: 177.0, rotationSpeed: -0.0041,
+                    ecc: 0.007, 
+                    perihelionAngle: 131.53 * degToRad, 
+                    orbitalInclination: 3.39,
+                    //Fakten
                     name_de: 'Venus', earthCompareRadius: '0,95x Erde', radius_km: '6.051', distance_Mio_km: '108,2 Mio. km', umlaufzeit: '225 Erdtage', taglaenge: '243 Erdtage (rückwärts!)', temperatur: 'ca. 464°C (heissester Planet)',
                     funFacts: ['Die Venus dreht sich "rückwärts" (retrograd).', 'Ein Tag auf der Venus ist länger als ihr Jahr (Umlauf um die Sonne).', 'Ihre dichte CO2-Atmosphäre erzeugt einen extremen Treibhauseffekt.']
                 },
                 { 
-                    name: 'Mars', radius: 1.5 * SCENE_SCALE, distance: 230 * SCENE_SCALE, yearDays: 687, texture: textureBasePath + '2k_mars.jpg', axialTilt: 25.19, rotationSpeed: 0.97,
-                    ecc: 0.094, perihelionAngle: 336.04 * degToRad, orbitalInclination: 1.85,
+                    name: 'Mars', 
+                    radius: 1.3 * SCENE_SCALE, 
+                    distance: 415 * SCENE_SCALE, 
+                    yearDays: 687, 
+                    texture: textureBasePath + '2k_mars.jpg', 
+                    axialTilt: 25.19, 
+                    rotationSpeed: 0.97,
+                    ecc: 0.094, 
+                    perihelionAngle: 336.04 * degToRad, 
+                    orbitalInclination: 1.85,
+                    //Fakten
                     name_de: 'Mars', earthCompareRadius: '0,53x Erde', radius_km: '3.389', distance_Mio_km: '227,9 Mio. km', umlaufzeit: '687 Erdtage', taglaenge: '24h 37min', temperatur: 'ca. -63°C',
                     funFacts: ['Der Mars hat den höchsten Vulkan im Sonnensystem (Olympus Mons, 22km hoch).', 'Er hat zwei kleine Monde: Phobos und Deimos.', 'Seine rote Farbe kommt von Eisenoxid (Rost) im Boden.']
                 },
                 { 
-                    name: 'Jupiter', radius: 16.0 * SCENE_SCALE, distance: 500 * SCENE_SCALE, yearDays: 4333, texture: textureBasePath + '2k_jupiter.jpg', axialTilt: 3.13, rotationSpeed: 2.43,
+                    name: 'Jupiter', radius: 28.0 * SCENE_SCALE, distance: 900 * SCENE_SCALE, yearDays: 4333, texture: textureBasePath + '2k_jupiter.jpg', axialTilt: 3.13, rotationSpeed: 2.43,
                     ecc: 0.049, perihelionAngle: 14.75 * degToRad, orbitalInclination: 1.3,
                     moons: [
                         { 
-                            name: 'Io', radius: 0.4 * SCENE_SCALE, distance: 22 * SCENE_SCALE, speed: 3.1, texture: moonTextureBasePath + 'jupiter_io.jpg', inclination: 0.05 * degToRad,
+                            name: 'Io', 
+                            radius: 0.715 * SCENE_SCALE, 
+                            distance: 49.5 * SCENE_SCALE, 
+                            speed: 0.565,
+                            startAngle: Math.random() * Math.PI * 2, 
+                            texture: moonTextureBasePath + 'jupiter_io.jpg', 
+                            inclination: 0.05 * degToRad,
+                            //Fakten
                             earthCompareRadius: '0,28x Erde', radius_km: '1.821', distance_Mio_km: '421.700 km', umlaufzeit: '1,77 Tage', temperatur: 'ca. -143°C', parentName: 'Jupiter',
                             funFacts: ['Io ist der vulkanisch aktivste Körper im Sonnensystem.', 'Seine Oberfläche wird durch die Schwerkraft von Jupiter ständig "durchgeknetet".']
                         },
                         { 
-                            name: 'Europa', radius: 0.35 * SCENE_SCALE, distance: 34 * SCENE_SCALE, speed: 2.3, texture: moonTextureBasePath + 'jupiter_europa.jpg', inclination: 0.47 * degToRad,
+                            name: 'Europa', 
+                            radius: 0.61 * SCENE_SCALE, 
+                            distance: 78.9 * SCENE_SCALE, 
+                            speed: 0.282, 
+                            startAngle: Math.random() * Math.PI * 2, 
+                            texture: moonTextureBasePath + 'jupiter_europa.jpg', 
+                            inclination: 0.47 * degToRad,
+                            //Fakten
                             earthCompareRadius: '0,25x Erde', radius_km: '1.560', distance_Mio_km: '671.100 km', umlaufzeit: '3,55 Tage', temperatur: 'ca. -170°C', parentName: 'Jupiter',
                             funFacts: ['Europa hat einen Ozean aus flüssigem Wasser unter seiner Eiskruste.', 'Er gilt als einer der aussichtsreichsten Orte für ausserirdisches Leben.']
                         },
                         { 
-                            name: 'Ganymed', radius: 0.6 * SCENE_SCALE, distance: 46 * SCENE_SCALE, speed: 1.3, texture: moonTextureBasePath + 'jupiter_ganymede.jpg', inclination: 0.20 * degToRad,
+                            name: 'Ganymed', 
+                            radius: 1.03 * SCENE_SCALE, 
+                            distance: 126 * SCENE_SCALE, 
+                            speed: 0.14, 
+                            startAngle: Math.random() * Math.PI * 2,
+                            texture: moonTextureBasePath + 'jupiter_ganymede.jpg', 
+                            inclination: 0.20 * degToRad,
+                            //Fakten
                             earthCompareRadius: '0,41x Erde', radius_km: '2.634', distance_Mio_km: '1,07 Mio. km', umlaufzeit: '7,15 Tage', temperatur: 'ca. -163°C', parentName: 'Jupiter',
-                            funFacts: ['Ganymed ist der größte Mond im Sonnensystem (größer als Merkur!).', 'Er ist der einzige Mond mit einem eigenen Magnetfeld.']
+                            funFacts: ['Ganymed ist der größte Mond im Sonnensystem (größer als Merkur!).', 'Er ist der einzige Mond mit einer eigenen Magnetfeld.']
                         },
                         { 
-                            name: 'Kallisto', radius: 0.55 * SCENE_SCALE, distance: 59 * SCENE_SCALE, speed: 0.93, texture: moonTextureBasePath + 'jupiter_callisto.jpg', inclination: 0.20 * degToRad,
+                            name: 'Kallisto', 
+                            radius: 0.945 * SCENE_SCALE, 
+                            distance: 220 * SCENE_SCALE, 
+                            speed: 0.060, 
+                            startAngle: Math.random() * Math.PI * 2,
+                            texture: moonTextureBasePath + 'jupiter_callisto.jpg', 
+                            inclination: 0.20 * degToRad,
+                            //Fakten
                             earthCompareRadius: '0,38x Erde', radius_km: '2.410', distance_Mio_km: '1,88 Mio. km', umlaufzeit: '16,69 Tage', temperatur: 'ca. -139°C', parentName: 'Jupiter',
                             funFacts: ['Kallisto hat eine der ältesten, am stärksten verkraterten Oberflächen im Sonnensystem.']
                         }
                     ],
+                    //Fakten
                     name_de: 'Jupiter', earthCompareRadius: '11,2x Erde', radius_km: '69.911', distance_Mio_km: '778,5 Mio. km', umlaufzeit: '11,9 Jahre', taglaenge: '9h 56min', temperatur: 'ca. -108°C',
                     funFacts: ['Jupiter ist der größte Planet und hat über 90 Monde.', 'Der "Große Rote Fleck" ist ein riesiger Wirbelsturm, der schon seit Jahrhunderten tobt.']
                 },
                 { 
-                    name: 'Saturn', radius: 13.0 * SCENE_SCALE, distance: 750 * SCENE_SCALE, yearDays: 10759, texture: textureBasePath + '2k_saturn.jpg', ringTexture: textureBasePath + '2k_saturn_ring_alpha.png', axialTilt: 26.73, rotationSpeed: 2.22,
-                    ecc: 0.057, perihelionAngle: 92.43 * degToRad, orbitalInclination: 2.49,
+                    name: 'Saturn', 
+                    radius: 23.8 * SCENE_SCALE, 
+                    distance: 1350 * SCENE_SCALE, 
+                    yearDays: 10759, 
+                    texture: textureBasePath + '2k_saturn.jpg', 
+                    ringTexture: textureBasePath + '2k_saturn_ring_alpha.png', 
+                    axialTilt: 26.73, 
+                    rotationSpeed: 2.22,
+                    ecc: 0.057, 
+                    perihelionAngle: 92.43 * degToRad, 
+                    orbitalInclination: 2.49,
                     moons: [
                         { 
-                            name: 'Titan', radius: 0.55 * SCENE_SCALE, distance: 40 * SCENE_SCALE, speed: 1.3, texture: moonTextureBasePath + 'saturn_titan.jpg', inclination: 0.35 * degToRad,
+                            name: 'Titan', 
+                            radius: 1.01 * SCENE_SCALE, 
+                            distance: 144.9 * SCENE_SCALE, 
+                            speed: 0.063, 
+                            texture: moonTextureBasePath + 'saturn_titan.jpg', 
+                            inclination: 0.35 * degToRad,
+                            //Fakten
                             earthCompareRadius: '0,40x Erde', radius_km: '2.574', distance_Mio_km: '1,22 Mio. km', umlaufzeit: '15,95 Tage', temperatur: 'ca. -179°C', parentName: 'Saturn',
                             funFacts: ['Titan ist der einzige Mond mit einer dichten Atmosphäre.', 'Es gibt dort Seen und Flüsse aus flüssigem Methan und Ethan.']
                         }
                     ],
+                    //Fakten
                     name_de: 'Saturn', earthCompareRadius: '9,5x Erde', radius_km: '58.232', distance_Mio_km: '1,43 Mrd. km', umlaufzeit: '29,5 Jahre', taglaenge: '10h 34min', temperatur: 'ca. -139°C',
                     funFacts: ['Saturns beeindruckende Ringe bestehen fast nur aus Eisbrocken und Staub.', 'Er hat die geringste Dichte aller Planeten – er würde in einer riesigen Badewanne schwimmen!']
                 },
                 { 
-                    name: 'Uranus', radius: 6.0 * SCENE_SCALE, distance: 900 * SCENE_SCALE, yearDays: 30687, texture: textureBasePath + '2k_uranus.jpg', axialTilt: 97.77, rotationSpeed: 1.38,
-                    ecc: 0.046, perihelionAngle: 170.96 * degToRad, orbitalInclination: 0.77,
+                    name: 'Uranus', 
+                    radius: 10.0 * SCENE_SCALE, 
+                    distance: 1620 * SCENE_SCALE, 
+                    yearDays: 30687, 
+                    texture: textureBasePath + '2k_uranus.jpg', 
+                    axialTilt: 97.77, rotationSpeed: 1.38,
+                    ecc: 0.046, 
+                    perihelionAngle: 170.96 * degToRad, 
+                    orbitalInclination: 0.77,
+                    //Fakten
                     name_de: 'Uranus', earthCompareRadius: '4,0x Erde', radius_km: '25.362', distance_Mio_km: '2,87 Mrd. km', umlaufzeit: '84 Jahre', taglaenge: '17h 14min', temperatur: 'ca. -197°C',
                     funFacts: ['Uranus "rollt" auf seiner Bahn, da seine Achse um fast 98 Grad geneigt ist.', 'Er ist ein Eisriese und erscheint durch Methan in seiner Atmosphäre blau-grün.']
                 },
                 { 
-                    name: 'Neptune', radius: 5.8 * SCENE_SCALE, distance: 1100 * SCENE_SCALE, yearDays: 60190, texture: textureBasePath + '2k_neptune.jpg', axialTilt: 28.32, rotationSpeed: 1.49,
-                    ecc: 0.009, perihelionAngle: 44.97 * degToRad, orbitalInclination: 1.77,
+                    name: 'Neptune', 
+                    radius: 9.8 * SCENE_SCALE, 
+                    distance: 1980 * SCENE_SCALE, 
+                    yearDays: 60190, 
+                    texture: textureBasePath + '2k_neptune.jpg', 
+                    axialTilt: 28.32, 
+                    rotationSpeed: 1.49,
+                    ecc: 0.009, 
+                    perihelionAngle: 44.97 * degToRad, 
+                    orbitalInclination: 1.77,
+                    //Fakten
                     name_de: 'Neptun', earthCompareRadius: '3,9x Erde', radius_km: '24.622', distance_Mio_km: '4,50 Mrd. km', umlaufzeit: '165 Jahre', taglaenge: '16h 6min', temperatur: 'ca. -201°C',
                     funFacts: ['Auf Neptun wehen die schnellsten Winde im Sonnensystem (bis zu 2.100 km/h).', 'Er wurde 1846 durch mathematische Berechnungen entdeckt, bevor man ihn im Teleskop sah.']
                 },
                 {
-                    name: 'Pluto', radius: 0.5 * SCENE_SCALE, distance: 1300 * SCENE_SCALE, yearDays: 90582, texture: textureBasePath + '2k_pluto.jpg', axialTilt: 122.5, rotationSpeed: -0.156,
-                    ecc: 0.244, perihelionAngle: 224.07 * degToRad, orbitalInclination: 17.16, 
+                    name: 'Pluto', 
+                    radius: 0.19 * SCENE_SCALE, 
+                    distance: 2340 * SCENE_SCALE, 
+                    yearDays: 90582, texture: textureBasePath + '2k_pluto.jpg', 
+                    axialTilt: 122.5, 
+                    rotationSpeed: -0.156,
+                    ecc: 0.244, 
+                    perihelionAngle: 224.07 * degToRad, 
+                    orbitalInclination: 17.16, 
+                    //Fakten
                     name_de: 'Pluto (Zwergplanet)', earthCompareRadius: '0,19x Erde', radius_km: '1.188', distance_Mio_km: '5,9 Mrd. km (im Schnitt)', umlaufzeit: '248 Jahre', taglaenge: '6,4 Tage', temperatur: 'ca. -229°C',
                     funFacts: ['Pluto wurde 2006 vom Planeten zum "Zwergplaneten" umklassifiziert.', 'Seine Bahn ist so elliptisch, dass er zeitweise näher an der Sonne ist als Neptun.']
                 }
             ];
         }
 
+        function easeInOutCubic(t) {
+            // Helper für sanftes Beschleunigen und Abbremsen
+            return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        }
+
         function createSolarSystem() {
             const textureLoader = new THREE.TextureLoader();
 
-            const starGeometry = new THREE.SphereGeometry(3500, 32, 32); 
+            const starGeometry = new THREE.SphereGeometry(4000, 32, 32); 
             const starTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/8k_stars.jpg');
             const starMaterial = new THREE.MeshBasicMaterial({ map: starTexture, side: THREE.BackSide });
             starField = new THREE.Mesh(starGeometry, starMaterial);
@@ -1632,16 +1752,12 @@
             document.getElementById('focus-earth').addEventListener('click', () => {
                 if (isRealScaleActive) {
                     let earthPos = new THREE.Vector3();
-                    earthTiltPivot.getWorldPosition(earthPos);
-                    // Kamera hinter Erde platzieren, Blick zur Sonne
+                    earth.getWorldPosition(earthPos); 
                     const offsetDir = earthPos.clone().normalize(); 
                     offsetDir.y = 0.2; 
                     offsetDir.normalize();
-                    const endPos = earthPos.clone().add(offsetDir.multiplyScalar(EARTH_DISTANCE / 4.2));
-                    
-                    // Blickrichtung: Direkt zur Sonne (0,0,0) oder zur Erde?
-                    // Zur Erde ist besser, dann ist Sonne im Hintergrund.
-                    flyTo(endPos, earthPos, 2.0, earth); 
+                    const endPos = earthPos.clone().add(offsetDir.multiplyScalar(EARTH_RADIUS * 10)); 
+                    flyTo(endPos, earthPos, 1.5, earth);
                 } else {
                     setFocus(earth);
                 }
@@ -1650,15 +1766,10 @@
                 if (isRealScaleActive) {
                     let moonPos = new THREE.Vector3();
                     moon.getWorldPosition(moonPos);
-                    let earthPos = new THREE.Vector3();
-                    earthTiltPivot.getWorldPosition(earthPos);
-
-                    // Vektor von Sonne zum Mond für "Hinter"-Position
                     const sunToMoonDir = moonPos.clone().normalize();
                     sunToMoonDir.y = 0.1;
                     sunToMoonDir.normalize();
-
-                    const endPos = moonPos.clone().add(sunToMoonDir.multiplyScalar(MOON_RADIUS * 5)); // Nahe am Mond
+                    const endPos = moonPos.clone().add(sunToMoonDir.multiplyScalar(MOON_RADIUS * 5)); 
                      flyTo(endPos, moonPos, 2.0, moon); 
                 } else {
                     setFocus(moon);
@@ -1681,7 +1792,7 @@
             document.getElementById('demo-mofi').addEventListener('click', () => startDemo('mofi'));
             endDemoBtn.addEventListener('click', endDemo);
             document.getElementById('real-scale-btn').addEventListener('click', toggleRealScale);
-            document.getElementById('real-dist-checkbox').addEventListener('change', toggleRealDistance); 
+            document.getElementById('real-dist-btn').addEventListener('click', toggleRealDistance); 
             demoSpeedSlider.addEventListener('input', onDemoSpeedSliderChange);
             onDemoSpeedSliderChange();
 
@@ -1779,7 +1890,6 @@
             cometSpawnTimer = THREE.MathUtils.randFloat(600, 1200); 
             
             if (cometControls) cometControls.style.display = 'block';
-            // FIX: Stelle sicher, dass der Button sichtbar ist (falls er vorher versteckt wurde)
             if (followCometBtn) followCometBtn.style.display = 'block';
 
             document.getElementById('comet-speed-checkbox').checked = false;
@@ -2175,67 +2285,81 @@
         function toggleRealScale() {
             pauseSimulation();
             
-            // Wenn wir bereits aktiv sind, schalten wir aus
             if (isRealScaleActive) {
                 deactivateRealScale();
                 return;
             }
 
-            // Ansonsten aktivieren wir den Modus und starten die Sequenz
             activateRealScaleSequence();
         }
 
         function activateRealScaleSequence() {
             isRealScaleActive = true;
-            realityCheckPhase = 'positioning'; // Startphase
+            realityCheckPhase = 'positioning'; 
 
-            const btn = document.getElementById('real-scale-btn');
-            btn.textContent = 'Zurück zur Simulation';
-            btn.classList.remove('btn-danger');
-            btn.classList.add('btn-focus');
-            document.getElementById('real-dist-label').style.display = 'flex';
+            const scaleBtn = document.getElementById('real-scale-btn');
+            scaleBtn.textContent = 'Beenden (Zurück zur Simulation)';
+            scaleBtn.classList.remove('btn-secondary');
+            scaleBtn.classList.add('btn-danger'); // Rot für "Beenden"
+            
+            document.getElementById('real-dist-btn').style.display = 'block';
             
             infoBox.textContent = "MAẞSTAB: Kamera fliegt zur Position für Grössenvergleich...";
 
-            // UI aufräumen
+            // UI aufräumen & Bahnen verstecken
             setRealScaleUiVisibility(false);
-
-            // Objekte ausblenden
-            otherPlanetControls.forEach(ctrl => { ctrl.orbit.visible = false; });
-            otherPlanetOrbits.forEach(orbit => { orbit.visible = false; });
             earthOrbitLine.visible = false;
             moonOrbitLine.visible = false;
-            starField.visible = false;
+            otherPlanetOrbits.forEach(o => o.visible = false);
+
+            // --- NEUE REFERENZ-OBJEKTE ---
+            // 1. Geister-Sonne für Grössenvergleich (wächst mit)
+            const ghostGeo = new THREE.SphereGeometry(SUN_RADIUS, 32, 32);
+            const ghostMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.3 });
+            sunGhost = new THREE.Mesh(ghostGeo, ghostMat);
+            scene.add(sunGhost);
+
+            // 2. Referenz-Linie (Roter Faden) mit Ticks
+            const lineMat = new THREE.LineBasicMaterial({ color: 0xff3333, transparent: true, opacity: 0.8, linewidth: 2 });
+            const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0)]);
+            referenceLine = new THREE.Line(lineGeo, lineMat);
+            referenceLine.visible = false; 
+            scene.add(referenceLine);
+
+            // Ticks für den Faden
+            const tickGeo = new THREE.BufferGeometry();
+            const tickCount = 20;
+            const positions = new Float32Array(tickCount * 3);
+            tickGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const tickMat = new THREE.PointsMaterial({ color: 0xffaaaa, size: 4 * SCENE_SCALE, sizeAttenuation: false, transparent: true, opacity: 0.9 });
+            referenceTicks = new THREE.Points(tickGeo, tickMat);
+            referenceTicks.visible = false;
+            scene.add(referenceTicks);
+            // --- ENDE ---
 
             // Originalwerte sichern
             sun.userData.originalScale = sun.scale.clone();
             moon.userData.originalScale = moon.scale.clone();
             earthTiltPivot.userData.originalPosition = earthTiltPivot.position.clone();
-            moon.userData.originalPositionX = moon.position.x;
             camera.userData.originalFar = camera.far;
 
             // Kamera-Sichtweite erhöhen
-            camera.far = 200000; 
+            camera.far = 5000000; 
             camera.updateProjectionMatrix();
 
-            // Zielwerte initialisieren (Sonne noch klein lassen!)
             targetSunScale = 1.0; 
             targetEarthDistance = COMPARE_EARTH_DIST_VALUE;
-            targetMoonDistance = MOON_DISTANCE; // Mond bleibt erst mal nah
             
-            // Sofortige Positionierung der Erde für den Flug
             earthTiltPivot.position.set(targetEarthDistance, 0, 0);
             currentEarthDistance = targetEarthDistance;
 
-            // Flug zur Beobachtungsposition starten
             let earthPos = new THREE.Vector3(targetEarthDistance, 0, 0);
             let sunToEarth = earthPos.clone().normalize();
-            // Startposition für Kamera: Hinter der Erde, Blick zur Sonne
-            let camStartPos = earthPos.clone().add(sunToEarth.multiplyScalar(50)); 
-            camStartPos.y += 10;
+            let camTargetPos = earthPos.clone().add(sunToEarth.multiplyScalar(50)); 
+            camTargetPos.y += 10;
+            let camTargetTarget = new THREE.Vector3(0,0,0);
 
-            flyTo(camStartPos, new THREE.Vector3(0,0,0), 3.0, null, () => {
-                // Callback wenn Flug beendet: Start Phase 2 (Sonne wächst)
+            flyTo(camTargetPos, camTargetTarget, 1.5, null, () => {
                 realityCheckPhase = 'growing';
                 targetSunScale = REAL_SUN_SCALE_FACTOR;
                 infoBox.textContent = "MAẞSTAB: Sonne wächst auf reale Grösse...";
@@ -2247,29 +2371,41 @@
             isRealDistanceActive = false;
             realityCheckPhase = 'idle';
 
-            const btn = document.getElementById('real-scale-btn');
-            btn.textContent = 'Maßstab-Realitäts-Check';
-            btn.classList.add('btn-danger');
-            btn.classList.remove('btn-focus');
-            document.getElementById('real-dist-label').style.display = 'none';
-            document.getElementById('real-dist-checkbox').checked = false;
+            const scaleBtn = document.getElementById('real-scale-btn');
+            scaleBtn.textContent = '🔍 Reale Grössen';
+            scaleBtn.classList.remove('btn-danger');
+            scaleBtn.classList.add('btn-secondary');
+            scaleBtn.style.order = 1; // Reset order
 
-            // UI wiederherstellen
+            document.getElementById('real-dist-btn').style.display = 'none';
+            const distBtn = document.getElementById('real-dist-btn');
+            distBtn.textContent = "🚀 Reale Distanz";
+            distBtn.classList.remove('btn-warning');
+            distBtn.classList.add('btn-secondary');
+            distBtn.style.order = 2; // Reset order
+
+            // --- Referenz-Objekte entfernen ---
+            if (sunGhost) { scene.remove(sunGhost); sunGhost.geometry.dispose(); sunGhost.material.dispose(); sunGhost = null; }
+            if (referenceLine) { scene.remove(referenceLine); referenceLine.geometry.dispose(); referenceLine.material.dispose(); referenceLine = null; }
+            if (referenceTicks) { scene.remove(referenceTicks); referenceTicks.geometry.dispose(); referenceTicks.material.dispose(); referenceTicks = null; }
+            // --- ENDE ---
+
             setRealScaleUiVisibility(true);
-
-            // Werte zurücksetzen
-            if (sun.userData.originalScale) sun.scale.copy(sun.userData.originalScale);
-            if (moon.userData.originalScale) moon.scale.copy(moon.userData.originalScale);
-            if (earthTiltPivot.userData.originalPosition) earthTiltPivot.position.copy(earthTiltPivot.userData.originalPosition);
-            if (moon.userData.originalPositionX) moon.position.x = moon.userData.originalPositionX;
             
+            // Bahnen wiederherstellen basierend auf Checkboxen
+            earthOrbitLine.visible = orbitCheckbox.checked;
+            moonOrbitLine.visible = orbitCheckbox.checked;
+            otherPlanetOrbits.forEach(o => o.visible = planetsOrbitCheckbox.checked);
+
+            earthTiltPivot.visible = true;
+            if (sun.userData.originalScale) sun.scale.copy(sun.userData.originalScale);
             currentSunScale = 1.0;
             currentEarthDistance = EARTH_DISTANCE;
             currentMoonDistance = MOON_DISTANCE;
 
             setTimeout(() => {
                 if (!isRealScaleActive) {
-                     camera.far = 5000;
+                     camera.far = 8000; 
                      camera.updateProjectionMatrix();
                 }
             }, 500);
@@ -2277,22 +2413,22 @@
             updatePositions(currentDay);
             setFocus(sun, 1.5);
             updateUI();
+            if (!isPlaying) togglePlay();
         }
 
         function setRealScaleUiVisibility(visible) {
             const displayStyle = visible ? '' : 'none';
-            // Sonnensystem, Erde, Mond Buttons behalten wir. 
-            // Wir verstecken den Rest.
+            const flexStyle = visible ? 'flex' : 'none';
+
             document.getElementById('focus-ecliptic').style.display = displayStyle;
             document.getElementById('planet-focus-buttons').style.display = visible && planetsVisibleCheckbox.checked ? 'flex' : 'none';
+            document.getElementById('orbit-checkbox').parentElement.style.display = flexStyle;
+            document.getElementById('planets-visible-checkbox').parentElement.parentElement.style.display = flexStyle; 
+            document.getElementById('demo-buttons').style.display = flexStyle;
+            document.getElementById('moon-phases-group').style.display = displayStyle;
+            document.getElementById('play-group').style.display = flexStyle;
+            document.getElementById('time-controls').style.display = displayStyle;
             
-            // FIX: Nutze die direkten Referenzen statt querySelector mit 'for' Attribut
-            orbitCheckbox.parentElement.style.display = displayStyle;
-            // Wir suchen den Container der Checkboxen (das Eltern-Div der Labels)
-            planetsVisibleCheckbox.parentElement.parentElement.style.display = displayStyle;
-
-            document.getElementById('demo-buttons').style.display = displayStyle;
-            // Komet Controls falls sichtbar auch verstecken
             if (cometControls.style.display !== 'none' && !visible) {
                  cometControls.dataset.wasVisible = 'true';
                  cometControls.style.display = 'none';
@@ -2300,21 +2436,59 @@
                  cometControls.style.display = 'block';
             }
         }
-        // ---------------------------------------------
 
-        function toggleRealDistance(e) {
-            isRealDistanceActive = e.target.checked;
+        function toggleRealDistance() {
+            isRealDistanceActive = !isRealDistanceActive;
+            const distBtn = document.getElementById('real-dist-btn');
+            const scaleBtn = document.getElementById('real-scale-btn');
+            
+            flightStartState.progress = 0;
+            flightStartState.duration = 5.0; // Etwas länger für den weiten Weg
+            flightStartState.startDist = currentEarthDistance;
+            flightStartState.startMoonDist = currentMoonDistance; 
+
             if (isRealDistanceActive) {
                 targetEarthDistance = REAL_EARTH_DIST_VALUE;
-                targetMoonDistance = REAL_MOON_DIST_VALUE; // Jetzt auch Mond anpassen
-                infoBox.textContent = "DISTANZ: Flug zur realen Erd-Position (58.500 Einheiten)...";
-                // Wir setzen den Fokus auf 'earth_flight', damit updateCamera weiss, was zu tun ist
-                cameraFocus = 'earth_flight';
+                targetMoonDistance = REAL_MOON_DIST_VALUE;
+                infoBox.textContent = "DISTANZ: Flug in die reale Leere...";
+                realityCheckPhase = 'flying_out';
+                controls.enabled = false;
+                
+                // Knopf anpassen: Gelb, Sonne-Emoji, Wichtig -> Oben
+                distBtn.textContent = "☀️ Zurück zur Sonne";
+                distBtn.classList.remove('btn-secondary');
+                distBtn.classList.add('btn-warning');
+                distBtn.style.order = 1; // Nach oben
+                scaleBtn.style.order = 2; // Nach unten
+
+                // Roter Faden sichtbar machen
+                if (referenceLine) {
+                     referenceLine.visible = true;
+                     referenceLine.material.opacity = 0.8;
+                }
+                if (referenceTicks) {
+                    referenceTicks.visible = true;
+                    referenceTicks.material.opacity = 0.9;
+                }
+                referenceFadeTimer = 0;
+
             } else {
                 targetEarthDistance = COMPARE_EARTH_DIST_VALUE;
-                targetMoonDistance = MOON_DISTANCE; // Mond wieder nah ran
-                infoBox.textContent = "DISTANZ: Zurück zum Grössenvergleich neben der Sonne.";
-                cameraFocus = 'earth_flight'; // Gleicher Flugmodus zurück
+                targetMoonDistance = MOON_DISTANCE;
+                infoBox.textContent = "DISTANZ: Rückflug zur Aufstellung...";
+                realityCheckPhase = 'flying_in';
+                controls.enabled = false;
+                
+                // Knopf zurücksetzen
+                distBtn.textContent = "🚀 Reale Distanz";
+                distBtn.classList.remove('btn-warning');
+                distBtn.classList.add('btn-secondary');
+                distBtn.style.order = 2; // Wieder nach unten
+                scaleBtn.style.order = 1; // Wieder nach oben
+
+                // Faden sofort ausblenden beim Rückflug
+                if (referenceLine) referenceLine.visible = false;
+                if (referenceTicks) referenceTicks.visible = false;
             }
         }
 
@@ -2344,32 +2518,127 @@
             const deltaTime = clock.getDelta(); 
             
             if (isRealScaleActive) {
-                // Phase 3: Wachsende Sonne & Kamerafahrt nach hinten
                 if (realityCheckPhase === 'growing') {
-                    // Sonne wächst
-                    currentSunScale = THREE.MathUtils.lerp(currentSunScale, targetSunScale, 0.01);
-                    sun.scale.set(currentSunScale, currentSunScale, currentSunScale);
-
-                    // Kamera fährt proportional zurück
-                    // Wenn Scale 1.0 -> Distanz 50. Wenn Scale 13.6 -> Distanz ca. 300
-                    let progress = (currentSunScale - 1.0) / (REAL_SUN_SCALE_FACTOR - 1.0);
-                    let targetCamDist = 50 + (progress * 750); // Ziel ca. 800 Einheiten hinter Erde
+                    const growthSpeed = 0.4; 
+                    currentSunScale += growthSpeed * deltaTime;
                     
-                    let earthPos = new THREE.Vector3(currentEarthDistance, 0, 0);
-                    let camPos = earthPos.clone().add(new THREE.Vector3(targetCamDist, 10, 0));
-                    camera.position.lerp(camPos, 0.1);
-                    controls.target.set(0,0,0); // Blick bleibt auf Sonne
-
-                    if (progress >= 0.99) {
+                    if (currentSunScale >= targetSunScale) {
+                        currentSunScale = targetSunScale;
                         realityCheckPhase = 'active';
                         infoBox.textContent = "MAẞSTAB: Reale Grösse erreicht.";
+
+                        // ALT (sofort ausblenden):
+                        // if (sunGhost) sunGhost.visible = false;
+
+                        // NEU (mit 2 Sekunden Verzögerung):
+                        if (sunGhost) {
+                            setTimeout(() => {
+                                // Wir prüfen nochmal, ob sunGhost noch existiert,
+                                // falls der Modus vorher beendet wurde.
+                                if (sunGhost) { 
+                                    sunGhost.visible = false;
+                                }
+                            }, 2000); // 2000ms = 2 Sekunden
+                        }
+                    }
+                    sun.scale.set(currentSunScale, currentSunScale, currentSunScale);
+                    if (sunGhost) sunGhost.scale.set(currentSunScale, currentSunScale, currentSunScale);
+
+                    // Automatischer Kamera-Zoom während des Wachstums, damit Sonne sichtbar bleibt
+                    const fovFactor = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+                    // Benötigte Distanz, um die ganze Sonne zu sehen (plus 10% Margin)
+                    const requiredCamDist = (SUN_RADIUS * currentSunScale * 1.4) / fovFactor;
+                    
+                    // Wir bewegen die Kamera entlang des Vektors von der Sonne zur aktuellen Kameraposition
+                    const sunToCam = camera.position.clone().normalize();
+                    // Wir nehmen mindestens die aktuelle Distanz oder die benötigte, je nachdem was größer ist
+                    const currentDist = camera.position.length();
+                    const newDist = Math.max(currentDist, requiredCamDist);
+                    camera.position.copy(sunToCam.multiplyScalar(newDist));
+                }
+                else if (realityCheckPhase === 'flying_out') {
+                    const earthOrbitAngle = (currentDay / EARTH_YEAR_DAYS) * Math.PI * 2;
+                    flightStartState.progress += deltaTime / flightStartState.duration;
+                    const easing = easeInOutCubic(Math.min(1.0, flightStartState.progress)); 
+                    currentEarthDistance = THREE.MathUtils.lerp(flightStartState.startDist, targetEarthDistance, easing);
+                    
+                    if (flightStartState.progress >= 1.0) {
+                        currentEarthDistance = targetEarthDistance; 
+                        realityCheckPhase = 'active_distant';
+                        infoBox.textContent = "ANGEKOMMEN! Distanz: ca. 150 Mio. km";
+                        controls.enabled = true;
+                        cameraFocus = earth; 
+                        let earthPos = new THREE.Vector3(Math.cos(earthOrbitAngle) * currentEarthDistance, 0, -Math.sin(earthOrbitAngle) * currentEarthDistance);
+                        controls.target.copy(earthPos);
+                    } else {
+                         // Während des Fluges nah an der Erde bleiben
+                         let earthPos = new THREE.Vector3(Math.cos(earthOrbitAngle) * currentEarthDistance, 0, -Math.sin(earthOrbitAngle) * currentEarthDistance);
+                         const offsetDir = earthPos.clone().normalize();
+                         offsetDir.y = 0.2; offsetDir.normalize();
+                         const camPos = earthPos.clone().add(offsetDir.multiplyScalar(EARTH_RADIUS * 20)); 
+                         camera.position.copy(camPos);
+                         controls.target.copy(earthPos); 
+                    }
+                    currentMoonDistance = THREE.MathUtils.lerp(flightStartState.startMoonDist, targetMoonDistance, easing);
+                }
+                else if (realityCheckPhase === 'active_distant') {
+                    // Roter Faden nach 3 Sekunden ausblenden
+                    if (referenceLine && referenceLine.visible) {
+                        referenceFadeTimer += deltaTime;
+                        if (referenceFadeTimer > 3.0) {
+                            const fadeDuration = 1.0;
+                            const opacity = Math.max(0, 0.8 * (1.0 - (referenceFadeTimer - 3.0) / fadeDuration));
+                            referenceLine.material.opacity = opacity;
+                            referenceTicks.material.opacity = opacity;
+                            if (opacity <= 0) {
+                                referenceLine.visible = false;
+                                referenceTicks.visible = false;
+                            }
+                        }
                     }
                 }
+                else if (realityCheckPhase === 'flying_in') {
+                    const earthOrbitAngle = (currentDay / EARTH_YEAR_DAYS) * Math.PI * 2;
+                    flightStartState.progress += deltaTime / flightStartState.duration;
+                    const easing = easeInOutCubic(Math.min(1.0, flightStartState.progress)); 
+                    currentEarthDistance = THREE.MathUtils.lerp(flightStartState.startDist, targetEarthDistance, easing);
 
-                // Distanz-Flug Logik
-                const distLerpFactor = isRealDistanceActive ? 0.02 : 0.05; // Sanfter Flug
-                currentEarthDistance = THREE.MathUtils.lerp(currentEarthDistance, targetEarthDistance, distLerpFactor);
-                currentMoonDistance = THREE.MathUtils.lerp(currentMoonDistance, targetMoonDistance, 0.05);
+                    if (flightStartState.progress >= 1.0) {
+                        currentEarthDistance = targetEarthDistance;
+                        realityCheckPhase = 'active';
+                        infoBox.textContent = "Wieder beim Grössenvergleich.";
+                        let earthPos = new THREE.Vector3(Math.cos(earthOrbitAngle) * currentEarthDistance, 0, -Math.sin(earthOrbitAngle) * currentEarthDistance);
+                        // Kamera zurücksetzen, weit genug weg für die grosse Sonne
+                        const fovFactor = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+                        // 1. Berechne den Fortschritt des Wachstums (von 0.0 bis 1.0)
+                        const growthProgress = (currentSunScale - 1.0) / (targetSunScale - 1.0);
+
+                        // 2. Definiere den Start- und End-Puffer
+                        const startBuffer = 20.0; // Starte mit 200% Puffer (Faktor 3.0)
+                        const endBuffer = 1.1;   // Ende mit 10% Puffer (Faktor 1.1)
+
+                        // 3. Berechne den aktuellen Puffer basierend auf dem Fortschritt
+                        const currentBuffer = THREE.MathUtils.lerp(startBuffer, endBuffer, Math.min(growthProgress, 1.0));
+
+                        // 4. Nutze den neuen, dynamischen Puffer für die Distanzberechnung
+                        const requiredCamDist = (SUN_RADIUS * currentSunScale * currentBuffer) / fovFactor;
+                        // --- ENDE NEU ---
+                        
+                        // Position relativ zur Erde, aber weit weg
+                        const camEndPos = earthPos.clone().normalize().multiplyScalar(requiredCamDist);
+                        camEndPos.y += 50; // Etwas Höhe
+                        
+                        flyTo(camEndPos, new THREE.Vector3(0,0,0), 1.5, null, () => { controls.enabled = true; });
+                    } else {
+                         let earthPos = new THREE.Vector3(Math.cos(earthOrbitAngle) * currentEarthDistance, 0, -Math.sin(earthOrbitAngle) * currentEarthDistance);
+                         const offsetDir = earthPos.clone().normalize();
+                         offsetDir.y = 0.2; offsetDir.normalize();
+                         const camPos = earthPos.clone().add(offsetDir.multiplyScalar(EARTH_RADIUS * 20)); 
+                         camera.position.copy(camPos);
+                         controls.target.copy(earthPos);
+                    }
+                    currentMoonDistance = THREE.MathUtils.lerp(flightStartState.startMoonDist, targetMoonDistance, easing);
+                }
             }
 
             if (comet) {
@@ -2435,7 +2704,6 @@
 
         function updatePositions(day) {
             const earthOrbitAngle = (day / EARTH_YEAR_DAYS) * Math.PI * 2;
-            // Nutze currentEarthDistance für die Position
             earthTiltPivot.position.set(Math.cos(earthOrbitAngle) * currentEarthDistance, 0, -Math.sin(earthOrbitAngle) * currentEarthDistance);
 
             let rotationFactor = 1.0;
@@ -2478,7 +2746,9 @@
 
             let tempParentPos = new THREE.Vector3();
             otherMoons.forEach(moonObj => {
-                moonObj.pivot.rotation.y = (day * moonObj.speed) * Math.PI * 2;
+                const startAngle = moonObj.data.startAngle || 0; 
+                moonObj.pivot.rotation.y = (day * moonObj.speed) * Math.PI * 2 + startAngle; 
+
                 let tempVec = new THREE.Vector3();
                 moonObj.mesh.getWorldPosition(tempVec);
                 moonObj.mesh.material.uniforms.uObjectWorldPosition.value.copy(tempVec);
@@ -2527,35 +2797,34 @@
                 earth.getWorldPosition(tempVec); 
                 originalMoonMaterial.uniforms.uEarthPosition.value.copy(tempVec);
             }
+
+            // --- NEU: Referenz-Linie & Ticks aktualisieren ---
+            if (isRealScaleActive && referenceLine && referenceLine.visible) {
+                const earthPos = earthTiltPivot.position;
+                // Linie
+                const positions = referenceLine.geometry.attributes.position;
+                positions.setXYZ(1, earthPos.x, earthPos.y, earthPos.z);
+                positions.needsUpdate = true;
+
+                // Ticks entlang der Linie verteilen
+                const tickPosAttr = referenceTicks.geometry.attributes.position;
+                const tickCount = tickPosAttr.count;
+                for (let i = 0; i < tickCount; i++) {
+                    const t = (i + 1) / (tickCount + 1); // 0 = Sonne, 1 = Erde. Ticks dazwischen.
+                    tickPosAttr.setXYZ(i, earthPos.x * t, earthPos.y * t, earthPos.z * t);
+                }
+                tickPosAttr.needsUpdate = true;
+            }
         }
 
         function updateCamera(isJump = false) {
             if (isCameraTransitioning || isJump) return;
             
             if (isRealScaleActive) {
-                // Keine automatische Rücksetzung mehr nach Interaktion!
-                
-                if (cameraFocus === 'earth_flight') {
-                    // Synchronflug mit der Erde
-                    let earthPos = new THREE.Vector3();
-                    earthTiltPivot.getWorldPosition(earthPos);
-
-                    let sunToEarthDir = earthPos.clone().normalize(); 
-                    // Kamera bleibt in fester relativer Position zur Erde während des Flugs
-                    // Wir nehmen die letzte bekannte "gute" Distanz oder einen Standardwert
-                    let currentCamDist = camera.position.distanceTo(earthPos);
-                    // Mindestabstand 50, damit wir nicht IN der Erde sind
-                    let targetDist = Math.max(50, Math.min(currentCamDist, 1000)); 
-                    
-                    let camOffset = sunToEarthDir.multiplyScalar(targetDist);
-                    camOffset.y += 10; // Leicht von oben
-
-                    // Wir setzen die Kamera HART, damit sie nicht "nachzieht" beim schnellen Flug
-                    camera.position.copy(earthPos.clone().add(camOffset));
-                    controls.target.copy(earthPos); 
-                } 
-                // Wenn Growing Phase vorbei ist und User nichts tut, keine automatische Bewegung mehr erzwingen
-                return;
+                if (realityCheckPhase === 'active' || realityCheckPhase === 'active_distant') {
+                    lastCameraTargetPos.copy(controls.target);
+                }
+                return; 
             }
 
             let targetObject;
@@ -2660,14 +2929,10 @@
                  infoText += ` | Komet: ${speedKmh.toLocaleString('de-DE')} km/h`;
             }
             
-            if (isRealDistanceActive) {
-                 const progress = (currentEarthDistance - COMPARE_EARTH_DIST_VALUE) / (REAL_EARTH_DIST_VALUE - COMPARE_EARTH_DIST_VALUE);
-                 const percent = Math.min(100, Math.max(0, Math.round(progress * 100)));
-                 infoText = `Flug zur realen Distanz: ${percent}%`;
-                 
-                 if (percent >= 99) {
-                     infoText = "ANGEKOMMEN! Distanz: ca. 150 Mio. km";
-                 }
+            if (realityCheckPhase === 'flying_out' || realityCheckPhase === 'flying_in') {
+                 const kmPerUnit = 149600000 / REAL_EARTH_DIST_VALUE;
+                 const currentKm = Math.round(currentEarthDistance * kmPerUnit);
+                 infoText = `Distanz zur Sonne: ${currentKm.toLocaleString('de-DE')} km`;
             }
 
             infoBox.textContent = infoText;
@@ -2764,7 +3029,7 @@
             const factMap = {
                 earthCompareRadius: 'Größe',
                 radius_km: 'Radius', 
-                distance_Mio_km: 'Abstand', 
+                distance_Mio_km: 'Abstand zur Sonne', 
                 umlaufzeit: 'Umlaufzeit (Sonne)', 
                 taglaenge: 'Tageslänge',
                 temperatur: 'Durchschnittstemp.', 
