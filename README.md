@@ -124,6 +124,17 @@
         #play-pause-btn.playing:hover {
             background-color: #218838;
         }
+        
+        /* --- NEU: Style für Zurückspul-Button --- */
+        #rewind-btn.playing {
+            background-color: #007bff; 
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+        }
+        #rewind-btn.playing:hover {
+            background-color: #0056b3;
+        }
+        /* --- Ende NEU --- */
+
 
         .btn-secondary {
             background-color: #4a4a4a;
@@ -205,6 +216,13 @@
             flex-grow: 1;
             font-size: 12px;
             padding: 6px 8px;
+        }
+        
+        /* --- NEU: Style für Frequenz-Button --- */
+        #demo-freq {
+            width: 100%;
+            margin-bottom: 5px;
+            font-size: 13px;
         }
 
         #moon-focus-container {
@@ -506,11 +524,12 @@
         <div class="control-group" id="controls-general">
             <h3>Steuerung</h3>
             <div class="btn-group" style="margin-bottom: 15px;" id="play-group">
+                <button id="rewind-btn" class="btn btn-secondary" title="Zurückspulen">⏮</button>
                 <button id="play-pause-btn" class="btn">Pause</button>
             </div>
             
             <div id="time-controls">
-                <label for="day-slider">Tag im Jahr: (Eingabe)</label>
+                <label for="day-slider">Zeitsteuerung (1. Jahr): <span id="current-day-label" style="font-weight: bold; color: #ffc107;">0.0</span></label>
                 <input type="range" id="day-slider" min="0" max="365" value="0" step="0.1">
                 
                 <label for="speed-slider" style="margin-top: 10px;">Geschwindigkeit: <span id="speed-label"></span></label>
@@ -526,10 +545,15 @@
             </div>
 
             <div id="visibility-controls">
-                 <label class="checkbox-label" style="margin-top: 15px;">
+                <label class="checkbox-label" style="margin-top: 15px;">
                     <input type="checkbox" id="orbit-checkbox" checked>
                     Erd-/Mondbahn anzeigen
                 </label>
+                <label class="checkbox-label" style="margin-top: 10px;">
+                    <input type="checkbox" id="equator-checkbox">
+                    Äquatorlinie anzeigen
+                </label>
+            <div style="display: flex; gap: 15px; margin-top: 10px;">
                 
                 <div style="display: flex; gap: 15px; margin-top: 10px;">
                     <label class="checkbox-label" style="flex: 1;">
@@ -546,7 +570,7 @@
             <label for="darkness-slider" style="margin-top: 10px;">Helligkeit (Nachtseite): <span id="darkness-label">0.30</span></label>
             <input type="range" id="darkness-slider" min="0" max="0.9" value="0.3" step="0.01">
         </div>
-
+        
         <div class="control-group">
             <h3>Kamera-Fokus</h3>
             <div class="btn-group">
@@ -564,8 +588,16 @@
         <div class="control-group">
             <h3>Ereignisse & Extras</h3>
             <div class="btn-group" id="demo-buttons">
-                <button id="demo-sofi" class="btn btn-warning">Sonnenfinsternis</button>
-                <button id="demo-mofi" class="btn btn-warning">Mondfinsternis</button>
+                <button id="demo-freq" class="btn btn-info">Sonnenfinsternis Häufigkeit</button>
+                <button id="demo-sofi" class="btn btn-warning">Sonnenfinsternisschatten</button>
+                <button id="demo-mofi" class="btn btn-warning">Mondfinsternisschatten</button>
+            </div>
+            
+            <div id="freq-demo-controls" class="control-group" style="display: none; margin-bottom: 0; padding-top: 10px; border-top: 1px dashed #555; margin-top: 10px;">
+                <label class="checkbox-label" style="margin-top: 0;">
+                    <input type="checkbox" id="real-ratio-checkbox">
+                    Reale Grössenverhältnisse
+                </label>
             </div>
             
             <div class="btn-group" id="demo-control-buttons" style="display: none; margin-top: 10px;">
@@ -583,14 +615,14 @@
         <div class="control-group" id="moon-phases-group">
             <h3>Mondphasen</h3>
             <div id="moon-phases-ui">
-                <button id="phase-0" data-phase-index="0" class="moon-phase-btn" title="Neumond (Springen)">🌑</button>
-                <button id="phase-1" data-phase-index="1" class="moon-phase-btn" title="Zunehmende Sichel (Springen)">🌒</button>
-                <button id="phase-2" data-phase-index="2" class="moon-phase-btn" title="Zunehmender Halbmond (Springen)">🌓</button>
-                <button id="phase-3" data-phase-index="3" class="moon-phase-btn" title="Zunehmendes Drittel (Springen)">🌔</button>
-                <button id="phase-4" data-phase-index="4" class="moon-phase-btn" title="Vollmond (Springen)">🌕</button>
-                <button id="phase-5" data-phase-index="5" class="moon-phase-btn" title="Abnehmendes Drittel (Springen)">🌖</button>
-                <button id="phase-6" data-phase-index="6" class="moon-phase-btn" title="Abnehmender Halbmond (Springen)">🌗</button>
-                <button id="phase-7" data-phase-index="7" class="moon-phase-btn" title="Abnehmende Sichel (Springen)">🌘</button>
+                <button id="phase-0" data-phase-index="0" class="moon-phase-btn" title="Neumond">🌑</button>
+                <button id="phase-1" data-phase-index="1" class="moon-phase-btn" title="Zunehmende Sichel">🌒</button>
+                <button id="phase-2" data-phase-index="2" class="moon-phase-btn" title="Zunehmender Halbmond">🌓</button>
+                <button id="phase-3" data-phase-index="3" class="moon-phase-btn" title="Zunehmendes Drittel">🌔</button>
+                <button id="phase-4" data-phase-index="4" class="moon-phase-btn" title="Vollmond">🌕</button>
+                <button id="phase-5" data-phase-index="5" class="moon-phase-btn" title="Abnehmendes Drittel">🌖</button>
+                <button id="phase-6" data-phase-index="6" class="moon-phase-btn" title="Abnehmender Halbmond">🌗</button>
+                <button id="phase-7" data-phase-index="7" class="moon-phase-btn" title="Abnehmende Sichel">🌘</button>
             </div>
         </div>
 
@@ -632,7 +664,7 @@
 
     <div id="ufo-dialog">
         <h3>🛸 Unbekanntes Flugobjekt</h3>
-        <div id="ufo-dialog-text">Wir sind auf dem Weg zur Erde um diese zu übernehmen. Weißt du wo die ist?</div>
+        <div id="ufo-dialog-text">Bist du von der Klasse 6b? Wir sind auf dem Weg zur Erde, um Herr Maurer zu entführen. Weißt du wo das ist?</div>
         <div class="ufo-btn-group" id="ufo-initial-buttons">
             <button id="ufo-yes-btn" class="ufo-btn">Ja, dort lang! 👉</button>
             <button id="ufo-no-btn" class="ufo-btn">Keine Ahnung 🤷‍♂️</button>
@@ -653,6 +685,7 @@
         // --- NEU: Globale Variable für Achsenlinie ---
         let earthAxisLine = null;
         // --- Ende NEU ---
+        let earthEquatorLine = null;
         
         let earthOrbitLine, moonOrbitLine;
         let starField;
@@ -666,6 +699,9 @@
         let planetRingMaterials = []; 
 
         let isPlaying = true;
+        // *** ÄNDERUNG 2: Globale Variable für Zurückspulen ***
+        let isRewinding = false;
+        
         let currentDay = 0;
         let speed = 1.0;
         let cameraFocus = 'system';
@@ -686,6 +722,7 @@
         let rulerFadeTimer = 0;
         
         let distanceLabelEl = null;
+        let currentDayLabelEl = null;
 
         let targetSunScale = 1.0;
         let targetEarthDistance; 
@@ -703,6 +740,17 @@
         let demoShadowBrightness = 0.0; 
         let demoRedOverlay = 0.0; 
         let earthDemoRotationOffset = 0.0;
+
+        // --- NEU: Frequenz-Demo-Variablen ---
+        let isFrequencyDemoActive = false;
+        let freqDemoControls;
+        let realRatioCheckbox;
+        let originalSunScale = new THREE.Vector3(1,1,1);
+        let originalMoonScale = new THREE.Vector3(1,1,1);
+        let freqDemoSunScale;   // Skalierung der Sonne, um zur Mond-Simulation zu passen
+        let realRatioSunScale;  // Reale Winkelgrösse (Sonne)
+        let realRatioMoonScale; // Reale Winkelgrösse (Mond)
+        // ------------------------------------
         
         // Kamera-Animation (Tweening)
         const clock = new THREE.Clock();
@@ -747,7 +795,7 @@
         const EARTH_YEAR_DAYS = 365.25;
         const LUNAR_MONTH_DAYS = 29.53; 
         
-        const PHASE_OFFSET_DAYS = 5; 
+        const PHASE_OFFSET_DAYS = 0; 
 
         // --- Konstanten für reale Verhältnisse ---
         const REAL_SUN_SCALE_FACTOR = (109 * EARTH_RADIUS) / SUN_RADIUS; 
@@ -761,14 +809,14 @@
         const RING_SHADOW_SOFTNESS = 10 * SCENE_SCALE;
         
         const PHASE_DAY_MAP = [
-            LUNAR_MONTH_DAYS * 0.02  + PHASE_OFFSET_DAYS, 
-            LUNAR_MONTH_DAYS * 0.145 + PHASE_OFFSET_DAYS, 
-            LUNAR_MONTH_DAYS * 0.27  + PHASE_OFFSET_DAYS, 
-            LUNAR_MONTH_DAYS * 0.395 + PHASE_OFFSET_DAYS, 
-            LUNAR_MONTH_DAYS * 0.55  + PHASE_OFFSET_DAYS, 
-            LUNAR_MONTH_DAYS * 0.71  + PHASE_OFFSET_DAYS, 
-            LUNAR_MONTH_DAYS * 0.85  + PHASE_OFFSET_DAYS, 
-            LUNAR_MONTH_DAYS * 0.97  + PHASE_OFFSET_DAYS  
+            LUNAR_MONTH_DAYS * 0.0  + PHASE_OFFSET_DAYS, 
+            LUNAR_MONTH_DAYS * 0.125 + PHASE_OFFSET_DAYS, 
+            LUNAR_MONTH_DAYS * 0.25  + PHASE_OFFSET_DAYS, 
+            LUNAR_MONTH_DAYS * 0.375 + PHASE_OFFSET_DAYS, 
+            LUNAR_MONTH_DAYS * 0.5  + PHASE_OFFSET_DAYS, 
+            LUNAR_MONTH_DAYS * 0.625  + PHASE_OFFSET_DAYS, 
+            LUNAR_MONTH_DAYS * 0.75  + PHASE_OFFSET_DAYS, 
+            LUNAR_MONTH_DAYS * 0.875  + PHASE_OFFSET_DAYS  
         ];
 
         let isUserControllingCamera = false;
@@ -1338,10 +1386,14 @@
             }
         `;
 
-        // ### ÄNDERUNG: Hilfsfunktion zum Beenden von Demos ###
+        // ### ÄNDERUNG: Hilfsfunktion zum Beenden von Demos (ERWEITERT) ###
         function checkAndEndDemo() {
             if (isDemoActive) {
                 endDemo();
+            }
+            // NEU:
+            if (isFrequencyDemoActive) {
+                endFrequencyDemo();
             }
         }
         
@@ -1372,9 +1424,35 @@
             }
         }
         // --- Ende NEU ---
+        
+        function formatDayCount(day) {
+            // Die Konstante EARTH_YEAR_DAYS (365.25) ist bereits global definiert
+            
+            const sign = day < 0 ? "-" : "";
+            const absDay = Math.abs(day);
+            
+            const years = Math.trunc(absDay / EARTH_YEAR_DAYS);
+            const remainingDays = absDay % EARTH_YEAR_DAYS;
+            
+            // Runden auf eine Nachkommastelle
+            const daysFixed = remainingDays.toFixed(1);
+            
+            // Plural-Regeln (vereinfacht)
+            const dayPlural = (parseFloat(daysFixed) === 1.0) ? "Tag" : "Tage";
+
+            if (years === 0) {
+                // Format: "-10.5 Tage"
+                return `${sign}${daysFixed} ${dayPlural}`;
+            } else {
+                // Format: "-1 Jahr 0.8 Tage"
+                const yearPlural = (years === 1) ? "Jahr" : "Jahre";
+                return `${sign}${years} ${yearPlural} ${daysFixed} ${dayPlural}`;
+            }
+        }
 
         function init() {
             distanceLabelEl = document.getElementById('distance-label');
+            currentDayLabelEl = document.getElementById('current-day-label');
 
             infoToastButton = document.getElementById('info-toast-button');
             followCometBtn = document.getElementById('follow-comet-btn'); 
@@ -1423,6 +1501,30 @@
 
             definePlanetData();
             createSolarSystem();
+
+            // --- NEU: Skalierungsfaktoren berechnen NACHDEM createSolarSystem() lief ---
+            originalSunScale.copy(sun.scale);
+            originalMoonScale.copy(moon.scale);
+
+            // 1. Berechne, wie gross die Sonne sein muss, um die gleiche *scheinbare Grösse* wie der Mond
+            //    in der Simulation (aus 15 Einheiten Entfernung) zu haben.
+            //    Winkel(Mond) = 2 * atan( (Radius*Scale) / (2 * Distanz) )
+            const moonApparentSizeRad = 2 * Math.atan((MOON_RADIUS * originalMoonScale.x) / (2 * MOON_DISTANCE));
+            // Finde neuen Sonnenradius: tan(Winkel/2) = (NeuerRadius) / (Sonnendistanz)
+            const newSunRadius = Math.tan(moonApparentSizeRad / 2) * EARTH_DISTANCE;
+            // Berechne Skalierungsfaktor
+            freqDemoSunScale = (newSunRadius / (SUN_RADIUS * originalSunScale.x)) * 2.05;
+
+            // 2. Berechne Skalierung für reale Winkelgrösse (ca. 0.52 Grad)
+            const realAngSizeRad = (0.52 * Math.PI) / 180;
+            // Mond
+            const realRatioNewMoonRadius = Math.tan(realAngSizeRad / 2) * MOON_DISTANCE;
+            realRatioMoonScale = realRatioNewMoonRadius / (MOON_RADIUS * originalMoonScale.x);
+            // Sonne
+            const realRatioNewSunRadius = Math.tan(realAngSizeRad / 2) * EARTH_DISTANCE;
+            realRatioSunScale = (realRatioNewSunRadius / (SUN_RADIUS * originalSunScale.x)) * 1.2;
+            // --- ENDE NEU ---
+
             createOrbits();
             setupUI();
 
@@ -1697,7 +1799,7 @@
             clickableObjects.push(earth); 
             earthTiltPivot.add(earth); 
             
-            // --- NEU: Achsenlinie erstellen ---
+// --- NEU: Achsenlinie erstellen ---
             const axisMat = new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 2 }); // Helles Gelb
             const axisPoints = [
                 new THREE.Vector3(0, -EARTH_RADIUS * 1.5, 0),
@@ -1707,6 +1809,22 @@
             earthAxisLine = new THREE.Line(axisGeo, axisMat);
             earthAxisLine.visible = false; // Standardmässig unsichtbar
             earthTiltPivot.add(earthAxisLine); // Zur Pivot-Gruppe hinzufügen
+            // --- Ende NEU ---
+
+// --- NEU: Äquatorlinie erstellen ---
+            const equatorRadius = EARTH_RADIUS * 1.01; // 1% größer als die Erde
+            const equatorPoints = [];
+            const equatorSegments = 64;
+            for (let i = 0; i <= equatorSegments; i++) {
+                const angle = (i / equatorSegments) * Math.PI * 2;
+                // Ein Kreis in der X-Z-Ebene des Pivots (das ist die Äquatorebene)
+                equatorPoints.push(new THREE.Vector3(Math.cos(angle) * equatorRadius, 0, Math.sin(angle) * equatorRadius)); 
+            }
+            const equatorGeo = new THREE.BufferGeometry().setFromPoints(equatorPoints);
+            const equatorMat = new THREE.LineBasicMaterial({ color: 0xff0000 }); // Rot
+            earthEquatorLine = new THREE.Line(equatorGeo, equatorMat);
+            earthEquatorLine.visible = false; // Standardmäßig unsichtbar
+            earthTiltPivot.add(earthEquatorLine); // Zur gekippten Pivot-Gruppe hinzufügen
             // --- Ende NEU ---
 
             moonPivot = new THREE.Group();
@@ -1900,9 +2018,24 @@
             earthOrbitLine.visible = orbitCheckbox.checked;
             moonOrbitLine.visible = orbitCheckbox.checked;
 
+// --- NEU: Listener für Äquator-Checkbox ---
+            const equatorCheckbox = document.getElementById('equator-checkbox');
+            equatorCheckbox.addEventListener('change', (e) => {
+                if (earthEquatorLine) {
+                    earthEquatorLine.visible = e.target.checked;
+                }
+            });
+            // Initialen Status setzen (ausgeschaltet)
+            if (earthEquatorLine) {
+                earthEquatorLine.visible = equatorCheckbox.checked;
+            }
+// --- Ende NEU ---
+
             planetsVisibleCheckbox.addEventListener('change', (e) => {
                 const isVisible = e.target.checked;
                 otherPlanetControls.forEach(ctrl => { ctrl.orbit.visible = isVisible; });
+                // *** ÄNDERUNG 3: Listener muss auch Monde steuern ***
+                otherMoons.forEach(moonObj => { moonObj.mesh.visible = isVisible; });
                 planetFocusContainer.style.display = isVisible ? 'flex' : 'none';
             });
             planetsOrbitCheckbox.addEventListener('change', (e) => {
@@ -1934,12 +2067,45 @@
             onSpeedSliderChange(); 
             playPauseBtn.addEventListener('click', togglePlay);
             
+            // *** ÄNDERUNG 2: Listener für Zurückspul-Button ***
+            const rewindBtn = document.getElementById('rewind-btn');
+            rewindBtn.addEventListener('mousedown', startRewind);
+            rewindBtn.addEventListener('mouseup', stopRewind);
+            rewindBtn.addEventListener('mouseleave', stopRewind); // Wichtig, falls Maus abrutscht
+            rewindBtn.addEventListener('touchstart', startRewind, { passive: false });
+            rewindBtn.addEventListener('touchend', stopRewind);
+            // --- Ende Änderung 2 ---
+            
             const daySlider = document.getElementById('day-slider');
             daySlider.addEventListener('input', () => {
                 pauseSimulation();
                 currentDay = parseFloat(daySlider.value);
+                if (currentDayLabelEl) currentDayLabelEl.textContent = formatDayCount(currentDay);
                 updatePositions(currentDay);
                 updateUI();
+
+                // --- HIER STARTET DEIN NEUER CODE ---
+
+                // 1. Prüfen, ob ein Objekt (und kein String wie 'system') fokussiert ist
+                if (cameraFocus && typeof cameraFocus !== 'string') {
+
+                    // 2. Die NEUE Position des Objekts holen
+                    let newTargetPos = new THREE.Vector3();
+                    cameraFocus.getWorldPosition(newTargetPos);
+
+                    // 3. Die Differenz (delta) zur LETZTEN bekannten Position berechnen
+                    //    (lastCameraTargetPos wurde im letzten Frame von animate() gesetzt)
+                    const delta = newTargetPos.clone().sub(lastCameraTargetPos);
+
+                    // 4. Kamera und Kontroll-Ziel um dieses Delta verschieben
+                    camera.position.add(delta);
+                    controls.target.add(delta);
+
+                    // 5. Die "letzte" Position für den nächsten "input"-Event aktualisieren
+                    //    (damit es auch beim weiteren Ziehen funktioniert)
+                    lastCameraTargetPos.copy(newTargetPos);
+                }
+                // --- HIER ENDET DEIN NEUER CODE ---
             });
             
             const initialBrightness = parseFloat(darknessSlider.value);
@@ -1979,9 +2145,9 @@
                     let moonPos = new THREE.Vector3();
                     moon.getWorldPosition(moonPos);
                     const sunToMoonDir = moonPos.clone().normalize();
-                    sunToMoonDir.y = 0.1;
+                    sunToMoonDir.y = 0.25;
                     sunToMoonDir.normalize();
-                    const endPos = moonPos.clone().add(sunToMoonDir.multiplyScalar(MOON_RADIUS * 5)); 
+                    const endPos = moonPos.clone().add(sunToMoonDir.multiplyScalar(MOON_RADIUS * 12)); 
                      flyTo(endPos, moonPos, 2.0, moon); 
                 } else {
                     setFocus(moon);
@@ -1995,6 +2161,16 @@
                 resetActiveIndicators();
                 document.getElementById('focus-ecliptic').classList.add('active');
                 // --- Ende NEU ---
+
+                // --- 💡 HIER DIE NEUEN ZEILEN FÜR DIE LOGIK ---
+                
+                // 1. Andere Planeten und ihre Bahnen ausblenden
+                toggleOtherPlanets(false); 
+                
+                // 2. Sicherstellen, dass Erd- & Mondbahn ihrer Checkbox folgen (wie gewünscht)
+                restoreOrbitLines(); 
+                
+                // --- 💡 ENDE NEU ---
                 
                 cameraFocus = 'ecliptic_side_view'; 
                 let earthPos = new THREE.Vector3();
@@ -2007,9 +2183,22 @@
                 flyTo(endPos, target, 2.0, 'ecliptic_side_view'); 
             });
 
+            // --- NEU: Listener für Frequenz-Demo ---
+            document.getElementById('demo-freq').addEventListener('click', startFrequencyDemo);
+            // --- ENDE NEU ---
+
             document.getElementById('demo-sofi').addEventListener('click', () => startDemo('sofi'));
             document.getElementById('demo-mofi').addEventListener('click', () => startDemo('mofi'));
-            endDemoBtn.addEventListener('click', endDemo);
+            
+            // --- NEU: End-Button-Listener angepasst ---
+            endDemoBtn.addEventListener('click', () => {
+                if (isFrequencyDemoActive) {
+                    endFrequencyDemo();
+                } else if (isDemoActive) {
+                    endDemo();
+                }
+            });
+            // --- ENDE NEU ---
             
             document.getElementById('real-scale-btn').addEventListener('click', () => {
                 checkAndEndDemo();
@@ -2079,7 +2268,7 @@
 
             // --- UFO Dialog Listener ---
             document.getElementById('ufo-yes-btn').addEventListener('click', () => {
-                document.getElementById('ufo-dialog-text').textContent = "Perfekt. Danke für die Hilfe. Wir sehen uns dann bald wieder. Ciao!";
+                document.getElementById('ufo-dialog-text').textContent = "Perfekt. Danke für die Hilfe.";
                 document.getElementById('ufo-initial-buttons').style.display = 'none';
                 const closeGroup = document.getElementById('ufo-close-group');
                 closeGroup.style.display = 'flex';
@@ -2118,10 +2307,10 @@
             // --------------------------------
             
             // --- NEU: Jahreszeiten-Listener (überarbeitet) ---
-            const SEASON_SPRING_DAY = 79.7;  // Frühlingsäquinoktium (ca. 20. März)
-            const SEASON_SUMMER_DAY = 355.45; // Sommersonnenwende (ca. 21. Juni)
-            const SEASON_AUTUMN_DAY = 265.13; // Herbstäquinoktium (ca. 23. September)
-            const SEASON_WINTER_DAY = 171.93; // Wintersonnenwende (ca. 21. Dezember)
+            const SEASON_SPRING_DAY = 274.19;  // Frühlingsäquinoktium (ca. 20. März)
+            const SEASON_SUMMER_DAY = 0.49; // Sommersonnenwende (ca. 21. Juni)
+            const SEASON_AUTUMN_DAY = 91.76; // Herbstäquinoktium (ca. 23. September)
+            const SEASON_WINTER_DAY = 182.95; // Wintersonnenwende (ca. 21. Dezember)
             
             const seasonSpringBtn = document.getElementById('season-spring');
             const seasonSummerBtn = document.getElementById('season-summer');
@@ -2141,6 +2330,12 @@
                 jumpToSeason(SEASON_WINTER_DAY, seasonWinterBtn);
             });
             // --- Ende NEU ---
+
+            // --- NEU: DOM-Elemente und Listener für Frequenz-Demo holen ---
+            freqDemoControls = document.getElementById('freq-demo-controls');
+            realRatioCheckbox = document.getElementById('real-ratio-checkbox');
+            realRatioCheckbox.addEventListener('change', applyFrequencyDemoScaling);
+            // --- ENDE NEU ---
         }
 
         // --- Komet Funktionen ---
@@ -2335,7 +2530,33 @@
             cameraFocus = 'transitioning'; 
         }
         
+        // *** ÄNDERUNG 2: Handler-Funktionen für Zurückspulen ***
+        function startRewind(e) {
+            e.preventDefault();
+            if (isDemoActive || isRealScaleActive) {
+                return; // Nicht während Demos oder Real-Scale zurückspulen
+            }
+            
+            isRewinding = true;
+            if (isPlaying) {
+                togglePlay(); // Anhalten, wenn abgespielt wird
+            }
+            document.getElementById('rewind-btn').classList.add('playing'); // Visuelles Feedback
+        }
+
+        function stopRewind() {
+            isRewinding = false;
+            document.getElementById('rewind-btn').classList.remove('playing');
+        }
+        // --- Ende Änderung 2 ---
+
         function togglePlay() {
+            // *** ÄNDERUNG 2: Sicherstellen, dass Spulen gestoppt wird, wenn Play gedrückt wird ***
+            if (isRewinding) {
+                stopRewind();
+            }
+            // --- Ende Änderung 2 ---
+            
             isPlaying = !isPlaying;
             playPauseBtn.textContent = isPlaying ? 'Pause' : 'Play';
             if (isPlaying) {
@@ -2350,11 +2571,16 @@
             if (isPlaying) {
                 togglePlay();
             }
+            // *** ÄNDERUNG 2: Auch Spulen anhalten ***
+            if (isRewinding) {
+                stopRewind();
+            }
+            // --- Ende Änderung 2 ---
         }
         
         function onSpeedSliderChange() {
             const value = parseFloat(speedSlider.value); 
-            const minSpeed = 0.00000005; 
+            const minSpeed = 0.0000019013; 
             const normalSpeed = 1.0; 
             const fastSpeed = 10.0;
             const maxSpeed = 100.0; 
@@ -2411,6 +2637,10 @@
             // --- NEU: Alle Indikatoren zu Beginn zurücksetzen ---
             resetActiveIndicators();
             // --- Ende NEU ---
+            // NEU: Planeten wieder einblenden, wenn ein Fokus-Knopf gedrückt wird
+            // Wir prüfen, ob der Fokus auf dem Mond liegt, um die Ansicht für Erd-Mond-System zu behalten.
+            toggleOtherPlanets(true);
+            
 
             // Spezialfall für 'Sonnensystem'-Button
             if (targetObj === sun) {
@@ -2510,7 +2740,7 @@
             if (isRealScaleActive && targetObj !== sun) {
                 const sunPos = new THREE.Vector3(0,0,0);
                 const planetToSun = new THREE.Vector3().subVectors(sunPos, targetPos).normalize();
-                const camOffset = planetToSun.clone().negate().multiplyScalar(radius * 5); 
+                const camOffset = planetToSun.clone().negate().multiplyScalar(radius * 30); 
                 camOffset.y += radius * 2; 
                 
                 const endPos = targetPos.clone().add(camOffset);
@@ -2541,6 +2771,78 @@
             controls.enableZoom = true;
         }
 
+        // --- NEU: Funktionen zur Steuerung der Frequenz-Demo ---
+        
+        function startFrequencyDemo() {
+            checkAndEndDemo(); // Beendet andere Demos (SoFi/MoFi) oder RealScale
+            isFrequencyDemoActive = true;
+            pauseSimulation();
+
+            // Andere Planeten und Erdbahn ausblenden
+            toggleOtherPlanets(false);
+            earthOrbitLine.visible = false;
+            moonOrbitLine.visible = true; // Mondbahn explizit zeigen
+
+            // UI-Steuerung anzeigen
+            freqDemoControls.style.display = 'block';
+            realRatioCheckbox.checked = false;
+            demoControlButtons.style.display = 'flex'; // "Demo beenden" anzeigen
+            demoButtons.style.display = 'none'; // Andere Demo-Buttons verstecken
+
+            // Zeit zurücksetzen
+            currentDay = 0;
+            if (currentDayLabelEl) currentDayLabelEl.textContent = formatDayCount(currentDay);
+            updatePositions(currentDay);
+            document.getElementById('day-slider').value = currentDay;
+            updateUI();
+
+            // Initiale Skalierung anwenden (Sonne = scheinbare Grösse Mond)
+            applyFrequencyDemoScaling();
+
+            // Kamera fixieren
+            controls.enabled = false;
+            cameraFocus = 'eclipse_frequency_view';
+            updateCamera(true); // 'true' erzwingt sofortige Neupositionierung
+        }
+
+        function applyFrequencyDemoScaling() {
+            if (!isFrequencyDemoActive) return;
+
+            if (realRatioCheckbox.checked) {
+                // Checkbox AN: Reale Winkelgrössen (beide sehr klein)
+                sun.scale.set(realRatioSunScale, realRatioSunScale, realRatioSunScale);
+                moon.scale.set(realRatioMoonScale, realRatioMoonScale, realRatioMoonScale);
+            } else {
+                // Checkbox AUS: Sonne an simulierte Mondgrösse angepasst
+                sun.scale.set(freqDemoSunScale, freqDemoSunScale, freqDemoSunScale);
+                moon.scale.copy(originalMoonScale); // Mond auf Normalgrösse
+            }
+        }
+
+        function endFrequencyDemo() {
+            isFrequencyDemoActive = false;
+
+            // UI-Steuerung verstecken
+            freqDemoControls.style.display = 'none';
+            demoControlButtons.style.display = 'none';
+            demoButtons.style.display = 'flex';
+
+            // Skalierung zurücksetzen
+            sun.scale.copy(originalSunScale);
+            moon.scale.copy(originalMoonScale);
+
+            // Sichtbarkeiten wiederherstellen (basierend auf Checkboxen)
+            toggleOtherPlanets(true);
+            restoreOrbitLines();
+
+            // Kamera freigeben und zurücksetzen
+            controls.enabled = true;
+            setFocus(sun, 1.0);
+        }
+        
+        // --- ENDE NEUE FUNKTIONEN ---
+
+
         function resetToRealMode() {
             isDemoActive = false;
             demoType = '';
@@ -2560,14 +2862,17 @@
         }
         
         function startDemo(type) {
-            // --- NEU: Indikatoren zurücksetzen ---
-            resetActiveIndicators();
-            // --- Ende NEU ---
+            // --- NEU: Frequenz-Demo auch beenden ---
+            checkAndEndDemo();
+            // --- ENDE NEU ---
             
             pauseSimulation(); 
             resetToRealMode(); 
             isDemoActive = true;
             demoType = type;
+            toggleOtherPlanets(false);    // 1. Planeten & Bahnen ausblenden
+            earthOrbitLine.visible = false; // 2. Erdbahn explizit ausblenden
+            moonOrbitLine.visible = false;  // 3. Mondbahn explizit ausblenden
             isPlaying = true; 
             playPauseBtn.textContent = 'Pause';
             playPauseBtn.classList.add('playing'); 
@@ -2587,14 +2892,24 @@
                 moon.position.y = 0.3; 
             } else if (type === 'mofi') {
                 earthTiltPivot.rotation.z = EARTH_TILT_RAD;
-                demoDurationDays = 17.5 - 14.3; 
-                currentDay = 14.3; 
+                
+                // Wir definieren den idealen Mittelpunkt (Vollmond)
+                const FULL_MOON_DAY = 29.53 / 2; // = 14.765
+                const demoDurationDays = 3.5; 
+                
+                // Start bei ca. 13.015 Tagen
+                currentDay = FULL_MOON_DAY - (demoDurationDays / 2); 
                 demoLoopStartDay = currentDay;
-                demoLoopEndDay = 17.5; 
+                
+                // Ende bei ca. 16.515 Tagen
+                demoLoopEndDay = FULL_MOON_DAY + (demoDurationDays / 2); 
+                
                 moonPivot.position.y = MOON_RADIUS * 1.0; 
                 originalMoonMaterial.uniforms.uDemoActive.value = true;
             }
-            
+
+            if (currentDayLabelEl) currentDayLabelEl.textContent = formatDayCount(currentDay);
+
             updatePositions(currentDay); 
             const daySlider = document.getElementById('day-slider');
             daySlider.value = currentDay;
@@ -2625,7 +2940,10 @@
             // --- Ende NEU ---
             
             resetToRealMode();
+            toggleOtherPlanets(true);  // Stellt Planeten gem. Checkbox wieder her
+            restoreOrbitLines();       // Stellt Erd/Mond-Bahnen gem. Checkbox wieder her
             currentDay = 0; 
+            if (currentDayLabelEl) currentDayLabelEl.textContent = formatDayCount(currentDay);
             const daySlider = document.getElementById('day-slider');
             daySlider.value = currentDay;
             moonPivot.position.y = 0; 
@@ -2974,14 +3292,22 @@
             pauseSimulation(); 
             resetToRealMode(); 
             
+            // --- NEU: Frequenz-Demo auch beenden ---
+            if (isFrequencyDemoActive) endFrequencyDemo();
+            // --- ENDE NEU ---
+            
             // --- NEU: Indikatoren zurücksetzen ---
             resetActiveIndicators();
-            // --- Ende NEU ---
+            
+            restoreOrbitLines();
+            // NEU: Planeten ausblenden, da der Fokus auf dem Mondzyklus liegt
+            toggleOtherPlanets(false);
             
             earthDemoRotationOffset = 0.0; 
             moonPivot.position.y = 0; 
             moon.position.y = 0;
             currentDay = PHASE_DAY_MAP[index];
+            if (currentDayLabelEl) currentDayLabelEl.textContent = formatDayCount(currentDay);
             
             // moonPhaseButtons.forEach(btn => { btn.classList.remove('active'); }); // Wird jetzt von resetActiveIndicators() erledigt
             const clickedButton = moonPhaseButtons.find(btn => parseInt(btn.dataset.phaseIndex) === index);
@@ -2998,50 +3324,97 @@
             flyTo(earthPos, moonPos, 0, 'earthView'); 
         }
 
-        // --- NEU: Funktion zum Springen zu Jahreszeiten (überarbeitet) ---
-        function jumpToSeason(day, clickedBtn) {
-            // 1. Demos & Realitätscheck beenden
-            checkAndEndDemo(); 
-            if (isRealScaleActive) {
-                deactivateRealScale(); 
+        // --- NEU: Hilfsfunktion zum Wiederherstellen der Erd/Mond-Bahnen ---
+            function restoreOrbitLines() {
+                // Liest den globalen Zustand der Checkbox
+                const isChecked = orbitCheckbox.checked;
+                earthOrbitLine.visible = isChecked;
+                moonOrbitLine.visible = isChecked;
             }
-            // 2. Simulation stoppen
-            pauseSimulation();
-
-            // 3. Alle Indikatoren zurücksetzen
-            resetActiveIndicators();
-
-            // 4. Tag setzen
-            currentDay = day;
-            const daySlider = document.getElementById('day-slider');
-            daySlider.value = currentDay;
-
-            // 5. Positionen aktualisieren
-            updatePositions(currentDay);
-            updateUI();
-
-            // 6. Neue Indikatoren setzen
-            if (clickedBtn) clickedBtn.classList.add('active');
-            if (earthAxisLine) earthAxisLine.visible = true;
-
-            // 7. Manuell zur Erde fliegen (um setFocus() mit seinem reset zu umgehen)
-            let earthPos = new THREE.Vector3();
-            earth.getWorldPosition(earthPos);
-            const radius = EARTH_RADIUS;
-            const fovInRad = THREE.MathUtils.degToRad(camera.fov);
-            // Distanz = (Radius / 0.8) / tan(FOV/2)
-            const distance = (radius / 0.3) / Math.tan(fovInRad / 2); 
+// --- Ende NEU ---
+        
+        // *** ÄNDERUNG 3: `toggleOtherPlanets` überarbeitet ***
+        function toggleOtherPlanets(visible) {
             
-            // Behalte die Kamerarichtung bei (von der Sonne weg, leicht erhöht)
-            const offsetDir = new THREE.Vector3(0, 0, 0).sub(earthPos).normalize();
-            offsetDir.y = 0.5; 
-            offsetDir.normalize(); 
-            const offset = offsetDir.multiplyScalar(distance); // Setze die berechnete Distanz
-            const endPos = earthPos.clone().add(offset);
+            // 1. UI-Elemente (Buttons) werden NICHT mehr von dieser Funktion gesteuert.
+            //    Das übernimmt der globale Checkbox-Listener in setupUI().
+            //    Wir steuern hier nur noch die 3D-Objekte.
+
+            // 2. Zustand der Haupt-Checkboxen prüfen
+            //    'visible' ist der Override (z.B. visible=false für Demos)
+            const planetsShouldBeVisible = visible && planetsVisibleCheckbox.checked;
+            const orbitsShouldBeVisible = visible && planetsOrbitCheckbox.checked;
+
+            // 3. Planeten-Meshes und Pivots steuern (Planetenkörper)
+            otherPlanetControls.forEach(ctrl => { 
+                ctrl.orbit.visible = planetsShouldBeVisible; 
+            });
+
+            // 4. Umlaufbahnen der Planeten steuern
+            otherPlanetOrbits.forEach(orbit => { 
+                orbit.visible = orbitsShouldBeVisible; 
+            });
             
-            flyTo(endPos, earthPos, 1.5, earth); // Fliegt zur Erde, setzt intern cameraFocus = earth
+            // 5. Monde der anderen Planeten steuern
+            otherMoons.forEach(moonObj => { 
+                moonObj.mesh.visible = planetsShouldBeVisible; 
+            });
         }
-        // --- Ende NEU ---
+        // --- Ende Änderung 3 ---
+
+
+        // --- NEU: Funktion zum Springen zu Jahreszeiten (überarbeitet) ---
+        // --- NEU: Funktion zum Springen zu Jahreszeiten (überarbeitet) ---
+        // --- NEU: Funktion zum Springen zu Jahreszeiten (überarbeitet) ---
+function jumpToSeason(day, clickedBtn) {
+    // 1. Demos & Realitätscheck beenden
+    checkAndEndDemo(); 
+    if (isRealScaleActive) {
+        deactivateRealScale(); 
+    }
+    // 2. Simulation stoppen
+    pauseSimulation();
+
+    restoreOrbitLines(); //Erd und Mondlaufbahn wiederherstellen
+
+    // 3. Alle Indikatoren zurücksetzen
+    resetActiveIndicators();
+
+    // 4. Tag setzen
+    currentDay = day;
+    if (currentDayLabelEl) currentDayLabelEl.textContent = formatDayCount(currentDay);
+    const daySlider = document.getElementById('day-slider');
+    daySlider.value = currentDay;
+
+    // 5. Positionen aktualisieren
+    updatePositions(currentDay);
+    updateUI();
+    
+    // 💡 HIER DIE ÄNDERUNG: Von 'true' auf 'false'
+    toggleOtherPlanets(false); // <--- Planeten ausblenden
+
+    // 6. Neue Indikatoren setzen
+    if (clickedBtn) clickedBtn.classList.add('active');
+    if (earthAxisLine) earthAxisLine.visible = true;
+
+    // 7. Manuell zur Erde fliegen (restlicher Code bleibt gleich)
+    let earthPos = new THREE.Vector3();
+    earth.getWorldPosition(earthPos);
+    const radius = EARTH_RADIUS;
+    const fovInRad = THREE.MathUtils.degToRad(camera.fov);
+    const distance = (radius / 0.3) / Math.tan(fovInRad / 2); 
+    
+    const offsetDir = new THREE.Vector3(0, 0, 0).sub(earthPos).normalize();
+    offsetDir.y = 0.5; 
+    offsetDir.normalize(); 
+    const offset = offsetDir.multiplyScalar(distance);
+    const endPos = earthPos.clone().add(offset);
+    
+    flyTo(endPos, earthPos, 1.5, earth); 
+}
+// --- Ende NEU ---
+       
+
 
         function animate() {
             requestAnimationFrame(animate);
@@ -3204,10 +3577,25 @@
                     controls.target.lerpVectors(cameraTransitionStartTarget, cameraTransitionEndTarget, t);
                 }
             }
+            
+            // *** ÄNDERUNG 2: Logik für Zeit-Update (Spulen/Spielen) ***
             let actualSpeed = speed;
             if (isDemoActive) actualSpeed = demoLoopSpeed;
+            else if (isFrequencyDemoActive) actualSpeed = speed;
 
-            if (isPlaying) {
+            if (isRewinding) {
+                let daysPerSecondFactor = EARTH_YEAR_DAYS / 60.0;
+                const deltaDays = actualSpeed * daysPerSecondFactor * deltaTime;
+                currentDay -= deltaDays;
+                
+                
+
+                const daySlider = document.getElementById('day-slider');
+                daySlider.value = ((currentDay % EARTH_YEAR_DAYS) + EARTH_YEAR_DAYS) % EARTH_YEAR_DAYS;
+                if (currentDayLabelEl) currentDayLabelEl.textContent = formatDayCount(currentDay);
+                updateUI();
+                
+            } else if (isPlaying) {
                 let daysPerSecondFactor;
                 if (isDemoActive) {
                     daysPerSecondFactor = 1.0;
@@ -3222,10 +3610,19 @@
                     if (currentDay > demoLoopEndDay) currentDay = demoLoopStartDay; 
                     else if (currentDay < demoLoopStartDay) currentDay = demoLoopEndDay;
                 }
+                // --- NEU: Frequenz-Demo läuft einfach weiter ---
+                // --- NEU: Frequenz-Demo läuft einfach weiter ---
+                else if (isFrequencyDemoActive) {
+                    // if (currentDay > EARTH_YEAR_DAYS) currentDay -= EARTH_YEAR_DAYS; // <-- AUSKOMMENTIEREN
+                }
+                
                 const daySlider = document.getElementById('day-slider');
                 daySlider.value = currentDay % EARTH_YEAR_DAYS;
+                if (currentDayLabelEl) currentDayLabelEl.textContent = formatDayCount(currentDay);
                 updateUI();
             }
+            // --- Ende Änderung 2 ---
+
             
             updatePositions(currentDay);
             updateCamera(false); 
@@ -3267,7 +3664,7 @@
             earth.getWorldPosition(earthWorldPos);
             
             moonPivot.position.copy(earthWorldPos);
-            moonPivot.rotation.y = moonOrbitAngle; 
+            moonPivot.rotation.y = earthOrbitAngle + moonOrbitAngle; 
             moonOrbitLine.position.copy(earthWorldPos);
             moon.rotation.y = 0;
             moon.position.x = -currentMoonDistance; 
@@ -3321,25 +3718,62 @@
             let tempVec = new THREE.Vector3();
             earth.getWorldPosition(tempVec);
             earth.material.uniforms.uObjectWorldPosition.value.copy(tempVec);
+            
             let moonWorldPosition = new THREE.Vector3();
             moon.getWorldPosition(moonWorldPosition);
             earth.material.uniforms.uMoonPosition.value.copy(moonWorldPosition);
+            
+            // --- NEU: Mondradius-Uniform basierend auf Skalierung aktualisieren ---
+            earth.material.uniforms.uMoonRadius.value = MOON_RADIUS * moon.scale.x;
+
 
             if (isDemoActive && demoType === 'mofi') {
                 const animProgress = (currentDay - demoLoopStartDay) / (demoLoopEndDay - demoLoopStartDay);
                 const dayToProgress = (d) => (d - demoLoopStartDay) / (demoLoopEndDay - demoLoopStartDay);
-                const peakDay = 15.7; const peakProgress = dayToProgress(peakDay); 
-                const redFadeInStart = peakProgress - 0.05; const redFadeOutStart = dayToProgress(16.4); const redFadeOutEnd = dayToProgress(16.5);   
-                const shadowFadeInStart = peakProgress - 0.05; const shadowFadeInEnd = peakProgress;         
-                const shadowFadeOutStart = dayToProgress(16.2); const shadowFadeOutEnd = dayToProgress(16.5);
+                
+                const peakDay = 14.765; 
+                const peakProgress = dayToProgress(peakDay); 
+                
+                // --- ANGEPASSTE WERTE ---
+                
+                // Rot-werden beginnt: Vorverlegung auf z.B. 0.5 Tage vor dem Höhepunkt (vorher 0.45)
+                const redFadeInStart = dayToProgress(peakDay - 0.48); 
+                // NEU: Ende des Einblendens (Rot erreicht maximale Helligkeit, z.B. 0.2 Tage nach Höhepunkt)
+                const redFullIntensityStart = dayToProgress(peakDay - 0.43);
+                
+                // Rot-werden verblasst: Startet z.B. 0.2 Tage nach dem Höhepunkt (wie gehabt)
+                const redFadeOutStart = dayToProgress(peakDay + 0.3); 
+                const redFadeOutEnd = dayToProgress(peakDay + 0.5); 
+                
+                // Schatten beginnt: Vorverlegung auf z.B. 0.7 Tage vor dem Höhepunkt (vorher 0.6)
+                const shadowFadeInStart = dayToProgress(peakDay - 0.48); 
+                const shadowFadeInEnd = dayToProgress(peakDay - 0.43);         
+                
+                // Schatten verblasst: Startet z.B. 0.2 Tage nach dem Höhepunkt (wie gehabt)
+                const shadowFadeOutStart = dayToProgress(peakDay + 0.2); 
+                const shadowFadeOutEnd = dayToProgress(peakDay + 0.5);
+                
+                // --- ENDE ANPASSUNG ---
+                
                 const shadowTargetBrightness = 0.6; 
-                let redIntensity = 0.0; let shadowBrightness = 0.0; 
-                if (animProgress <= peakProgress) {
-                    const fadeProgress = Math.max(0.0, (animProgress - redFadeInStart) / (peakProgress - redFadeInStart));
-                    redIntensity = (fadeProgress * fadeProgress); 
-                } else if (animProgress > peakProgress && animProgress <= redFadeOutEnd) {
-                    const fadeProgress = (animProgress - peakProgress) / (redFadeOutEnd - peakProgress);
-                    redIntensity = 1.0 - (fadeProgress * fadeProgress); 
+                
+                // ... (Der Rest des Animationscodes folgt, unverändert) ...
+                let redIntensity = 0.0; 
+                let shadowBrightness = 0.0;
+
+                if (animProgress <= redFullIntensityStart) {
+                    // Phase 1: Rot blenden EIN (von redFadeInStart bis redFullIntensityStart)
+                    const fadeDuration = redFullIntensityStart - redFadeInStart;
+                    const fadeProgress = Math.min(1.0, Math.max(0.0, (animProgress - redFadeInStart) / fadeDuration));
+                    redIntensity = fadeProgress; 
+                } else if (animProgress <= redFadeOutStart) {
+                    // Phase 2: Volle Intensität halten
+                    redIntensity = 1.0;
+                } else if (animProgress <= redFadeOutEnd) {
+                    // Phase 3: Rot blenden AUS (von redFadeOutStart bis redFadeOutEnd)
+                    const fadeDuration = redFadeOutEnd - redFadeOutStart;
+                    const fadeProgress = Math.min(1.0, Math.max(0.0, (animProgress - redFadeOutStart) / fadeDuration));
+                    redIntensity = 1.0 - fadeProgress; 
                 }
                 if (animProgress > shadowFadeInStart && animProgress <= shadowFadeInEnd) {
                     const fadeProgress = (animProgress - shadowFadeInStart) / (shadowFadeInEnd - shadowFadeInStart);
@@ -3358,6 +3792,8 @@
                 originalMoonMaterial.uniforms.uObjectWorldPosition.value.copy(tempVec);
                 earth.getWorldPosition(tempVec); 
                 originalMoonMaterial.uniforms.uEarthPosition.value.copy(tempVec);
+                // --- NEU: Mondradius-Uniform basierend auf Skalierung aktualisieren ---
+                originalMoonMaterial.uniforms.uMoonRadius.value = MOON_RADIUS * moon.scale.x;
             }
         }
 
@@ -3374,6 +3810,23 @@
             let targetObject;
 
             if (typeof cameraFocus === 'string') {
+                
+                // --- NEU: Frequenz-Demo Kamera-Steuerung ---
+                if (cameraFocus === 'eclipse_frequency_view') {
+                    let camPos = new THREE.Vector3();
+                    let targetPos = new THREE.Vector3();
+                    // Kamera-Position = Zentrum der Erdbahn (nicht die gekippte Erde)
+                    earthTiltPivot.getWorldPosition(camPos);
+                    // Ziel = Sonne
+                    sun.getWorldPosition(targetPos);
+                    
+                    camera.position.copy(camPos);
+                    controls.target.copy(targetPos);
+                    lastCameraTargetPos.copy(targetPos);
+                    return;
+                }
+                // --- ENDE NEU ---
+
                 if (cameraFocus === 'earthView') {
                     if (isUserControllingCamera) {
                         cameraFocus = moon; 
@@ -3429,7 +3882,7 @@
             let currentTargetPos = new THREE.Vector3();
             targetObject.getWorldPosition(currentTargetPos);
             
-            if (isPlaying || isDemoActive) {
+            if (isPlaying || isDemoActive || isFrequencyDemoActive || isRewinding) { // NEU: Frequenz-Demo & Spulen hinzugefügt
                 const delta = currentTargetPos.clone().sub(lastCameraTargetPos);
                 camera.position.add(delta);
                 controls.target.add(delta);
@@ -3454,7 +3907,16 @@
             
             let infoText = `Mondphase: ${phaseName}`;
             
-            if (isDemoActive) {
+            // --- NEU: Info-Text für Frequenz-Demo ---
+            if (isFrequencyDemoActive) {
+                infoText = "Ansicht: Finsternis-Häufigkeit";
+                // Zeige Neigung der Mondbahn
+                let moonWorldY = moon.getWorldPosition(new THREE.Vector3()).y;
+                let earthWorldY = earth.getWorldPosition(new THREE.Vector3()).y; 
+                let yDiff = moonWorldY - earthWorldY;
+                infoText += ` | Mond-Neigung: ${yDiff.toFixed(1)}`;
+            
+            } else if (isDemoActive) {
                 if (demoType === 'sofi') infoText = "SONNENFINSTERNIS (Demo)";
                 else if (demoType === 'mofi') infoText = "MONDFINSTERNIS (Demo)";
             } else {
@@ -3465,6 +3927,7 @@
                 if (phaseIndex === 0 && yDiff < ECLIPSE_TOLERANCE) infoText += " (Mögliche SoFi)";
                 if (phaseIndex === 4 && yDiff < ECLIPSE_TOLERANCE) infoText += " (Mögliche MoFi)";
             }
+            // --- ENDE NEU ---
             
             if (comet && comet.mesh) {
                  const speedKmh = Math.round(comet.velocity.length() * 25000);
@@ -3489,6 +3952,9 @@
         }
 
         function onTouchStart(event) {
+            // *** ÄNDERUNG 2: passive: false im Listener in setupUI gesetzt ***
+            // Verhindert Scrollen beim Halten des Buttons
+            
             if (event.touches.length === 1) {
                 touchStartX = event.touches[0].clientX;
                 touchStartY = event.touches[0].clientY;
@@ -3503,6 +3969,14 @@
         }
         function onTouchEnd(event) {
             const targetElement = event.target;
+            // *** ÄNDERUNG 2: Sicherstellen, dass der Rewind-Button losgelassen wird ***
+            if (isRewinding && targetElement.id === 'rewind-btn') {
+                 stopRewind();
+                 event.preventDefault(); // Verhindert Klick-Events
+                 return;
+            }
+            // --- Ende Änderung 2 ---
+
             if (isDragging) { isDragging = false; return; }
             const touch = event.changedTouches[0];
             if (!touch) return; 
@@ -3516,7 +3990,12 @@
             const uiContainer = document.getElementById('ui-container');
             const popup = document.getElementById('info-popup');
             const ufoDialog = document.getElementById('ufo-dialog');
-            if (uiContainer.contains(targetElement) || popup.contains(targetElement) || ufoDialog.contains(targetElement) || infoToastButton.contains(targetElement)) return false; 
+            
+            // *** ÄNDERUNG 2: Rewind-Button von Klicks ausschliessen ***
+            if (uiContainer.contains(targetElement) || popup.contains(targetElement) || ufoDialog.contains(targetElement) || infoToastButton.contains(targetElement) || targetElement.id === 'rewind-btn') {
+                return false; 
+            }
+            // --- Ende Änderung 2 ---
             
             mouse.x = (x / window.innerWidth) * 2 - 1;
             mouse.y = -(y / window.innerHeight) * 2 + 1;
