@@ -220,6 +220,7 @@
         
         /* --- NEU: Style für Frequenz-Button --- */
         #demo-freq {
+            width: 100%;
             margin-bottom: 5px;
             font-size: 13px;
         }
@@ -378,7 +379,7 @@
             position: fixed;
             top: 50%;
             left: 50%;
-            transform: translate3d(-50%, -50%, 0);
+            transform: translate(-50%, -50%);
             background: rgba(0, 20, 0, 0.95); 
             color: #0f0; 
             padding: 25px;
@@ -768,23 +769,15 @@
         let mouse;
         let clickableObjects = [];
         
-        // --- ⛔️ ALTE TOUCH-HANDLING VARIABLEN ENTFERNT ---
-        // let touchStartX = 0;
-        // let touchStartY = 0;
-        // let isDragging = false;
-        // const dragThreshold = 10;
-        // --- ⛔️ ENDE ---
+        // Touch-Handling für Popup
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isDragging = false;
+        const dragThreshold = 10;
 
         // Interaction handling variables
         let interactionTimeout;
         let userInteractedRecently = false;
-        
-        // --- ✅ NEU: Globale Variablen zur Drag-Erkennung ---
-        let cameraStartPos = new THREE.Vector3();
-        let cameraStartTarget = new THREE.Vector3();
-        const DRAG_THRESHOLD = 0.8; // Ein kleiner Schwellenwert für die Bewegung
-        // --- ✅ ENDE NEU ---
-
 
         // --- Konstanten ---
         const SCENE_SCALE = 1.0;
@@ -902,7 +895,7 @@
                 this.group.add(this.mesh);
 
                 this.glowSprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
-                    map: new THREE.TextureLoader().load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/comet_sprite.png'), 
+                    map: new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/glow.png'), 
                     color: this.color, 
                     transparent: true, 
                     blending: THREE.AdditiveBlending,
@@ -1478,52 +1471,25 @@
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.1;
+            controls.touches = { ONE: 0, TWO: 2 };
             
-            // --- ✅ ÄNDERUNG: Touch-Controls angepasst ---
-            controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
-            
-            // --- ✅ 'start'-Listener ERSETZT ---
             controls.addEventListener('start', () => {
                 isUserControllingCamera = true;
+                userInteractedRecently = true;
+                if (interactionTimeout) clearTimeout(interactionTimeout);
                 
-                // WICHTIG: Blocker hier zurücksetzen, nicht setzen!
-                userInteractedRecently = false; 
-                
-                // NEU: Aktuelle Kamera-Position "merken"
-                cameraStartPos.copy(camera.position);
-                cameraStartTarget.copy(controls.target);
-                
-                // UI-Logik von vorher bleibt erhalten:
                 if (infoToastButton) {
                     infoToastButton.style.display = 'none';
                     currentSelectedInfo = null;
                 }
             });
 
-            // --- ✅ 'end'-Listener ERSETZT ---
             controls.addEventListener('end', () => {
                 isUserControllingCamera = false;
-
-                // NEU: Prüfen, ob sich die Kamera bewegt hat
-                const posDistance = camera.position.distanceTo(cameraStartPos);
-                const targetDistance = controls.target.distanceTo(cameraStartTarget);
-
-                if (posDistance > DRAG_THRESHOLD || targetDistance > DRAG_THRESHOLD) {
-                    // JA, es war ein DRAG.
-                    userInteractedRecently = true;
-                    
-                    if (interactionTimeout) clearTimeout(interactionTimeout); 
-                    
-                    interactionTimeout = setTimeout(() => {
-                        userInteractedRecently = false;
-                    }, 100); // 100ms reichen
-                    
-                } else {
-                    // NEIN, es war ein TAP. Blocker nicht setzen.
+                interactionTimeout = setTimeout(() => {
                     userInteractedRecently = false;
-                }
+                }, 3000); 
             });
-            // --- ✅ ENDE DER ÄNDERUNGEN ---
             
             raycaster = new THREE.Raycaster();
             mouse = new THREE.Vector2();
@@ -1566,12 +1532,9 @@
             
             window.addEventListener('resize', onWindowResize);
             window.addEventListener('click', onMouseClick, false);
-            
-            // --- ⛔️ ALTE TOUCH-LISTENER ENTFERNT ---
-            // window.addEventListener('touchstart', onTouchStart, false);
-            // window.addEventListener('touchmove', onTouchMove, false);
-            // window.addEventListener('touchend', onTouchEnd, false);
-            // --- ⛔️ ENDE ---
+            window.addEventListener('touchstart', onTouchStart, false);
+            window.addEventListener('touchmove', onTouchMove, false);
+            window.addEventListener('touchend', onTouchEnd, false);
 
             window.addEventListener('keydown', (e) => {
                 if (e.shiftKey && (e.key === 'U' || e.key === 'u')) {
@@ -1795,12 +1758,12 @@
             const textureLoader = new THREE.TextureLoader();
 
             const starGeometry = new THREE.SphereGeometry(4000, 32, 32); 
-            const starTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/2k_stars.jpg');
+            const starTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/8k_stars_milky_way.jpg');
             const starMaterial = new THREE.MeshBasicMaterial({ map: starTexture, side: THREE.BackSide });
             starField = new THREE.Mesh(starGeometry, starMaterial);
             scene.add(starField);
 
-	        const sunTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/2k_sun.jpg');
+	        const sunTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/8k_sun.jpg');
             const sunMaterial = new THREE.MeshBasicMaterial({ map: sunTexture });
 	        sun = new THREE.Mesh(new THREE.SphereGeometry(SUN_RADIUS, 32, 32), sunMaterial);
             
@@ -2106,11 +2069,7 @@
             
             // *** ÄNDERUNG 2: Listener für Zurückspul-Button ***
             const rewindBtn = document.getElementById('rewind-btn');
-            rewindBtn.addEventListener('mousedown', startRewind);
-            rewindBtn.addEventListener('mouseup', stopRewind);
-            rewindBtn.addEventListener('mouseleave', stopRewind); // Wichtig, falls Maus abrutscht
-            rewindBtn.addEventListener('touchstart', startRewind, { passive: false });
-            rewindBtn.addEventListener('touchend', stopRewind);
+            rewindBtn.addEventListener('click', toggleRewind);
             // --- Ende Änderung 2 ---
             
             const daySlider = document.getElementById('day-slider');
@@ -2568,17 +2527,23 @@
         }
         
         // *** ÄNDERUNG 2: Handler-Funktionen für Zurückspulen ***
-        function startRewind(e) {
-            // e.preventDefault();
-            if (isDemoActive || isRealScaleActive) {
-                return; // Nicht während Demos oder Real-Scale zurückspulen
+        function toggleRewind() {
+            // Prüfen, ob wir gerade zurückspulen
+            if (isRewinding) {
+                // Ja -> also anhalten
+                stopRewind();
+            } else {
+                // Nein -> also starten (das ist die Logik aus der alten startRewind-Funktion)
+                if (isDemoActive || isRealScaleActive) {
+                    return; // Nicht während Demos oder Real-Scale zurückspulen
+                }
+                
+                isRewinding = true;
+                if (isPlaying) {
+                    togglePlay(); // Anhalten, wenn abgespielt wird
+                }
+                document.getElementById('rewind-btn').classList.add('playing'); // Visuelles Feedback
             }
-            
-            isRewinding = true;
-            if (isPlaying) {
-                togglePlay(); // Anhalten, wenn abgespielt wird
-            }
-            document.getElementById('rewind-btn').classList.add('playing'); // Visuelles Feedback
         }
 
         function stopRewind() {
@@ -3988,8 +3953,6 @@ function jumpToSeason(day, clickedBtn) {
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // --- ⛔️ ALTE TOUCH-FUNKTIONEN ENTFERNT ---
-        /*
         function onTouchStart(event) {
             // *** ÄNDERUNG 2: passive: false im Listener in setupUI gesetzt ***
             // Verhindert Scrollen beim Halten des Buttons
@@ -4008,42 +3971,19 @@ function jumpToSeason(day, clickedBtn) {
         }
         function onTouchEnd(event) {
             const targetElement = event.target;
-            // *** ÄNDERUNG 2: Sicherstellen, dass der Rewind-Button losgelassen wird ***
-            if (isRewinding && targetElement.id === 'rewind-btn') {
-                 stopRewind();
-                 //event.preventDefault(); // Verhindert Klick-Events
-                 return;
-            }
+            
             // --- Ende Änderung 2 ---
 
             if (isDragging) { isDragging = false; return; }
             const touch = event.changedTouches[0];
             if (!touch) return; 
             const popupOpened = handleInteraction(touch.clientX, touch.clientY, targetElement);
-            //if (popupOpened) event.preventDefault();
+            if (popupOpened) event.preventDefault();
         }
-        */
-        // --- ⛔️ ENDE ---
-        
-        
-        // --- ✅ onMouseClick ANGEPASST ---
         function onMouseClick(event) {
-            // NEU: Prüfen, ob der User gerade die Kamera bewegt hat.
-            if (userInteractedRecently) {
-                return; // Blockiert Klick nach einem Drag
-            }
-            
-            handleInteraction(event); // Übergibt das ganze Event
+            handleInteraction(event.clientX, event.clientY, event.target);
         }
-        
-        // --- ✅ handleInteraction ANGEPASST ---
-        function handleInteraction(event) {
-            
-            // NEU: Werte aus dem Event-Objekt holen
-            const x = event.clientX;
-            const y = event.clientY;
-            const targetElement = event.target;
-
+        function handleInteraction(x, y, targetElement) {
             const uiContainer = document.getElementById('ui-container');
             const popup = document.getElementById('info-popup');
             const ufoDialog = document.getElementById('ufo-dialog');
@@ -4069,8 +4009,6 @@ function jumpToSeason(day, clickedBtn) {
                     ufoState = 'interacted';
                     document.getElementById('ufo-dialog').style.display = 'block';
                     if (isPlaying) pauseSimulation();
-                    
-                    event.preventDefault(); // <-- NEU
                     return true;
                 }
 
@@ -4078,8 +4016,6 @@ function jumpToSeason(day, clickedBtn) {
                     currentSelectedInfo = clickedObject.userData.info;
                     infoToastButton.textContent = `💡 Info: ${currentSelectedInfo.name}`;
                     infoToastButton.style.display = 'block';
-                    
-                    event.preventDefault(); // <-- NEU
                     return true; 
                 }
             } else {
@@ -4088,7 +4024,6 @@ function jumpToSeason(day, clickedBtn) {
             }
             return false; 
         }
-        
         function showInfoPopup(info) {
             const popup = document.getElementById('info-popup');
             const titleEl = document.getElementById('popup-title');
