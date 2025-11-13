@@ -373,7 +373,7 @@
             box-shadow: 0 4px 10px rgba(0, 255, 255, 0.3);
             font-size: 14px;
             font-weight: 700;
-            font-family: cursive;
+            font-family: "Lucida Console", monospace;
             padding: 10px 15px;
         }
 
