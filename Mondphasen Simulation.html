@@ -220,6 +220,7 @@
         
         /* --- NEU: Style für Frequenz-Button --- */
         #demo-freq {
+            width: 100%;
             margin-bottom: 5px;
             font-size: 13px;
         }
@@ -544,15 +545,10 @@
             </div>
 
             <div id="visibility-controls">
-                <label class="checkbox-label" style="margin-top: 15px;">
+                 <label class="checkbox-label" style="margin-top: 15px;">
                     <input type="checkbox" id="orbit-checkbox" checked>
                     Erd-/Mondbahn anzeigen
                 </label>
-                <label class="checkbox-label" style="margin-top: 10px;">
-                    <input type="checkbox" id="equator-checkbox">
-                    Äquatorlinie anzeigen
-                </label>
-            <div style="display: flex; gap: 15px; margin-top: 10px;">
                 
                 <div style="display: flex; gap: 15px; margin-top: 10px;">
                     <label class="checkbox-label" style="flex: 1;">
@@ -675,7 +671,7 @@
 
     <button id="info-toast-button" class="btn btn"></button>
 
-    <script defer>
+    <script>
         // --- Globale Variablen ---
         let scene, camera, renderer, controls;
         let sun, earth, moon, moonPivot;
@@ -684,7 +680,6 @@
         // --- NEU: Globale Variable für Achsenlinie ---
         let earthAxisLine = null;
         // --- Ende NEU ---
-        let earthEquatorLine = null;
         
         let earthOrbitLine, moonOrbitLine;
         let starField;
@@ -894,7 +889,7 @@
                 this.group.add(this.mesh);
 
                 this.glowSprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
-                    map: new THREE.TextureLoader().load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/comet_sprite.png'), 
+                    map: new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/glow.png'), 
                     color: this.color, 
                     transparent: true, 
                     blending: THREE.AdditiveBlending,
@@ -1757,12 +1752,12 @@
             const textureLoader = new THREE.TextureLoader();
 
             const starGeometry = new THREE.SphereGeometry(4000, 32, 32); 
-            const starTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/2k_stars.jpg');
+            const starTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/8k_stars_milky_way.jpg');
             const starMaterial = new THREE.MeshBasicMaterial({ map: starTexture, side: THREE.BackSide });
             starField = new THREE.Mesh(starGeometry, starMaterial);
             scene.add(starField);
 
-	        const sunTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/2k_sun.jpg');
+	        const sunTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/8k_sun.jpg');
             const sunMaterial = new THREE.MeshBasicMaterial({ map: sunTexture });
 	        sun = new THREE.Mesh(new THREE.SphereGeometry(SUN_RADIUS, 32, 32), sunMaterial);
             
@@ -1798,7 +1793,7 @@
             clickableObjects.push(earth); 
             earthTiltPivot.add(earth); 
             
-// --- NEU: Achsenlinie erstellen ---
+            // --- NEU: Achsenlinie erstellen ---
             const axisMat = new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 2 }); // Helles Gelb
             const axisPoints = [
                 new THREE.Vector3(0, -EARTH_RADIUS * 1.5, 0),
@@ -1808,22 +1803,6 @@
             earthAxisLine = new THREE.Line(axisGeo, axisMat);
             earthAxisLine.visible = false; // Standardmässig unsichtbar
             earthTiltPivot.add(earthAxisLine); // Zur Pivot-Gruppe hinzufügen
-            // --- Ende NEU ---
-
-// --- NEU: Äquatorlinie erstellen ---
-            const equatorRadius = EARTH_RADIUS * 1.01; // 1% größer als die Erde
-            const equatorPoints = [];
-            const equatorSegments = 64;
-            for (let i = 0; i <= equatorSegments; i++) {
-                const angle = (i / equatorSegments) * Math.PI * 2;
-                // Ein Kreis in der X-Z-Ebene des Pivots (das ist die Äquatorebene)
-                equatorPoints.push(new THREE.Vector3(Math.cos(angle) * equatorRadius, 0, Math.sin(angle) * equatorRadius)); 
-            }
-            const equatorGeo = new THREE.BufferGeometry().setFromPoints(equatorPoints);
-            const equatorMat = new THREE.LineBasicMaterial({ color: 0xff0000 }); // Rot
-            earthEquatorLine = new THREE.Line(equatorGeo, equatorMat);
-            earthEquatorLine.visible = false; // Standardmäßig unsichtbar
-            earthTiltPivot.add(earthEquatorLine); // Zur gekippten Pivot-Gruppe hinzufügen
             // --- Ende NEU ---
 
             moonPivot = new THREE.Group();
@@ -2017,19 +1996,6 @@
             earthOrbitLine.visible = orbitCheckbox.checked;
             moonOrbitLine.visible = orbitCheckbox.checked;
 
-// --- NEU: Listener für Äquator-Checkbox ---
-            const equatorCheckbox = document.getElementById('equator-checkbox');
-            equatorCheckbox.addEventListener('change', (e) => {
-                if (earthEquatorLine) {
-                    earthEquatorLine.visible = e.target.checked;
-                }
-            });
-            // Initialen Status setzen (ausgeschaltet)
-            if (earthEquatorLine) {
-                earthEquatorLine.visible = equatorCheckbox.checked;
-            }
-// --- Ende NEU ---
-
             planetsVisibleCheckbox.addEventListener('change', (e) => {
                 const isVisible = e.target.checked;
                 otherPlanetControls.forEach(ctrl => { ctrl.orbit.visible = isVisible; });
@@ -2082,29 +2048,6 @@
                 if (currentDayLabelEl) currentDayLabelEl.textContent = formatDayCount(currentDay);
                 updatePositions(currentDay);
                 updateUI();
-
-                // --- HIER STARTET DEIN NEUER CODE ---
-
-                // 1. Prüfen, ob ein Objekt (und kein String wie 'system') fokussiert ist
-                if (cameraFocus && typeof cameraFocus !== 'string') {
-
-                    // 2. Die NEUE Position des Objekts holen
-                    let newTargetPos = new THREE.Vector3();
-                    cameraFocus.getWorldPosition(newTargetPos);
-
-                    // 3. Die Differenz (delta) zur LETZTEN bekannten Position berechnen
-                    //    (lastCameraTargetPos wurde im letzten Frame von animate() gesetzt)
-                    const delta = newTargetPos.clone().sub(lastCameraTargetPos);
-
-                    // 4. Kamera und Kontroll-Ziel um dieses Delta verschieben
-                    camera.position.add(delta);
-                    controls.target.add(delta);
-
-                    // 5. Die "letzte" Position für den nächsten "input"-Event aktualisieren
-                    //    (damit es auch beim weiteren Ziehen funktioniert)
-                    lastCameraTargetPos.copy(newTargetPos);
-                }
-                // --- HIER ENDET DEIN NEUER CODE ---
             });
             
             const initialBrightness = parseFloat(darknessSlider.value);
@@ -2306,10 +2249,10 @@
             // --------------------------------
             
             // --- NEU: Jahreszeiten-Listener (überarbeitet) ---
-            const SEASON_SPRING_DAY = 274.19;  // Frühlingsäquinoktium (ca. 20. März)
-            const SEASON_SUMMER_DAY = 0.49; // Sommersonnenwende (ca. 21. Juni)
-            const SEASON_AUTUMN_DAY = 91.76; // Herbstäquinoktium (ca. 23. September)
-            const SEASON_WINTER_DAY = 182.95; // Wintersonnenwende (ca. 21. Dezember)
+            const SEASON_SPRING_DAY = 79.7;  // Frühlingsäquinoktium (ca. 20. März)
+            const SEASON_SUMMER_DAY = 355.45; // Sommersonnenwende (ca. 21. Juni)
+            const SEASON_AUTUMN_DAY = 265.13; // Herbstäquinoktium (ca. 23. September)
+            const SEASON_WINTER_DAY = 171.93; // Wintersonnenwende (ca. 21. Dezember)
             
             const seasonSpringBtn = document.getElementById('season-spring');
             const seasonSummerBtn = document.getElementById('season-summer');
@@ -2531,7 +2474,7 @@
         
         // *** ÄNDERUNG 2: Handler-Funktionen für Zurückspulen ***
         function startRewind(e) {
-            // e.preventDefault();
+            e.preventDefault();
             if (isDemoActive || isRealScaleActive) {
                 return; // Nicht während Demos oder Real-Scale zurückspulen
             }
