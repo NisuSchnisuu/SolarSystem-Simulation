@@ -569,7 +569,7 @@
                         Bahnen
                     </label>
                 </div>
-            </div>
+            
             
             <label for="darkness-slider" style="margin-top: 10px;">Helligkeit (Nachtseite): <span id="darkness-label">0.30</span></label>
             <input type="range" id="darkness-slider" min="0" max="0.9" value="0.3" step="0.01">
