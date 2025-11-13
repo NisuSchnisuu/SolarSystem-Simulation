@@ -769,13 +769,15 @@
         let mouse;
         let clickableObjects = [];
         
-        // Touch-Handling für Popup
-        let touchStartX = 0;
-        let touchStartY = 0;
-        let isDragging = false;
-        const dragThreshold = 10;
-
+        // --- *** ÄNDERUNG: Veraltete Touch-Variablen entfernt *** ---
+        // let touchStartX = 0;
+        // let touchStartY = 0;
+        // let isDragging = false;
+        // const dragThreshold = 10;
+        
+        // --- NEU: Zeitstempel für iPad-Ghost-Click-Fix ---
         let lastTouchTime = 0;
+        // --- Ende NEU ---
 
         // Interaction handling variables
         let interactionTimeout;
@@ -1534,8 +1536,10 @@
             
             window.addEventListener('resize', onWindowResize);
             window.addEventListener('click', onMouseClick, false);
-            window.addEventListener('touchstart', onTouchStart, false);
-            window.addEventListener('touchmove', onTouchMove, false);
+            
+            // --- *** ÄNDERUNG: Veraltete Touch-Listener entfernt *** ---
+            // window.addEventListener('touchstart', onTouchStart, false);
+            // window.addEventListener('touchmove', onTouchMove, false);
             window.addEventListener('touchend', onTouchEnd, false);
 
             window.addEventListener('keydown', (e) => {
@@ -3955,38 +3959,40 @@ function jumpToSeason(day, clickedBtn) {
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
+        // --- *** ÄNDERUNG: Veraltete Touch-Funktionen entfernt *** ---
+        /*
         function onTouchStart(event) {
-            // *** ÄNDERUNG 2: passive: false im Listener in setupUI gesetzt ***
-            // Verhindert Scrollen beim Halten des Buttons
-            
-            if (event.touches.length === 1) {
-                touchStartX = event.touches[0].clientX;
-                touchStartY = event.touches[0].clientY;
-                isDragging = false; 
-            }
+            // ...
         }
         function onTouchMove(event) {
-            if (isDragging || event.touches.length !== 1) return; 
-            const deltaX = Math.abs(event.touches[0].clientX - touchStartX);
-            const deltaY = Math.abs(event.touches[0].clientY - touchStartY);
-            if (deltaX > dragThreshold || deltaY > dragThreshold) isDragging = true;
+            // ...
         }
+        */
+       
+        // --- *** ÄNDERUNG: onTouchEnd() angepasst *** ---
         function onTouchEnd(event) {
             const targetElement = event.target;
             
-            
+            // Wenn die Kamerasteuerung aktiv war, war dies ein "Drag" und kein "Tap".
+            if (isUserControllingCamera) { 
+                return; 
+            }
 
-            if (isDragging) { isDragging = false; return; }
+            // iPad Ghost-Click-Fix
             lastTouchTime = new Date().getTime();
+
             const touch = event.changedTouches[0];
             if (!touch) return; 
             const popupOpened = handleInteraction(touch.clientX, touch.clientY, targetElement);
-            if (popupOpened) event.preventDefault();
+            if (popupOpened) event.preventDefault(); // Verhindert Scrollen, aber nicht immer den Klick
         }
+
         function onMouseClick(event) {
+            // "Ghost Click" nach Touch-Event auf iPad verhindern
             if (new Date().getTime() - lastTouchTime < 500) {
                 return; 
             }
+
             handleInteraction(event.clientX, event.clientY, event.target);
         }
         function handleInteraction(x, y, targetElement) {
