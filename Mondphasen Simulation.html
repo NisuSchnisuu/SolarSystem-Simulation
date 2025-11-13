@@ -378,7 +378,7 @@
             position: fixed;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%);
+            transform: translate3d(-50%, -50%, 0);
             background: rgba(0, 20, 0, 0.95); 
             color: #0f0; 
             padding: 25px;
@@ -768,15 +768,23 @@
         let mouse;
         let clickableObjects = [];
         
-        // Touch-Handling für Popup
-        let touchStartX = 0;
-        let touchStartY = 0;
-        let isDragging = false;
-        const dragThreshold = 10;
+        // --- ⛔️ ALTE TOUCH-HANDLING VARIABLEN ENTFERNT ---
+        // let touchStartX = 0;
+        // let touchStartY = 0;
+        // let isDragging = false;
+        // const dragThreshold = 10;
+        // --- ⛔️ ENDE ---
 
         // Interaction handling variables
         let interactionTimeout;
         let userInteractedRecently = false;
+        
+        // --- ✅ NEU: Globale Variablen zur Drag-Erkennung ---
+        let cameraStartPos = new THREE.Vector3();
+        let cameraStartTarget = new THREE.Vector3();
+        const DRAG_THRESHOLD = 0.8; // Ein kleiner Schwellenwert für die Bewegung
+        // --- ✅ ENDE NEU ---
+
 
         // --- Konstanten ---
         const SCENE_SCALE = 1.0;
@@ -1470,25 +1478,52 @@
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.1;
-            controls.touches = { ONE: 0, TWO: 2 };
             
+            // --- ✅ ÄNDERUNG: Touch-Controls angepasst ---
+            controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+            
+            // --- ✅ 'start'-Listener ERSETZT ---
             controls.addEventListener('start', () => {
                 isUserControllingCamera = true;
-                userInteractedRecently = true;
-                if (interactionTimeout) clearTimeout(interactionTimeout);
                 
+                // WICHTIG: Blocker hier zurücksetzen, nicht setzen!
+                userInteractedRecently = false; 
+                
+                // NEU: Aktuelle Kamera-Position "merken"
+                cameraStartPos.copy(camera.position);
+                cameraStartTarget.copy(controls.target);
+                
+                // UI-Logik von vorher bleibt erhalten:
                 if (infoToastButton) {
                     infoToastButton.style.display = 'none';
                     currentSelectedInfo = null;
                 }
             });
 
+            // --- ✅ 'end'-Listener ERSETZT ---
             controls.addEventListener('end', () => {
                 isUserControllingCamera = false;
-                interactionTimeout = setTimeout(() => {
+
+                // NEU: Prüfen, ob sich die Kamera bewegt hat
+                const posDistance = camera.position.distanceTo(cameraStartPos);
+                const targetDistance = controls.target.distanceTo(cameraStartTarget);
+
+                if (posDistance > DRAG_THRESHOLD || targetDistance > DRAG_THRESHOLD) {
+                    // JA, es war ein DRAG.
+                    userInteractedRecently = true;
+                    
+                    if (interactionTimeout) clearTimeout(interactionTimeout); 
+                    
+                    interactionTimeout = setTimeout(() => {
+                        userInteractedRecently = false;
+                    }, 100); // 100ms reichen
+                    
+                } else {
+                    // NEIN, es war ein TAP. Blocker nicht setzen.
                     userInteractedRecently = false;
-                }, 3000); 
+                }
             });
+            // --- ✅ ENDE DER ÄNDERUNGEN ---
             
             raycaster = new THREE.Raycaster();
             mouse = new THREE.Vector2();
@@ -1531,9 +1566,12 @@
             
             window.addEventListener('resize', onWindowResize);
             window.addEventListener('click', onMouseClick, false);
-            window.addEventListener('touchstart', onTouchStart, false);
-            window.addEventListener('touchmove', onTouchMove, false);
-            window.addEventListener('touchend', onTouchEnd, false);
+            
+            // --- ⛔️ ALTE TOUCH-LISTENER ENTFERNT ---
+            // window.addEventListener('touchstart', onTouchStart, false);
+            // window.addEventListener('touchmove', onTouchMove, false);
+            // window.addEventListener('touchend', onTouchEnd, false);
+            // --- ⛔️ ENDE ---
 
             window.addEventListener('keydown', (e) => {
                 if (e.shiftKey && (e.key === 'U' || e.key === 'u')) {
@@ -3950,6 +3988,8 @@ function jumpToSeason(day, clickedBtn) {
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
+        // --- ⛔️ ALTE TOUCH-FUNKTIONEN ENTFERNT ---
+        /*
         function onTouchStart(event) {
             // *** ÄNDERUNG 2: passive: false im Listener in setupUI gesetzt ***
             // Verhindert Scrollen beim Halten des Buttons
@@ -3980,12 +4020,30 @@ function jumpToSeason(day, clickedBtn) {
             const touch = event.changedTouches[0];
             if (!touch) return; 
             const popupOpened = handleInteraction(touch.clientX, touch.clientY, targetElement);
-            if (popupOpened) event.preventDefault();
+            //if (popupOpened) event.preventDefault();
         }
+        */
+        // --- ⛔️ ENDE ---
+        
+        
+        // --- ✅ onMouseClick ANGEPASST ---
         function onMouseClick(event) {
-            handleInteraction(event.clientX, event.clientY, event.target);
+            // NEU: Prüfen, ob der User gerade die Kamera bewegt hat.
+            if (userInteractedRecently) {
+                return; // Blockiert Klick nach einem Drag
+            }
+            
+            handleInteraction(event); // Übergibt das ganze Event
         }
-        function handleInteraction(x, y, targetElement) {
+        
+        // --- ✅ handleInteraction ANGEPASST ---
+        function handleInteraction(event) {
+            
+            // NEU: Werte aus dem Event-Objekt holen
+            const x = event.clientX;
+            const y = event.clientY;
+            const targetElement = event.target;
+
             const uiContainer = document.getElementById('ui-container');
             const popup = document.getElementById('info-popup');
             const ufoDialog = document.getElementById('ufo-dialog');
@@ -4011,6 +4069,8 @@ function jumpToSeason(day, clickedBtn) {
                     ufoState = 'interacted';
                     document.getElementById('ufo-dialog').style.display = 'block';
                     if (isPlaying) pauseSimulation();
+                    
+                    event.preventDefault(); // <-- NEU
                     return true;
                 }
 
@@ -4018,6 +4078,8 @@ function jumpToSeason(day, clickedBtn) {
                     currentSelectedInfo = clickedObject.userData.info;
                     infoToastButton.textContent = `💡 Info: ${currentSelectedInfo.name}`;
                     infoToastButton.style.display = 'block';
+                    
+                    event.preventDefault(); // <-- NEU
                     return true; 
                 }
             } else {
@@ -4026,6 +4088,7 @@ function jumpToSeason(day, clickedBtn) {
             }
             return false; 
         }
+        
         function showInfoPopup(info) {
             const popup = document.getElementById('info-popup');
             const titleEl = document.getElementById('popup-title');
