@@ -40,7 +40,7 @@
             transition: max-width 0.3s ease, padding 0.3s ease;
             z-index: 1000;
             padding-bottom: 120px;
-	    transform: translateZ(0);
+	    
         }
 
         #toggle-ui {
@@ -569,7 +569,7 @@
                         Bahnen
                     </label>
                 </div>
-            
+    
             
             <label for="darkness-slider" style="margin-top: 10px;">Helligkeit (Nachtseite): <span id="darkness-label">0.30</span></label>
             <input type="range" id="darkness-slider" min="0" max="0.9" value="0.3" step="0.01">
