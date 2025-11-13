@@ -319,7 +319,7 @@
             border-radius: 12px;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.7);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            z-index: 2000; 
+            z-index: 990; 
             width: 90%;
             max-width: 400px;
             align-items: center;
@@ -366,7 +366,7 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            z-index: 1001; 
+            z-index: 980; 
             background-color: #00ffff;
             color: #000;
             border: 2px solid #000;
@@ -390,7 +390,7 @@
             border-radius: 8px;
             box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
             border: 2px solid #0f0;
-            z-index: 2001;
+            z-index: 991;
             width: 80%;
             max-width: 350px;
             font-family: "Courier New", monospace;
