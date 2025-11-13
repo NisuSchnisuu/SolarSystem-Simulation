@@ -664,7 +664,7 @@
 
     <div id="ufo-dialog">
         <h3>🛸 Unbekanntes Flugobjekt</h3>
-        <div id="ufo-dialog-text">Bist du von der Klasse 6b? Wir sind auf dem Weg zur Erde, um Herr Maurer zu entführen. Weißt du wo das ist?</div>
+        <div id="ufo-dialog-text">Bist du von der Klasse 6b? Wir sind auf dem Weg zur Erde, um eure Lehrer zu entführen. Weißt du wo das ist?</div>
         <div class="ufo-btn-group" id="ufo-initial-buttons">
             <button id="ufo-yes-btn" class="ufo-btn">Ja, dort lang! 👉</button>
             <button id="ufo-no-btn" class="ufo-btn">Keine Ahnung 🤷‍♂️</button>
@@ -769,11 +769,7 @@
         let mouse;
         let clickableObjects = [];
         
-        // Touch-Handling für Popup
-        let touchStartX = 0;
-        let touchStartY = 0;
-        let isDragging = false;
-        const dragThreshold = 10;
+        
 
         // Interaction handling variables
         let interactionTimeout;
@@ -1471,7 +1467,7 @@
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.1;
-            controls.touches = { ONE: 0, TWO: 2 };
+            controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
             
             controls.addEventListener('start', () => {
                 isUserControllingCamera = true;
@@ -1532,9 +1528,7 @@
             
             window.addEventListener('resize', onWindowResize);
             window.addEventListener('click', onMouseClick, false);
-            window.addEventListener('touchstart', onTouchStart, false);
-            window.addEventListener('touchmove', onTouchMove, false);
-            window.addEventListener('touchend', onTouchEnd, false);
+            
 
             window.addEventListener('keydown', (e) => {
                 if (e.shiftKey && (e.key === 'U' || e.key === 'u')) {
@@ -2498,7 +2492,7 @@
         }
 
         function resetUfoDialog() {
-            document.getElementById('ufo-dialog-text').textContent = "Wir sind auf dem Weg zur Erde um diese zu übernehmen. Weißt du wo die ist?";
+            document.getElementById('ufo-dialog-text').textContent = "Bist du von der Klasse 6b? Wir sind auf dem Weg zur Erde, um eure Lehrer zu entführen. Weißt du wo das ist?";
             document.getElementById('ufo-initial-buttons').style.display = 'flex';
             document.getElementById('ufo-close-group').style.display = 'none';
         }
@@ -3951,56 +3945,32 @@ function jumpToSeason(day, clickedBtn) {
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        function onTouchStart(event) {
-            // *** ÄNDERUNG 2: passive: false im Listener in setupUI gesetzt ***
-            // Verhindert Scrollen beim Halten des Buttons
-            
-            if (event.touches.length === 1) {
-                touchStartX = event.touches[0].clientX;
-                touchStartY = event.touches[0].clientY;
-                isDragging = false; 
-            }
-        }
-        function onTouchMove(event) {
-            if (isDragging || event.touches.length !== 1) return; 
-            const deltaX = Math.abs(event.touches[0].clientX - touchStartX);
-            const deltaY = Math.abs(event.touches[0].clientY - touchStartY);
-            if (deltaX > dragThreshold || deltaY > dragThreshold) isDragging = true;
-        }
-        function onTouchEnd(event) {
-            const targetElement = event.target;
-            // *** ÄNDERUNG 2: Sicherstellen, dass der Rewind-Button losgelassen wird ***
-            if (isRewinding && targetElement.id === 'rewind-btn') {
-                 stopRewind();
-                 event.preventDefault(); // Verhindert Klick-Events
-                 return;
-            }
-            // --- Ende Änderung 2 ---
-
-            if (isDragging) { isDragging = false; return; }
-            const touch = event.changedTouches[0];
-            if (!touch) return; 
-            const popupOpened = handleInteraction(touch.clientX, touch.clientY, targetElement);
-            if (popupOpened) event.preventDefault();
-        }
+        
         function onMouseClick(event) {
-            handleInteraction(event.clientX, event.clientY, event.target);
+            // NEU: Prüfen, ob der User gerade die Kamera bewegt hat.
+            // Wenn ja, ist dies ein "Ghost Click" nach einem Touch-Drag und wird ignoriert.
+            if (userInteractedRecently) {
+                return;
+            }
+            
+            // handleInteraction(event.clientX, event.clientY, event.target); // ALT
+            handleInteraction(event); // NEU: Wir übergeben das ganze Event
         }
-        function handleInteraction(x, y, targetElement) {
+        // Finde die handleInteraction Funktion und passe sie stark an:
+
+// function handleInteraction(x, y, targetElement) { // ALT
+        function handleInteraction(event) { // NEU: Akzeptiert das Event-Objekt
+            
+            // NEU: Holen der Werte aus dem Event
+            const x = event.clientX;
+            const y = event.clientY;
+            const targetElement = event.target;
+
             const uiContainer = document.getElementById('ui-container');
             const popup = document.getElementById('info-popup');
             const ufoDialog = document.getElementById('ufo-dialog');
-            
-            // *** ÄNDERUNG 2: Rewind-Button von Klicks ausschliessen ***
-            if (uiContainer.contains(targetElement) || popup.contains(targetElement) || ufoDialog.contains(targetElement) || infoToastButton.contains(targetElement) || targetElement.id === 'rewind-btn') {
-                return false; 
-            }
-            // --- Ende Änderung 2 ---
-            
-            mouse.x = (x / window.innerWidth) * 2 - 1;
-            mouse.y = -(y / window.innerHeight) * 2 + 1;
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(clickableObjects, true); 
+
+            // ... (der Rest deiner Logik bleibt gleich, bis zum Raycaster) ...
 
             if (intersects.length > 0) {
                 let clickedObject = intersects[0].object;
@@ -4012,6 +3982,8 @@ function jumpToSeason(day, clickedBtn) {
                     ufoState = 'interacted';
                     document.getElementById('ufo-dialog').style.display = 'block';
                     if (isPlaying) pauseSimulation();
+                    
+                    event.preventDefault(); // NEU: Verhindert "Ghost Clicks" oder Zoom
                     return true;
                 }
 
@@ -4019,6 +3991,8 @@ function jumpToSeason(day, clickedBtn) {
                     currentSelectedInfo = clickedObject.userData.info;
                     infoToastButton.textContent = `💡 Info: ${currentSelectedInfo.name}`;
                     infoToastButton.style.display = 'block';
+                    
+                    event.preventDefault(); // NEU: Verhindert "Ghost Clicks" oder Zoom
                     return true; 
                 }
             } else {
