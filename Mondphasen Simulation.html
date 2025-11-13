@@ -1785,7 +1785,7 @@
             const earthMaterial = new THREE.ShaderMaterial({
                 vertexShader: earthVertexShader, fragmentShader: earthFragmentShader,
                 uniforms: {
-                    dayTexture: { value: textureLoader.load('https://stemkoski.github.io/Three.js/images/earth-day.jpg') },
+                    dayTexture: { value: textureLoader.load('https://stemkoski.github.io/Three.js/Images/earth-day.jpg') },
                     uSunPosition: { value: new THREE.Vector3(0, 0, 0) }, uObjectWorldPosition: { value: new THREE.Vector3() }, uNightBrightness: { value: 0.3 }, 
                     uSofiDemoActive: { value: false }, uMoonPosition: { value: new THREE.Vector3() }, uMoonRadius: { value: MOON_RADIUS }, uSunRadius: { value: SUN_RADIUS } 
                 }
