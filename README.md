@@ -220,7 +220,6 @@
         
         /* --- NEU: Style für Frequenz-Button --- */
         #demo-freq {
-            width: 100%;
             margin-bottom: 5px;
             font-size: 13px;
         }
