@@ -22,8 +22,7 @@
             width: 100%;
             height: 100%;
             z-index: 1;
-	    transform: translateZ(0);
-        }
+	}
 
         #ui-container {
             position: fixed;
@@ -1471,7 +1470,10 @@
             camera.position.set(EARTH_DISTANCE * 1.5, EARTH_DISTANCE * 0.7, EARTH_DISTANCE * 1.5);
             camera.lookAt(0, 0, 0);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true,
+                alpha: false  // <--- DAS IST DER NEUE LÖSUNGSANSATZ
+            });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             container.appendChild(renderer.domElement);
