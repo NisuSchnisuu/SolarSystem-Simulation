@@ -308,7 +308,8 @@
             position: fixed;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%) translateZ(0);
+            transform: translate(-50%, -50%);
+            backface-visibility: hidden;
             background: rgba(0, 0, 0, 0.9);
             color: #fff;
             padding: 20px;
@@ -363,7 +364,7 @@
             bottom: 20px;
             right: 20px;
             z-index: 1001; 
-            transform: translateZ(0);
+            backface-visibility: hidden;
             background-color: #00ffff;
             color: #000;
             border: 2px solid #000;
@@ -380,7 +381,8 @@
             position: fixed;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%) translateZ(0);
+            transform: translate(-50%, -50%);
+            backface-visibility: hidden;
             background: rgba(0, 20, 0, 0.95); 
             color: #0f0; 
             padding: 25px;
