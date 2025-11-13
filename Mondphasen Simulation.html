@@ -559,7 +559,7 @@
                 </label>
             <div style="display: flex; gap: 15px; margin-top: 10px;">
                 
-                <div style="display: flex; gap: 15px; margin-top: 10px;">
+                
                     <label class="checkbox-label" style="flex: 1;">
                         <input type="checkbox" id="planets-visible-checkbox" checked>
                         Planeten
