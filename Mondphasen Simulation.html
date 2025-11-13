@@ -39,7 +39,8 @@
             overflow-y: auto;
             transition: max-width 0.3s ease, padding 0.3s ease;
             z-index: 1000;
-            padding-bottom: 120px; 
+            padding-bottom: 120px;
+	    will-change: transform;
         }
 
         #toggle-ui {
