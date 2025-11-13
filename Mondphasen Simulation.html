@@ -528,7 +528,7 @@
         <div class="control-group" id="controls-general">
             <h3>Steuerung</h3>
             <div class="btn-group" style="margin-bottom: 15px;" id="play-group">
-                <button id="rewind-btn" class="btn btn-secondary" title="Zurückspulen">⏮</button>
+                <button id="rewind-btn" class="btn btn-secondary" title="Zurückspulen">⏮&#xFE0E;</button>
                 <button id="play-pause-btn" class="btn">Pause</button>
             </div>
             
@@ -1174,46 +1174,7 @@
             }
         `;
 
-        const saturnFragmentShader = `
-            uniform sampler2D dayTexture;
-            uniform vec3 uSunPosition;
-            uniform vec3 uObjectWorldPosition; 
-            uniform float uNightBrightness;
-            uniform vec3 uRingNormal;
-            uniform float uRingInnerRadius;
-            uniform float uRingOuterRadius;
-            uniform float uRingShadowSoftness;
-            const float uShadowIntensityFactor = 0.85;
-            varying vec2 vUv;
-            varying vec3 vWorldPosition; 
-            float calculateRingShadow(vec3 fragPos, vec3 sunPos, vec3 planetPos, vec3 ringNormal, float innerR, float outerR, float softness) {
-                vec3 lightDir = normalize(sunPos - fragPos);
-                float denom = dot(lightDir, ringNormal);
-                if (abs(denom) < 0.0001) return 0.0; 
-                float t = dot(planetPos - fragPos, ringNormal) / denom;
-                if (t < 0.0) return 0.0; 
-                vec3 intersectPos = fragPos + t * lightDir;
-                float distToCenter = distance(intersectPos, planetPos);
-                float shadow = smoothstep(innerR - softness, innerR, distToCenter) * (1.0 - smoothstep(outerR, outerR + softness, distToCenter));
-                return clamp(shadow, 0.0, 1.0);
-            }
-            void main() {
-                vec3 objectToSun = normalize(uSunPosition - uObjectWorldPosition);
-                vec3 objectToFragment = normalize(vWorldPosition - uObjectWorldPosition);
-                float intensity = (dot(objectToFragment, objectToSun) + 1.0) / 2.0;
-                float nightBrightness = uNightBrightness;
-                float lightMix = smoothstep(0.48, 0.59, intensity);
-                vec4 dayColor = texture2D(dayTexture, vUv);
-                vec4 nightColor = dayColor * nightBrightness;
-                vec4 finalColor = mix(nightColor, dayColor, lightMix);
-                if (intensity > 0.48) { 
-                    float ringShadowMask = calculateRingShadow(vWorldPosition, uSunPosition, uObjectWorldPosition, uRingNormal, uRingInnerRadius, uRingOuterRadius, uRingShadowSoftness);
-                    vec3 shadowedColor = mix(finalColor.rgb, nightColor.rgb * uShadowIntensityFactor, ringShadowMask);
-                    finalColor.rgb = shadowedColor;
-                }
-                gl_FragColor = finalColor;
-            }
-        `;
+        
 
         // UPDATE: Generic Ring Fragment Shader
         const ringFragmentShader = `
@@ -1252,6 +1213,7 @@
             uniform float uRingInnerRadius;
             uniform float uRingOuterRadius;
             uniform float uRingShadowSoftness;
+            uniform float uShadowTransparency;
             const float uShadowIntensityFactor = 0.85;
             varying vec2 vUv;
             varying vec3 vWorldPosition; 
@@ -1277,7 +1239,12 @@
                 vec4 finalColor = mix(nightColor, dayColor, lightMix);
                 if (intensity > 0.48) { 
                     float ringShadowMask = calculateRingShadow(vWorldPosition, uSunPosition, uObjectWorldPosition, uRingNormal, uRingInnerRadius, uRingOuterRadius, uRingShadowSoftness);
-                    vec3 shadowedColor = mix(finalColor.rgb, nightColor.rgb * uShadowIntensityFactor, ringShadowMask);
+                    
+                    // Multipliziert die Maske mit unserem neuen Transparenz-Wert
+                    float finalMask = ringShadowMask * uShadowTransparency; 
+                    
+                    // Verwendet die neue "finalMask"
+                    vec3 shadowedColor = mix(finalColor.rgb, nightColor.rgb * uShadowIntensityFactor, finalMask); 
                     finalColor.rgb = shadowedColor;
                 }
                 gl_FragColor = finalColor;
@@ -1724,9 +1691,9 @@
                     orbitalInclination: 0.77,
                     // UPDATE: Uranus hat jetzt auch Ringe!
                     ring: {
-                        texture: textureBasePath + 'Uranus_Rings_2.png', // Platzhalter-Textur (die gleiche wie Saturn)
-                        innerRadius: 1.3, 
-                        outerRadius: 2.0, 
+                        texture: textureBasePath + 'Uranus_Rings_b.png', // Platzhalter-Textur (die gleiche wie Saturn)
+                        innerRadius: 1.05, 
+                        outerRadius: 3.4, 
                     },
                     //Fakten
                     name_de: 'Uranus', earthCompareRadius: '4,0x Erde', radius_km: '25.362', distance_Mio_km: '2,87 Mrd. km', umlaufzeit: '84 Jahre', taglaenge: '17h 14min', temperatur: 'ca. -197°C',
@@ -1887,9 +1854,16 @@
                             uRingNormal: { value: new THREE.Vector3(0, 1, 0) }, 
                             uRingInnerRadius: { value: data.radius * data.ring.innerRadius },
                             uRingOuterRadius: { value: data.radius * data.ring.outerRadius },
-                            uRingShadowSoftness: { value: RING_SHADOW_SOFTNESS }
+                            uRingShadowSoftness: { value: RING_SHADOW_SOFTNESS },
+                            uShadowTransparency: { value: 1.0 }
                         }
                     });
+                    // Überschreibe den Transparenzwert nur für Uranus
+                    if (data.name === 'Uranus') {
+                        // 0.0 = 0% Schatten-Intensität (komplett aus)
+                        material.uniforms.uShadowTransparency.value = 0.0;
+                    }
+
                     planetRingMaterials.push({ mat: material, pivot: planetTiltPivot });
                 } else {
                     material = new THREE.ShaderMaterial({
@@ -3359,7 +3333,7 @@
             // 2. Zustand der Haupt-Checkboxen prüfen
             //    'visible' ist der Override (z.B. visible=false für Demos)
             const planetsShouldBeVisible = visible && planetsVisibleCheckbox.checked;
-            const orbitsShouldBeVisible = visible && planetsOrbitCheckbox.checked;
+            const orbitsShouldBeVisible = visible && planetsOrbitCheckbox.checked && !isRealScaleActive;
 
             // 3. Planeten-Meshes und Pivots steuern (Planetenkörper)
             otherPlanetControls.forEach(ctrl => { 
