@@ -1710,7 +1710,7 @@
                     orbitalInclination: 0.77,
                     // UPDATE: Uranus hat jetzt auch Ringe!
                     ring: {
-                        texture: textureBasePath + 'Uranus_Rings_2.png', // Platzhalter-Textur (die gleiche wie Saturn)
+                        texture: textureBasePath + 'Uranus_Rings_Map.png', // Platzhalter-Textur (die gleiche wie Saturn)
                         innerRadius: 1.3, 
                         outerRadius: 2.0, 
                     },
