@@ -1762,7 +1762,7 @@
             starField = new THREE.Mesh(starGeometry, starMaterial);
             scene.add(starField);
 
-	        const sunTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/8k_sun.jpg');
+	        const sunTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/2k_sun.jpg');
             const sunMaterial = new THREE.MeshBasicMaterial({ map: sunTexture });
 	        sun = new THREE.Mesh(new THREE.SphereGeometry(SUN_RADIUS, 32, 32), sunMaterial);
             
