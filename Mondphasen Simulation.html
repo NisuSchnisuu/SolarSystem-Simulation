@@ -775,6 +775,8 @@
         let isDragging = false;
         const dragThreshold = 10;
 
+        let lastTouchTime = 0;
+
         // Interaction handling variables
         let interactionTimeout;
         let userInteractedRecently = false;
@@ -3972,15 +3974,19 @@ function jumpToSeason(day, clickedBtn) {
         function onTouchEnd(event) {
             const targetElement = event.target;
             
-            // --- Ende Änderung 2 ---
+            
 
             if (isDragging) { isDragging = false; return; }
+            lastTouchTime = new Date().getTime();
             const touch = event.changedTouches[0];
             if (!touch) return; 
             const popupOpened = handleInteraction(touch.clientX, touch.clientY, targetElement);
             if (popupOpened) event.preventDefault();
         }
         function onMouseClick(event) {
+            if (new Date().getTime() - lastTouchTime < 500) {
+                return; 
+            }
             handleInteraction(event.clientX, event.clientY, event.target);
         }
         function handleInteraction(x, y, targetElement) {
