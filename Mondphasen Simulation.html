@@ -559,15 +559,15 @@
             -webkit-appearance: none;
             appearance: none;
             
-            height: 22px;  /* ❗ Grösserer Kreis */
-            width: 22px;   /* ❗ Grösserer Kreis */
+            height: 30px;  /* ❗ Grösserer Kreis */
+            width: 30px;   /* ❗ Grösserer Kreis */
             border-radius: 50%;
             background: #007bff; /* Deine Button-Farbe */
             border: 2px solid #fff;
             box-shadow: 0 0 5px rgba(0,0,0,0.5);
             
             /* Wichtig: Vertikal zentrieren */
-            margin-top: -9px; /* (Track-Höhe - Daumen-Höhe) / 2 ... plus Ränder */ 
+            margin-top: -12px; /* (Track-Höhe - Daumen-Höhe) / 2 ... plus Ränder */ 
         }
 
         /* Firefox */
@@ -1211,6 +1211,7 @@
         `;
         const earthFragmentShader = `
             uniform sampler2D dayTexture;
+            uniform sampler2D nightTexture; 
             uniform vec3 uSunPosition;
             uniform vec3 uObjectWorldPosition;
             uniform float uNightBrightness;
@@ -1239,11 +1240,40 @@
                 vec3 objectToSun = normalize(uSunPosition - uObjectWorldPosition);
                 vec3 objectToFragment = normalize(vWorldPosition - uObjectWorldPosition);
                 float intensity = (dot(objectToFragment, objectToSun) + 1.0) / 2.0;
-                float nightBrightness = uNightBrightness;
+                
+                float nightBrightness = uNightBrightness; // Slider-Wert 0.0 bis 0.9
+                
+                // 1. (NEU) Tag/Nacht-Übergang für HINTERGRUND (Schatten)
+                //    Dieser bleibt WEICH (wie du es willst).
                 float lightMix = smoothstep(0.48, 0.59, intensity);
+                
+                // 2. (NEU) Tag/Nacht-Übergang nur für LICHTER
+                //    Dieser ist HART, damit sie nicht in den Tag "bluten".
+                float lightsFade = smoothstep(0.43, 0.53, intensity); // 0.0 = Lichter an, 1.0 = Lichter aus
+
+                // 3. Texturen laden
                 vec4 dayColor = texture2D(dayTexture, vUv);
-                vec4 nightColor = dayColor * nightBrightness;
+                vec4 nightMapColor = texture2D(nightTexture, vUv);
+
+                // 4. Hintergrund (Land/Meer) berechnen
+                vec4 ambientBackground = dayColor * nightBrightness; 
+
+                // 5. (NEU) Lichter berechnen (mit Slider UND hartem Fade)
+                float lightIntensity = 1.0 - nightBrightness;
+                // Wir multiplizieren die Lichter mit (1.0 - lightsFade),
+                // damit sie bei 0.0 (Nacht) voll und bei 1.0 (Tag) aus sind.
+                vec4 cityLights = nightMapColor * lightIntensity * (1.0 - lightsFade);
+
+                // 6. Lichter-Maske (für "echt schwarz")
+                float lightMask = smoothstep(0.1, 0.3, nightMapColor.r);
+
+                // 7. Nacht-Textur zusammensetzen
+                vec4 nightColor = mix(ambientBackground, cityLights, lightMask);
+
+                // 8. Die fertige Nachtfarbe mit der Tagfarbe mischen (mit dem WEICHEN Übergang)
                 vec4 finalColor = mix(nightColor, dayColor, lightMix);
+                
+                // 9. (Unverändert) Sonnenfinsternis-Schatten
                 if (uSofiDemoActive) {
                     if (intensity > 0.01) { 
                         float moonShadowIntensity = calculateMoonShadowIntensity(vWorldPosition, uMoonPosition, uMoonRadius, uSunPosition, uSunRadius);
@@ -1635,6 +1665,7 @@
                     ecc: 0.205, 
                     perihelionAngle: 77.45 * degToRad, 
                     orbitalInclination: 7.0,
+                    planetType_de: 'Innerer Gesteinsplanet',
                     //Fakten
                     name_de: 'Merkur', earthCompareRadius: '0,38x Erde', radius_km: '2.439', distance_Mio_km: '57,9 Mio. km', umlaufzeit: '88 Erdtage', taglaenge: '176 Erdtage', temperatur: 'ca. 167°C',
                     funFacts: ['Auf Merkur dauert ein Tag (176 Erdtage) länger als ein Jahr (88 Erdtage).', 'Er hat keine Monde und keine nennenswerte Atmosphäre.', 'Trotz seiner Nähe zur Sonne ist er nicht der heisseste Planet.']
@@ -1649,6 +1680,7 @@
                     ecc: 0.007, 
                     perihelionAngle: 131.53 * degToRad, 
                     orbitalInclination: 3.39,
+                    planetType_de: 'Innerer Gesteinsplanet',
                     //Fakten
                     name_de: 'Venus', earthCompareRadius: '0,95x Erde', radius_km: '6.051', distance_Mio_km: '108,2 Mio. km', umlaufzeit: '225 Erdtage', taglaenge: '243 Erdtage (rückwärts!)', temperatur: 'ca. 464°C (heissester Planet)',
                     funFacts: ['Die Venus dreht sich "rückwärts" (retrograd).', 'Ein Tag auf der Venus ist länger als ihr Jahr (Umlauf um die Sonne).', 'Ihre dichte CO2-Atmosphäre erzeugt einen extremen Treibhauseffekt.']
@@ -1664,13 +1696,23 @@
                     ecc: 0.094, 
                     perihelionAngle: 336.04 * degToRad, 
                     orbitalInclination: 1.85,
+                    planetType_de: 'Innerer Gesteinsplanet',
                     //Fakten
                     name_de: 'Mars', earthCompareRadius: '0,53x Erde', radius_km: '3.389', distance_Mio_km: '227,9 Mio. km', umlaufzeit: '687 Erdtage', taglaenge: '24h 37min', temperatur: 'ca. -63°C',
                     funFacts: ['Der Mars hat den höchsten Vulkan im Sonnensystem (Olympus Mons, 22km hoch).', 'Er hat zwei kleine Monde: Phobos und Deimos.', 'Seine rote Farbe kommt von Eisenoxid (Rost) im Boden.']
                 },
                 { 
-                    name: 'Jupiter', radius: 28.0 * SCENE_SCALE, distance: 900 * SCENE_SCALE, yearDays: 4333, texture: textureBasePath + '2k_jupiter.jpg', axialTilt: 3.13, rotationSpeed: 2.43,
-                    ecc: 0.049, perihelionAngle: 14.75 * degToRad, orbitalInclination: 1.3,
+                    name: 'Jupiter', 
+                    radius: 28.0 * SCENE_SCALE, 
+                    distance: 900 * SCENE_SCALE, 
+                    yearDays: 4333, 
+                    texture: textureBasePath + '2k_jupiter.jpg', 
+                    axialTilt: 3.13, 
+                    rotationSpeed: 2.43,
+                    ecc: 0.049, 
+                    perihelionAngle: 14.75 * degToRad, 
+                    orbitalInclination: 1.3,
+                    planetType_de: 'Äusserer Gasriese',
                     moons: [
                         { 
                             name: 'Io', 
@@ -1736,6 +1778,7 @@
                     ecc: 0.057, 
                     perihelionAngle: 92.43 * degToRad, 
                     orbitalInclination: 2.49,
+                    planetType_de: 'Äusserer Gasriese',
                     // UPDATE: Ring-Daten nun generisch hier
                     ring: {
                         texture: textureBasePath + '2k_saturn_ring_alpha.png',
@@ -1769,6 +1812,7 @@
                     ecc: 0.046, 
                     perihelionAngle: 170.96 * degToRad, 
                     orbitalInclination: 0.77,
+                    planetType_de: 'Äusserer Eisriese',
                     // UPDATE: Uranus hat jetzt auch Ringe!
                     ring: {
                         texture: textureBasePath + 'Uranus_Rings_b.png', // Platzhalter-Textur (die gleiche wie Saturn)
@@ -1790,6 +1834,7 @@
                     ecc: 0.009, 
                     perihelionAngle: 44.97 * degToRad, 
                     orbitalInclination: 1.77,
+                    planetType_de: 'Äusserer Eisriese',
                     //Fakten
                     name_de: 'Neptun', earthCompareRadius: '3,9x Erde', radius_km: '24.622', distance_Mio_km: '4,50 Mrd. km', umlaufzeit: '165 Jahre', taglaenge: '16h 6min', temperatur: 'ca. -201°C',
                     funFacts: ['Auf Neptun wehen die schnellsten Winde im Sonnensystem (bis zu 2.100 km/h).', 'Er wurde 1846 durch mathematische Berechnungen entdeckt, bevor man ihn im Teleskop sah.']
@@ -1804,6 +1849,7 @@
                     ecc: 0.244, 
                     perihelionAngle: 224.07 * degToRad, 
                     orbitalInclination: 17.16, 
+                    planetType_de: 'Zwergplanet (Kuipergürtel)',
                     //Fakten
                     name_de: 'Pluto (Zwergplanet)', earthCompareRadius: '0,19x Erde', radius_km: '1.188', distance_Mio_km: '5,9 Mrd. km (im Schnitt)', umlaufzeit: '248 Jahre', taglaenge: '6,4 Tage', temperatur: 'ca. -229°C',
                     funFacts: ['Pluto wurde 2006 vom Planeten zum "Zwergplaneten" umklassifiziert.', 'Seine Bahn ist so elliptisch, dass er zeitweise näher an der Sonne ist als Neptun.']
@@ -1846,15 +1892,19 @@
             const earthMaterial = new THREE.ShaderMaterial({
                 vertexShader: earthVertexShader, fragmentShader: earthFragmentShader,
                 uniforms: {
-                    dayTexture: { value: textureLoader.load('https://stemkoski.github.io/Three.js/images/earth-day.jpg') },
+                    dayTexture: { value: textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/earth-day.jpg') },
+                    nightTexture: { value: textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/Images/2k_earth_nightmap.jpg') },
                     uSunPosition: { value: new THREE.Vector3(0, 0, 0) }, uObjectWorldPosition: { value: new THREE.Vector3() }, uNightBrightness: { value: 0.3 }, 
                     uSofiDemoActive: { value: false }, uMoonPosition: { value: new THREE.Vector3() }, uMoonRadius: { value: MOON_RADIUS }, uSunRadius: { value: SUN_RADIUS } 
                 }
             });
             earth = new THREE.Mesh(new THREE.SphereGeometry(EARTH_RADIUS, 32, 32), earthMaterial);
             
+            
             earth.userData.info = {
-                name: 'Erde', earthCompareRadius: '1x Erde', radius_km: '6.371', distance_Mio_km: '149,6 Mio. km', umlaufzeit: '365,25 Tage', taglaenge: '23h 56min', temperatur: 'ca. +15°C',
+                name: 'Erde', earthCompareRadius: '1x Erde', radius_km: '6.371', distance_Mio_km: '149,6 Mio. km',
+                planetType_de: 'Innerer Gesteinsplanet',
+                umlaufzeit: '365,25 Tage', taglaenge: '23h 56min', temperatur: 'ca. +15°C',
                 funFacts: [ 'Die Erde ist der einzige bekannte Planet mit flüssigem Wasser an der Oberfläche.', 'Unsere Atmosphäre schützt uns vor schädlicher Sonnenstrahlung und Meteoriten.']
             };
             clickableObjects.push(earth); 
@@ -4129,6 +4179,7 @@ function jumpToSeason(day, clickedBtn) {
             }
 
             const factMap = {
+                planetType_de: 'Planetentyp',
                 earthCompareRadius: 'Größe',
                 radius_km: 'Radius', 
                 distance_Mio_km: 'Abstand zur Sonne', 
@@ -4148,7 +4199,7 @@ function jumpToSeason(day, clickedBtn) {
 
             let detailsHTML = ``;
             
-            const orderedKeys = ['earthCompareRadius', 'radius_km', 'distance_Mio_km', 'umlaufzeit', 'taglaenge', 'temperatur', 'oberflaeche_temp', 'zusammensetzung'];
+            const orderedKeys = ['earthCompareRadius', 'radius_km', 'distance_Mio_km', 'planetType_de', 'umlaufzeit', 'taglaenge', 'temperatur', 'oberflaeche_temp', 'zusammensetzung'];
             
             orderedKeys.forEach(key => {
                 if (info.name === 'Sonne' && key === 'umlaufzeit') return;
