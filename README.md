@@ -373,7 +373,7 @@
             box-shadow: 0 4px 10px rgba(0, 255, 255, 0.3);
             font-size: 14px;
             font-weight: 700;
-            font-family: "Lucida Console", monospace;
+            font-family: cursive;
             padding: 10px 15px;
         }
 
@@ -512,6 +512,85 @@
             box-shadow: 0 0 8px 1px rgba(255, 193, 7, 0.7);
         }
         /* --- Ende NEU --- */
+        /* --- NEU: Touch-Freundliche Slider --- */
+
+        /* 1. Basis-Styling & Hitbox vergrössern */
+        input[type="range"] {
+            -webkit-appearance: none; /* Standard-Look entfernen (für Chrome/Safari) */
+            appearance: none;         /* Standard-Look entfernen (allgemein) */
+            width: 100%;
+            height: 24px;             /* ❗ WICHTIG: Erhöht die "Tap-Fläche" */
+            background: transparent;  /* Eigenen Track-Style definieren wir unten */
+            cursor: pointer;
+            margin: 8px 0;            /* Etwas mehr vertikaler Abstand */
+        }
+
+        /* 2. Fokus-Stil entfernen (optional, aber sauberer) */
+        input[type="range"]:focus {
+            outline: none;
+        }
+
+
+        /* 3. Die LEISTE (Track) stylen */
+
+        /* WebKit (Chrome, Safari, iOS, Android) */
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            background: #4a4a4a;
+            border-radius: 3px;
+            border: 1px solid #333;
+        }
+
+        /* Firefox */
+        input[type="range"]::-moz-range-track {
+            width: 100%;
+            height: 6px;
+            background: #4a4a4a;
+            border-radius: 3px;
+            border: 1px solid #333;
+        }
+
+
+        /* 4. Den DAUMEN (Thumb) stylen - Der wichtigste Teil! */
+
+        /* WebKit (Chrome, Safari, iOS, Android) */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            
+            height: 22px;  /* ❗ Grösserer Kreis */
+            width: 22px;   /* ❗ Grösserer Kreis */
+            border-radius: 50%;
+            background: #007bff; /* Deine Button-Farbe */
+            border: 2px solid #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            
+            /* Wichtig: Vertikal zentrieren */
+            margin-top: -9px; /* (Track-Höhe - Daumen-Höhe) / 2 ... plus Ränder */ 
+        }
+
+        /* Firefox */
+        input[type="range"]::-moz-range-thumb {
+            height: 20px;  /* ❗ Grösserer Kreis (FF rechnet etwas anders) */
+            width: 20px;   /* ❗ Grösserer Kreis */
+            border-radius: 50%;
+            background: #007bff;
+            border: 2px solid #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            
+            /* Bei FF ist kein margin-top nötig, wenn die Basis `height` stimmt */
+        }
+
+        /* Optional: Ein "Glow"-Effekt, wenn der Slider aktiv ist */
+        input[type="range"]:focus::-webkit-slider-thumb {
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.8);
+        }
+        input[type="range"]:focus::-moz-range-thumb {
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.8);
+        }
+
+        /* --- Ende Touch-Freundliche Slider --- */
 
 
     </style>
@@ -686,6 +765,7 @@
         let scene, camera, renderer, controls;
         let sun, earth, moon, moonPivot;
         let earthTiltPivot;
+        let switzerlandMarker;
         
         // --- NEU: Globale Variable für Achsenlinie ---
         let earthAxisLine = null;
@@ -2515,21 +2595,29 @@
         }
         
         // *** ÄNDERUNG 2: Handler-Funktionen für Zurückspulen ***
+        // *** ÄNDERUNG 2: Handler-Funktionen für Zurückspulen ***
         function toggleRewind() {
             // Prüfen, ob wir gerade zurückspulen
             if (isRewinding) {
                 // Ja -> also anhalten
                 stopRewind();
             } else {
-                // Nein -> also starten (das ist die Logik aus der alten startRewind-Funktion)
+                // Nein -> also starten
                 if (isDemoActive || isRealScaleActive) {
                     return; // Nicht während Demos oder Real-Scale zurückspulen
                 }
                 
-                isRewinding = true;
+                isRewinding = true; // 1. Zurückspulen-Status AKTIVIEREN
+
+                // 2. Wenn die Simulation lief, stoppe sie DIREKT
                 if (isPlaying) {
-                    togglePlay(); // Anhalten, wenn abgespielt wird
+                    isPlaying = false; 
+                    // 3. Aktualisiere den Play-Button manuell
+                    playPauseBtn.textContent = 'Play';
+                    playPauseBtn.classList.remove('playing');
                 }
+
+                // 4. Aktualisiere den Rewind-Button
                 document.getElementById('rewind-btn').classList.add('playing'); // Visuelles Feedback
             }
         }
@@ -3892,7 +3980,7 @@ function jumpToSeason(day, clickedBtn) {
             let angle = Math.atan2(vecEarthToSun.z, vecEarthToSun.x) - Math.atan2(vecEarthToMoon.z, vecEarthToMoon.x);
             angle = (angle + Math.PI * 2) % (Math.PI * 2);
             let phaseIndex = Math.floor(normalizedAngle = angle / (Math.PI * 2) * 8 + 0.5) % 8;
-            const phaseNames = ["Neumond", "Zun. Sichel", "Zun. Halbmond", "Zun. Drittel", "Vollmond", "Abn. Drittel", "Abn. Halbmond", "Abn. Sichel"];
+            const phaseNames = ["Neumond", "Zunehmende Sichel", "Zunehmender Halbmond", "Zunehmendes Drittel", "Vollmond", "Abnehmendes Drittel", "Abnehmender Halbmond", "Abnehmende Sichel"];
             let phaseName = phaseNames[phaseIndex];
             
             let infoText = `Mondphase: ${phaseName}`;
