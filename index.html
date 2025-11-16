@@ -1037,7 +1037,7 @@
             LUNAR_MONTH_DAYS * 0.875  + PHASE_OFFSET_DAYS  
         ];
 
-        const COMET_FOCUS_DISTANCE = 40.0;
+        const COMET_FOCUS_DISTANCE = 20.0;
 
         let isUserControllingCamera = false;
         let currentSelectedInfo = null;
@@ -1054,7 +1054,7 @@
         let ufoTargetPos = new THREE.Vector3();
         let ufoCurrentTargetObject = null; 
         let ufoDepartureTarget = null; 
-        const UFO_SPEED = 80 * SCENE_SCALE; 
+        const UFO_SPEED = 100 * SCENE_SCALE; 
         let ufoLeaveTimer = 0; 
         // --------------------------
         
@@ -2386,7 +2386,7 @@
 
                 {
                     id: 'ufo',
-                    url: 'ImagesGit/3D-Models/ufo.glb', 
+                    url: 'ImagesGit/3D-Models/ufo_spaceship.glb', 
                     type: 'template'
                 },
 
@@ -3087,7 +3087,7 @@
                 // ❗ WICHTIG: Skalierung anpassen!
                 // Das alte UFO war ca. 3 Einheiten breit (Radius 1.5 * 2).
                 // Wir skalieren das neue Modell auf diese Grösse.
-                const ufoTargetWidth = 10.0 * SCENE_SCALE;
+                const ufoTargetWidth = 5.0 * SCENE_SCALE;
                 
                 try {
                     // Automatische Skalierung basierend auf der Modellgrösse
