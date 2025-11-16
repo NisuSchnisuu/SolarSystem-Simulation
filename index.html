@@ -725,8 +725,11 @@
                     
                     <label for="speed-slider" style="margin-top: 10px;">Geschwindigkeit: <span id="speed-label"></span></label>
                     <input type="range" id="speed-slider" min="0" max="100" value="10" step="1">
-                </div>
-            </div> </div> <div id="ui-scrollable-content">
+                    <label for="darkness-slider" style="margin-top: 10px;">Helligkeit (Nachtseite): <span id="darkness-label">0.30</span></label>
+                    <input type="range" id="darkness-slider" min="0" max="0.9" value="0.3" step="0.01">
+                    </div> </div> </div>
+                
+        <div id="ui-scrollable-content">
             
             <div class="control-group" id="controls-general-scrolling">
                 <div id="comet-controls" style="display: none; margin-top: 15px; border-top: 1px dashed #444; padding-top: 10px;">
@@ -757,15 +760,14 @@
                         </label>
                     </div>
                     <label class="checkbox-label" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #444;">
-                        <input type="checkbox" id="human-objects-checkbox" checked>
+                        <input type="checkbox" id="human-objects-checkbox">
                         Menschl. Objekte anzeigen (ISS)
                     </label>
+                    <div id="human-objects-focus-buttons" class="btn-group" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #555;">
+                    </div>
                 </div> 
                 
-                <label for="darkness-slider" style="margin-top: 10px;">Helligkeit (Nachtseite): <span id="darkness-label">0.30</span></label>
-                <input type="range" id="darkness-slider" min="0" max="0.9" value="0.3" step="0.01">
-            </div>
-
+                
             <div class="control-group">
                 <h3>Kamera-Fokus</h3>
                 <div class="btn-group">
@@ -1703,7 +1705,8 @@
                 document.getElementById('focus-system').parentElement, // Fokus-Gruppe
                 document.getElementById('planet-focus-buttons'),      // Planeten-Gruppe
                 document.getElementById('moon-focus-container'),    // Mond-Gruppe
-                document.getElementById('seasons-group').querySelector('.btn-group') // Jahreszeiten-Gruppe
+                document.getElementById('seasons-group').querySelector('.btn-group'), // Jahreszeiten-Gruppe
+                document.getElementById('human-objects-focus-buttons')
             ];
             
             try {
@@ -2370,13 +2373,15 @@
                 },
                 {
                     id: 'iss',
-                    url: 'ImagesGit/3D-Models/International_Space_Station_(ISS)_(A).glb',
-                    scale: 0.01, // Sehr klein, wie gewünscht
+                    url: 'ImagesGit/3D-Models/iss-mid_c.glb',
+                    label: 'ISS',
+                    scale: 1, // Sehr klein, wie gewünscht
                     orbitTarget: 'earth', // (Reserviert für später)
                     altitude: EARTH_RADIUS + 0.5, // 0.5 Einheiten über der Erde
                     inclination: 51.6, // Grad
                     orbitsPerDay: 15.6, // Umkreisungen pro Tag
-                    updateType: 'earth_orbit' // Logik-Schalter für updatePositions
+                    updateType: 'earth_orbit', // Logik-Schalter für updatePositions
+                    focusDistance: 0.4
                 }
                 // HIER KÖNNTEST DU EINFACH MEHR OBJEKTE HINZUFÜGEN
                 // { id: 'hubble', url: 'hubble.glb', ... }
@@ -2434,6 +2439,26 @@
                         data: modelData    // Die Konfigurationsdaten
                     };
                     loaded3DModels.push(modelObject);
+
+                    // Fokus-Button erstellen, falls ein Label vorhanden ist ---
+                    if (modelData.label) {
+                        const btnContainer = document.getElementById('human-objects-focus-buttons');
+                        const btn = document.createElement('button');
+                        // Wir verwenden die 'btn-planet'-Klasse wieder, da sie gut aussieht
+                        btn.className = 'btn btn-planet'; 
+                        btn.textContent = modelData.label;
+                        
+                        btn.addEventListener('click', () => {
+                            checkAndEndDemo();
+                            // Wichtig: Wir fokussieren die 'scene' (das THREE.Group-Objekt)
+                            setFocus(modelObject.scene); 
+                        });
+                        
+                        // Speichere eine Referenz zum Button, damit wir ihn in setFocus() 'aktiv' schalten können
+                        modelObject.focusButton = btn; 
+                        
+                        btnContainer.appendChild(btn);
+                    }
                     
                     // Setze die initiale Sichtbarkeit basierend auf der Checkbox
                     if (humanObjectsCheckbox) {
@@ -2565,15 +2590,36 @@
             // --- Ende NEU ---
             
             //3D-Mensch. Objekt
+            //3D-Mensch. Objekt
             humanObjectsCheckbox = document.getElementById('human-objects-checkbox');
+            const humanObjectsBtnContainer = document.getElementById('human-objects-focus-buttons'); // NEU
+
             humanObjectsCheckbox.addEventListener('change', (e) => {
                 const isChecked = e.target.checked;
-                // Schleife durch alle geladenen Modelle und steuere ihre Sichtbarkeit
+                
+                // 1. Modelle ein/ausblenden (wie bisher)
                 loaded3DModels.forEach(model => {
                     model.scene.visible = isChecked;
-                    model.pivot.visible = isChecked; // Wichtig: Auch den Pivot steuern
+                    model.pivot.visible = isChecked; 
                 });
+                
+                // 2. NEU: Button-Container ein/ausblenden
+                if (humanObjectsBtnContainer) {
+                    humanObjectsBtnContainer.style.display = isChecked ? 'flex' : 'none';
+                }
             });
+
+            // Initialen Status beim Laden setzen
+            const isCheckedInitially = humanObjectsCheckbox.checked; // Ist jetzt 'false'
+            loaded3DModels.forEach(model => {
+                model.scene.visible = isCheckedInitially;
+                model.pivot.visible = isCheckedInitially;
+            });
+            
+            // NEU: Button-Container initial ausblenden
+            if (humanObjectsBtnContainer) {
+                humanObjectsBtnContainer.style.display = isCheckedInitially ? 'flex' : 'none';
+            }
             // Initialen Status beim Laden setzen
             loaded3DModels.forEach(model => {
                 const isChecked = humanObjectsCheckbox.checked;
@@ -3383,7 +3429,14 @@
                 // Mond-Logik ist schon oben im "if (activePlanetIndex !== -1)"-Block
             }
             if (matchingBtn) matchingBtn.classList.add('active');
-            // --- Ende NEU ---
+            
+            // Prüfen, ob es ein 3D-Modell-Button ist
+            if (!matchingBtn) { 
+                const modelEntry = loaded3DModels.find(m => m.scene === targetObj);
+                if (modelEntry && modelEntry.focusButton) {
+                    modelEntry.focusButton.classList.add('active');
+                }
+            }
             
             
             const radius = targetObj.geometry ? targetObj.geometry.parameters.radius : (targetObj.radius ? targetObj.radius : 1.0); 
@@ -3405,9 +3458,21 @@
 
             // Dynamische Zoom-Berechnung
             const endTarget = targetPos.clone();
-            const fovInRad = THREE.MathUtils.degToRad(camera.fov);
-            const distance = (radius / 0.3) / Math.tan(fovInRad / 2); 
+            let distance; // 'const' zu 'let' geändert, damit wir sie überschreiben können
+
+            // --- NEU: Prüfen, ob es ein 3D-Modell mit fixer Distanz ist ---
+            const modelEntry = loaded3DModels.find(m => m.scene === targetObj);
             
+            if (modelEntry && modelEntry.data.focusDistance) {
+                // Ja, nimm die fixe Distanz aus der Konfiguration (Schritt 1)
+                distance = modelEntry.data.focusDistance;
+            } else {
+                // Nein, berechne die Distanz wie bisher (für Planeten/Sonne)
+                const fovInRad = THREE.MathUtils.degToRad(camera.fov);
+                distance = (radius / 0.3) / Math.tan(fovInRad / 2); 
+            }
+            
+
             const offsetDir = new THREE.Vector3(0, 0, 0).sub(targetPos).normalize();
             offsetDir.y = 0.5; 
             offsetDir.normalize(); 
