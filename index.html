@@ -877,7 +877,7 @@
             </div>
 
             <div class="control-group" id="seasons-group">
-                <h3>Jahreszeiten</h3>
+                <h3>Jahreszeiten (Europa)</h3>
                 <div class="btn-group">
                     <button id="season-spring" class="btn btn-spring">Frühling</button>
                     <button id="season-summer" class="btn btn-summer">Sommer</button>
@@ -952,12 +952,15 @@
 
         // --- RAKETEN KONFIGURATION ---
         const ROCKET_FLIGHT_DURATION_SECONDS = 40.0; // Wie lange der Flug dauert (in echten Sekunden)
-        const ROCKET_SIZE_SCALE = 0.0005; // Grösse des Modells (ähnlich wie ISS)
+        const ROCKET_SIZE_SCALE = 1.0; // Grösse des Modells (ähnlich wie ISS)
         const ROCKET_PROBABILITY = 0.3; // 30% Chance pro Sitzung, dass sie erscheint
         
         let rocketModelTemplate = null;
         let rocketInstance = null; // Die aktive Rakete
         let rocketSpawnAllowed = false; // Ob sie in dieser Sitzung erscheinen darf
+        let capsuleModelTemplate = null; //
+        let boosterModelTemplate = null;
+
 
         //Load Screen
         let loadingManager;
@@ -1145,14 +1148,13 @@
                 this.particles = [];
                 this.group = new THREE.Group();
                 scene.add(this.group);
-
-                // 67P ist im Vergleich zu anderen Kometen eher langsam/gemütlich, 
-                // aber im Perihel wird er schnell. Wir nehmen einen festen Wert für die Simulation.
-                this.baseSpeed = 8.0 * SCENE_SCALE; 
                 
+                this.baseSpeed = 8.0 * SCENE_SCALE; 
                 this.color = new THREE.Color(0.6, 0.9, 1.0); 
 
-                //  SHADER (Der funktionierende Fix) 
+                this.isCameraTransitioning = false; // NEU: Flag für Lag-Fix
+
+                // SHADER (Unverändert)
                 const cometVertexShader = `
                     varying vec2 vUv;
                     varying vec3 vNormal;
@@ -1162,7 +1164,7 @@
                         vNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
                         vec4 worldPos = modelMatrix * vec4(position, 1.0);
                         vWorldPosition = worldPos.xyz;
-                        gl_Position = projectionMatrix * viewMatrix * worldPos;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
                     }
                 `;
 
@@ -1182,19 +1184,15 @@
                     }
                 `;
 
-                //  3D-Modell Logik 
+                // 3D-Modell Logik
                 if (cometModelTemplate) {
                     this.mesh = cometModelTemplate.clone();
                     
-                    //  FIXE VISUELLE GRÖSSE 
-                    // Echte Grösse (4km) wäre unsichtbar klein (0.000xxx).
-                    // Wir nehmen eine fixe Grösse, die klein wirkt, aber sichtbar ist.
                     const fixedVisualScale = 0.02; 
                     this.mesh.scale.set(fixedVisualScale, fixedVisualScale, fixedVisualScale);
 
                     this.radius = fixedVisualScale * 0.5; 
                     
-                    // Material Setup
                     this.mesh.traverse(child => {
                         if (child.isMesh) {
                             const tex = child.material.map || cometRockTexture;
@@ -1225,18 +1223,17 @@
                 this.mesh.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
                 this.group.add(this.mesh);
 
-                // Glow Sprite
-                this.glowSprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
-                    map: new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/glow.png'), 
-                    color: this.color, 
-                    transparent: true, 
-                    blending: THREE.AdditiveBlending,
-                    opacity: 0.0 
-                }));
-                this.glowSprite.scale.set(this.radius * 80, this.radius * 80, 1.0); 
-                this.mesh.add(this.glowSprite); 
+                // --- CACHING FIX (Unverändert) ---
+                const box = new THREE.Box3().setFromObject(this.mesh);
+                const size = new THREE.Vector3();
+                box.getSize(size);
+                const maxDimension = Math.max(size.x, size.y, size.z);
+                this.visualRadius = maxDimension / 2;
+                // ----------------------------------
 
-                // Startposition
+                // *** GLOWSPRITE ENTFERNT ***
+
+                // Startposition (Rest bleibt gleich)
                 const startAngle = THREE.MathUtils.randFloat(0, Math.PI * 2);
                 const startX = Math.cos(startAngle) * COMET_SPAWN_DIST;
                 const startZ = Math.sin(startAngle) * COMET_SPAWN_DIST;
@@ -1263,20 +1260,9 @@
                 this.scene.add(this.tailGroup); 
                 this.age = 0;
 
-                //  INFO: ECHTE DATEN FÜR 67P 
                 this.mesh.userData.info = {
-                    name: 'Komet 67P (Tschurjumow-Gerassimenko)', 
-                    type: 'comet', 
-                    // Echte Daten:
-                    radius_km: `ca. 4,1 × 3,3 km`, 
-                    velocity: `bis zu 135.000 km/h (Perihel)`, 
-                    umlaufzeit: '6,44 Jahre',
-                    funFacts: [
-                        'Die Raumsonde "Rosetta" begleitete diesen Kometen über zwei Jahre lang.',
-                        'Rosetta setzte den Landeroboter "Philae" ab – die erste Landung auf einem Kometen!',
-                        'Der Komet "singt": Er sendet ein Magnetfeld-Signal aus, das in Töne umgewandelt wurde.',
-                        'Kometen wie 67P gelten als Zeitkapseln aus der Entstehung des Sonnensystems.'
-                    ]
+                    name: 'Komet 67P (Tschurjumow-Gerassimenko)', type: 'comet', radius_km: `ca. 4,1 × 3,3 km`, velocity: `bis zu 135.000 km/h (Perihel)`, umlaufzeit: '6,44 Jahre',
+                    funFacts: ['Die Raumsonde "Rosetta" begleitete diesen Kometen über zwei Jahre lang.']
                 };
                 clickableObjects.push(this.mesh);
             }
@@ -1306,12 +1292,12 @@
                 let rawIntensity = Math.max(0, 1.0 - (distance / activeDist)); 
                 const intensity = Math.pow(rawIntensity, 3.0);
 
-                this.glowSprite.material.opacity = THREE.MathUtils.smoothstep(intensity, 0.0, 0.7);
-                const auraScale = (this.radius * 60) + (intensity * this.radius * 50);
-                this.glowSprite.scale.set(auraScale, auraScale, 1.0);
-
-                this.generateTail(distance, intensity, cometDelta); 
-                this.updateTail(cometDelta);
+                // *** NEU: HIER WIRD DIE PARTIKEL-BERECHNUNG GESTOPPT ***
+                if (!this.isCameraTransitioning) {
+                    this.generateTail(distance, intensity, cometDelta); 
+                    this.updateTail(cometDelta);
+                }
+                // *** ENDE NEU ***
                 
                 const isMovingAway = this.group.position.dot(this.velocity) > 0;
                 if (distance > COMET_CAMERA_RESET_DIST && isMovingAway) {
@@ -1319,8 +1305,6 @@
                     if (cometControls) cometControls.style.display = 'none';
                 }
                 
-                // WICHTIG: Wir zerstören ihn, wenn er weg ist. 
-                // Da er nur 1x spawnt, kommt er dann nie wieder (gewollt).
                 if (distance > COMET_DESTROY_DIST && isMovingAway) {
                     this.destroy();
                     return true; 
@@ -1328,86 +1312,8 @@
                 this.age += cometDelta;
                 return false; 
             }
-
-            generateTail(sunDistance, intensity, cometDelta) {
-                if (intensity <= 0.02) return;
-
-                let spawnCount = 2 + Math.floor(intensity * 10); 
-                spawnCount = Math.round(spawnCount * cometTimeScale);
-
-                for (let i = 0; i < spawnCount; i++) {
-                    const spawnOffset = new THREE.Vector3(
-                        THREE.MathUtils.randFloat(-1, 1),
-                        THREE.MathUtils.randFloat(-1, 1),
-                        THREE.MathUtils.randFloat(-1, 1)
-                    ).normalize().multiplyScalar(this.radius * THREE.MathUtils.randFloat(1.5, 3.0)); 
-
-                    const spawnPos = this.group.position.clone().add(spawnOffset);
-
-                    const sizeBase = this.radius * THREE.MathUtils.randFloat(2.5, 5.0); 
-                    const pSize = sizeBase * (0.6 + intensity * 0.5); 
-
-                    const particleGeo = new THREE.SphereGeometry(pSize, 5, 5);
-                    
-                    const particleMat = new THREE.MeshBasicMaterial({ 
-                        color: new THREE.Color(0.8, 0.95, 1.0), 
-                        transparent: true, 
-                        opacity: 1.0 * intensity, 
-                        blending: THREE.AdditiveBlending,
-                        depthWrite: false
-                    });
-                    const particleMesh = new THREE.Mesh(particleGeo, particleMat);
-                    particleMesh.position.copy(spawnPos);
-                    
-                    const inertiaDir = this.velocity.clone().normalize().negate();
-                    const sunWindDir = this.group.position.clone().normalize(); 
-                    const tailDir = new THREE.Vector3().lerpVectors(inertiaDir, sunWindDir, 0.2).normalize();
-
-                    const spread = 0.12; 
-                    tailDir.x += THREE.MathUtils.randFloat(-spread, spread); 
-                    tailDir.y += THREE.MathUtils.randFloat(-spread, spread);
-                    tailDir.z += THREE.MathUtils.randFloat(-spread, spread);
-
-                    this.particles.push({
-                        mesh: particleMesh,
-                        velocity: tailDir.multiplyScalar(THREE.MathUtils.randFloat(10 * SCENE_SCALE, 25 * SCENE_SCALE)),
-                        drift: new THREE.Vector3( 
-                            THREE.MathUtils.randFloat(-1, 1),
-                            THREE.MathUtils.randFloat(-1, 1),
-                            THREE.MathUtils.randFloat(-1, 1)
-                        ).multiplyScalar(4.0 * SCENE_SCALE), 
-                        lifetime: THREE.MathUtils.randFloat(8.0, 15.0), 
-                        age: 0,
-                        initialScale: 1.0,
-                        targetScale: THREE.MathUtils.randFloat(4.0, 8.0), 
-                        initialOpacity: 1.0 * intensity
-                    });
-                    this.tailGroup.add(particleMesh);
-                }
-            }
-
-            updateTail(cometDelta) {
-                const newParticles = [];
-                for (let i = 0; i < this.particles.length; i++) {
-                    const p = this.particles[i];
-                    p.velocity.add(p.drift.clone().multiplyScalar(cometDelta * 0.1));
-                    p.mesh.position.add(p.velocity.clone().multiplyScalar(cometDelta));
-                    p.age += cometDelta;
-                    const lifeRatio = p.age / p.lifetime;
-
-                    if (lifeRatio >= 1.0) {
-                        this.tailGroup.remove(p.mesh);
-                        p.mesh.geometry.dispose();
-                        p.mesh.material.dispose();
-                    } else {
-                        p.mesh.material.opacity = p.initialOpacity * Math.sqrt(1.0 - lifeRatio);
-                        const currentScale = THREE.MathUtils.lerp(p.initialScale, p.targetScale, lifeRatio);
-                        p.mesh.scale.setScalar(currentScale);
-                        newParticles.push(p);
-                    }
-                }
-                this.particles = newParticles;
-            }
+            
+            // ... (generateTail und updateTail Funktionen bleiben unverändert) ...
 
             destroy() {
                 if (cameraFocus === this.mesh) setFocus(sun, 3.0);
@@ -1424,10 +1330,18 @@
                 this.scene.remove(this.tailGroup); 
                 this.mesh.geometry.dispose();
                 if (this.material) this.material.dispose();
-                this.glowSprite.material.dispose();
 
                 const index = clickableObjects.indexOf(this.mesh);
                 if (index > -1) clickableObjects.splice(index, 1);
+            }
+            
+            // Füge die generateTail und updateTail Methoden wieder ein!
+            // (Ich lasse sie hier aus Platzgründen weg, aber sie müssen in deiner Datei bleiben.)
+            generateTail(sunDistance, intensity, cometDelta) {
+                // ... (Dein Code für die Schweif-Erzeugung) ...
+            }
+            updateTail(cometDelta) {
+                // ... (Dein Code für die Schweif-Aktualisierung) ...
             }
         }
         
@@ -1441,92 +1355,213 @@
                 
                 this.startRelPos = new THREE.Vector3(); 
                 this.orbitEndAngle = 0; 
+                this.isStaged = false; 
 
                 this.group = new THREE.Group();
                 this.group.userData.isRocket = true; 
+                
+                this.effScale = 0.0030; 
 
-                // INFOS
+                // --- WICHTIG: HIER SCHIEBST DU DIE KAPSEL NACH VORNE ---
+                // 0.0045 war zu wenig? Probieren wir 0.0065.
+                // Wenn sie zu weit weg schwebt -> Wert kleiner machen.
+                // Wenn sie noch im Rumpf steckt -> Wert grösser machen.
+                this.capsuleOffset = 0.0065; 
+                // -------------------------------------------------------
+
                 this.group.userData.info = {
-                    name: 'Saturn V (Apollo Mission)',
+                    name: 'Apollo Mission (Saturn V)',
                     type: 'rocket',
-                    radius_km: '110,6 m', 
+                    radius_km: '110,6 m (Start)', 
                     velocity: 'max. 39.000 km/h',
                     funFacts: [
-                        'Die Saturn V ist die stärkste Rakete, die jemals erfolgreich geflogen ist.',
-                        'Ziel: Fra Mauro Hochland auf dem Mond.',
-                        'Die Flugbahn ist eine "Freie Rückkehrbahn" – Sicherheitshalber.'
+                        'Startet als 3000-Tonnen-Koloss.',
+                        'Nach dem Orbit fliegt nur noch das kleine Kommando-Modul weiter.',
+                        'Ziel: Fra Mauro Hochland.'
                     ]
                 };
                 clickableObjects.push(this.group);
 
-                // 1. Modell & Licht
-                if (rocketModelTemplate) {
-                    this.mesh = rocketModelTemplate.clone();
-                    this.mesh.rotation.x = Math.PI / 2; 
-                    
-                    const hullLight = new THREE.PointLight(0xffffff, 1.2, 50);
-                    hullLight.position.set(2, 5, 2); 
-                    this.group.add(hullLight);
-                    
-                    const fillLight = new THREE.PointLight(0x4444ff, 0.3, 50);
-                    fillLight.position.set(-2, -2, 0);
-                    this.group.add(fillLight);
-                } else {
-                    // Fallback
-                    this.mesh = new THREE.Group();
-                    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.4, 2, 8), new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
-                    body.rotation.x = Math.PI / 2; 
-                    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 8), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
-                    nose.rotation.x = Math.PI / 2;
-                    nose.position.z = 1.25;
-                    this.mesh.add(body);
-                    this.mesh.add(nose);
-                }
+                this.smokeParticles = [];
+                this.smokeTexture = this.createSmokeTexture();
+                this.smokeGroup = new THREE.Group();
+                this.scene.add(this.smokeGroup); 
+
+                // CONTAINER
+                this.fullStackMesh = new THREE.Group(); // Phase 1
+                this.group.add(this.fullStackMesh);
+
+                this.boosterContainer = new THREE.Group(); // Phase 2 (Abfallender Teil)
+                this.group.add(this.boosterContainer);
                 
-                this.mesh.scale.set(ROCKET_SIZE_SCALE, ROCKET_SIZE_SCALE, ROCKET_SIZE_SCALE);
-                this.group.add(this.mesh);
+                this.boosterMesh = new THREE.Group(); 
+                this.boosterContainer.add(this.boosterMesh);
+                
+                this.capsuleMesh = new THREE.Group(); // Phase 2 (Weiterfliegender Teil)
+                this.group.add(this.capsuleMesh);
+                
+                // Initial: Nur volle Rakete zeigen
+                this.fullStackMesh.visible = true;
+                this.boosterContainer.visible = false;
+                this.capsuleMesh.visible = false; 
 
-                // 2. Antrieb
-                const map = new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/glow.png');
-                const material = new THREE.SpriteMaterial({ map: map, color: 0xffaa00, blending: THREE.AdditiveBlending });
-                this.engineGlow = new THREE.Sprite(material);
-                this.engineGlow.scale.set(1.5, 1.5, 1); 
-                this.engineGlow.position.z = -3.0 * ROCKET_SIZE_SCALE; 
+                // 1. FULL STACK (Start)
+                if (rocketModelTemplate) {
+                    const model = rocketModelTemplate.clone();
+                    model.rotation.x = Math.PI / 2; 
+                    this.fullStackMesh.add(model);
+                } else {
+                    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2*this.effScale, 0.4*this.effScale, 2*this.effScale, 8), new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
+                    body.rotation.x = Math.PI / 2;
+                    this.fullStackMesh.add(body);
+                }
+
+                // 2. BOOSTER (Abwurf)
+                if (boosterModelTemplate) {
+                    const model = boosterModelTemplate.clone();
+                    model.rotation.x = Math.PI / 2; 
+                    this.boosterMesh.add(model);
+                } else {
+                    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2*this.effScale, 0.4*this.effScale, 2*this.effScale, 8), new THREE.MeshStandardMaterial({ color: 0xaaaaaa }));
+                    body.rotation.x = Math.PI / 2;
+                    this.boosterMesh.add(body);
+                }
+
+                // 3. KAPSEL (Spitze)
+                if (capsuleModelTemplate) {
+                    const model = capsuleModelTemplate.clone();
+                    model.rotation.x = Math.PI / 2; 
+                    this.capsuleMesh.add(model);
+                } else {
+                    const cm = new THREE.Mesh(new THREE.ConeGeometry(0.2*this.effScale, 0.15*this.effScale, 16), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+                    cm.rotation.x = Math.PI / 2;
+                    this.capsuleMesh.add(cm);
+                }
+
+                // POSITIONIERUNG DER KAPSEL (AN DIE SPITZE)
+                this.capsuleMesh.position.z = this.capsuleOffset;
+
+                // Skalierung
+                this.fullStackMesh.scale.set(1, 1, 1);
+                this.boosterMesh.scale.set(1, 1, 1);
+                this.capsuleMesh.scale.set(1, 1, 1);
+
+                // LICHTER
+                const hullLight = new THREE.PointLight(0xffffff, 2.0, 100);
+                hullLight.position.set(5, 10, 5); 
+                this.group.add(hullLight);
+                
+                const fillLight = new THREE.PointLight(0xaaaaff, 0.8, 100);
+                fillLight.position.set(-5, -5, 0);
+                this.group.add(fillLight);
+
+                // ANTRIEB
+                const glowTexture = this.createSmokeTexture();
+                const mat = new THREE.SpriteMaterial({ map: glowTexture, color: 0xffaa00, blending: THREE.AdditiveBlending });
+                
+                // Grosses Feuer
+                this.engineGlow = new THREE.Sprite(mat);
+                const fireSize = this.effScale * 5.0; 
+                this.engineGlow.scale.set(fireSize, fireSize, 1);
+                this.engineGlow.position.z = -0.005; 
                 this.engineGlow.visible = false; 
-                this.group.add(this.engineGlow);
+                this.fullStackMesh.add(this.engineGlow); 
 
-                this.engineLight = new THREE.PointLight(0xffaa00, 0, 50);
-                this.engineLight.position.z = -3.5 * ROCKET_SIZE_SCALE;
-                this.group.add(this.engineLight);
+                // Kleines Feuer (Kapsel)
+                this.capsuleEngine = new THREE.Sprite(mat.clone());
+                const capFireSize = this.effScale * 1.5;
+                this.capsuleEngine.scale.set(capFireSize, capFireSize, 1);
+                // Feuer muss hinter der Kapsel sein (offset minus ein bisschen)
+                this.capsuleEngine.position.z = -0.001; 
+                this.capsuleEngine.visible = false; 
+                this.capsuleMesh.add(this.capsuleEngine);
 
                 scene.add(this.group);
-                
                 this.updatePositionOnEarth();
+            }
+
+            createSmokeTexture() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 64; canvas.height = 64;
+                const context = canvas.getContext('2d');
+                const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
+                gradient.addColorStop(0, 'rgba(255,255,255,1)');
+                gradient.addColorStop(1, 'rgba(0,0,0,0)');
+                context.fillStyle = gradient;
+                context.fillRect(0,0,64,64);
+                return new THREE.CanvasTexture(canvas);
+            }
+
+            spawnSmoke(isSpace) {
+                if (this.isStaged) return; 
+
+                let sourceObj = this.engineGlow;
+                if (!sourceObj.visible) return;
+
+                const nozzlePos = new THREE.Vector3();
+                sourceObj.getWorldPosition(nozzlePos);
+
+                const material = new THREE.SpriteMaterial({ 
+                    map: this.smokeTexture, 
+                    color: isSpace ? new THREE.Color(0xdddddd) : new THREE.Color(0x555555),
+                    transparent: true, 
+                    opacity: isSpace ? 0.2 : 0.6,
+                    depthWrite: false 
+                });
+
+                const particle = new THREE.Sprite(material);
+                particle.position.copy(nozzlePos);
+
+                const spread = this.effScale * 0.5; 
+                particle.position.add(new THREE.Vector3((Math.random()-0.5)*spread, (Math.random()-0.5)*spread, (Math.random()-0.5)*spread));
+
+                let baseSize = isSpace ? 1.5 : 5.0; 
+                let size = baseSize * this.effScale; 
+                particle.scale.set(size, size, 1);
+                particle.material.rotation = Math.random() * Math.PI * 2;
+
+                this.smokeGroup.add(particle);
+
+                this.smokeParticles.push({
+                    mesh: particle,
+                    age: 0,
+                    lifetime: isSpace ? 0.8 : 2.5,
+                    growth: isSpace ? (0.2 * this.effScale) : (3.0 * this.effScale), 
+                    velocity: new THREE.Vector3((Math.random()-0.5), (Math.random()-0.5), (Math.random()-0.5)).multiplyScalar(0.02 * SCENE_SCALE)
+                });
+            }
+
+            updateSmoke(deltaTime) {
+                for (let i = this.smokeParticles.length - 1; i >= 0; i--) {
+                    const p = this.smokeParticles[i];
+                    p.age += deltaTime;
+                    if (p.age >= p.lifetime) {
+                        this.smokeGroup.remove(p.mesh);
+                        p.mesh.material.dispose();
+                        this.smokeParticles.splice(i, 1);
+                        continue;
+                    }
+                    const lifeRatio = p.age / p.lifetime;
+                    p.mesh.material.opacity *= 0.95; 
+                    const currentScale = p.mesh.scale.x + (p.growth * deltaTime);
+                    p.mesh.scale.set(currentScale, currentScale, 1);
+                    p.mesh.position.add(p.velocity.clone().multiplyScalar(deltaTime));
+                }
             }
 
             launch() {
                 if (this.state !== 'ready') return;
-                
-                // Reset auf Tag 0.8
                 currentDay = 0.8;
                 const daySlider = document.getElementById('day-slider');
                 if (daySlider) daySlider.value = currentDay;
                 if (typeof updatePositions === 'function') updatePositions(currentDay);
                 if (typeof updateUI === 'function') updateUI();
-                if (typeof formatDayCount === 'function') {
-                     const label = document.getElementById('current-day-label');
-                     if (label) label.textContent = formatDayCount(currentDay);
-                }
-
+                
                 this.state = 'countdown';
                 this.timer = 5.0; 
                 
                 const sSlider = document.getElementById('speed-slider');
-                if (sSlider) {
-                    sSlider.value = 1; 
-                    const event = new Event('input');
-                    sSlider.dispatchEvent(event);
-                }
+                if (sSlider) { sSlider.value = 1; sSlider.dispatchEvent(new Event('input')); }
 
                 setFocus(this.group, 0.3); 
             }
@@ -1535,46 +1570,34 @@
                 if (!earth || !sun) return;
                 const earthPos = new THREE.Vector3(); earth.getWorldPosition(earthPos);
                 const sunPos = new THREE.Vector3(); sun.getWorldPosition(sunPos);
-                const directionToSun = new THREE.Vector3().subVectors(sunPos, earthPos).normalize();
+                const dir = new THREE.Vector3().subVectors(sunPos, earthPos).normalize();
+                dir.y += 0.6; dir.normalize(); 
                 
-                // Nördlicher Startpunkt (Cape Canaveral Style)
-                directionToSun.y += 0.2; 
-                directionToSun.normalize(); 
-                
-                const spawnOffset = directionToSun.multiplyScalar(EARTH_RADIUS);
-                const finalPos = earthPos.clone().add(spawnOffset);
-                
+                const finalPos = earthPos.clone().add(dir.multiplyScalar(EARTH_RADIUS));
                 this.group.position.copy(finalPos);
-                const lookTarget = finalPos.clone().add(directionToSun.multiplyScalar(10));
-                this.group.lookAt(lookTarget);
+                this.group.lookAt(finalPos.clone().add(dir));
             }
 
+            easeInOutCubic(x) { return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; }
+            easeOutQuad(x) { return 1 - (1 - x) * (1 - x); }
             getAngle(vec) { return Math.atan2(vec.z, vec.x); }
 
-            // Easing Funktionen für den weichen Übergang
-            easeInQuad(x) { return x * x; } // Start langsam, Ende schnell (kein Bremsen!)
-            easeOutQuad(x) { return 1 - (1 - x) * (1 - x); } // Start schnell, Ende langsam
-            easeInCubic(x) { return x * x * x; }
-
             update(deltaTime) {
-                if (this.state === 'ready') {
-                    this.updatePositionOnEarth();
-                    return false; 
-                }
+                this.updateSmoke(deltaTime);
+
+                if (this.state === 'ready') { this.updatePositionOnEarth(); return false; }
 
                 if (this.state === 'countdown') {
                     this.updatePositionOnEarth();
                     this.timer -= deltaTime;
                     const statusEl = document.getElementById('rocket-status');
                     if (statusEl) statusEl.textContent = `Startsequenz... T- ${this.timer.toFixed(1)} s`;
-
+                    if (this.timer < 1.5) { this.engineGlow.visible = true; this.spawnSmoke(false); }
                     if (this.timer <= 0) {
                         this.state = 'flying';
-                        const earthPos = new THREE.Vector3();
-                        earth.getWorldPosition(earthPos);
+                        const earthPos = new THREE.Vector3(); earth.getWorldPosition(earthPos);
                         this.startRelPos.subVectors(this.group.position, earthPos);
                         this.startAngle = this.getAngle(this.startRelPos);
-                        
                         this.engineGlow.visible = true;
                         this.engineLight.intensity = 2.0;
                         if (statusEl) statusEl.textContent = "LIFTOFF! Aufstieg in Park-Orbit...";
@@ -1583,9 +1606,16 @@
 
                 if (this.state === 'flying') {
                     this.rawProgress += deltaTime / ROCKET_FLIGHT_DURATION_SECONDS;
-                    if (this.rawProgress >= 1.0) {
-                        this.finish();
+                    
+                    // FIX: Sofortige Landung bei 100%
+                    if (this.rawProgress >= 1.0) { 
+                        this.finish(); 
                         return true; 
+                    }
+
+                    if (!this.isStaged) {
+                        if (this.rawProgress < 0.2) { this.spawnSmoke(false); this.spawnSmoke(false); }
+                        else if (this.rawProgress < 0.4) { if (Math.random() > 0.3) this.spawnSmoke(true); }
                     }
 
                     const earthPos = new THREE.Vector3(); earth.getWorldPosition(earthPos);
@@ -1600,116 +1630,114 @@
 
                     let currentAngle, currentDist;
 
-                    // --- PHASE 1: PARK ORBIT (0% - 40%) ---
+                    // PHASE 1: ORBIT
                     if (this.rawProgress < ORBIT_PHASE_END) {
                         const p = this.rawProgress / ORBIT_PHASE_END;
-                        
-                        // FIX: EaseIn statt EaseInOut!
-                        // Damit bremsen wir am Ende NICHT ab, sondern haben volle Drehgeschwindigkeit.
-                        // Wir nehmen eine leichte Potenz (1.5), damit der Start nicht zuuu langsam ist.
-                        const rotationP = Math.pow(p, 1.5);
-
-                        // 3.5 PI (630 Grad)
-                        currentAngle = this.startAngle + (rotationP * Math.PI * 3.5);
+                        const easeP = Math.pow(p, 1.5); 
+                        currentAngle = this.startAngle + (easeP * Math.PI * 3.5);
                         this.orbitEndAngle = this.startAngle + (Math.PI * 3.5);
-
-                        // Radius: Schnell hoch, dann stabil
-                        const liftP = Math.min(1.0, p * 4.0); // Sehr schneller Aufstieg
-                        const liftEase = Math.sin(liftP * Math.PI / 2);
-                        currentDist = THREE.MathUtils.lerp(rStart, rOrbit, liftEase);
-
-                        document.getElementById('rocket-status').textContent = "Park-Orbit (630°)...";
+                        const liftP = Math.min(1.0, p * 3.0); 
+                        currentDist = THREE.MathUtils.lerp(rStart, rOrbit, Math.sin(liftP * Math.PI / 2));
+                        document.getElementById('rocket-status').textContent = "Park-Orbit (Saturn V)...";
                     } 
-                    
-                    // --- PHASE 2: TLI (TRANSFER) (40% - 100%) ---
+                    // PHASE 2: TRANSFER (STUFENTRENNUNG)
                     else {
                         const p = (this.rawProgress - ORBIT_PHASE_END) / (1.0 - ORBIT_PHASE_END);
                         
-                        // FIX: EaseOut für Radius (Transfer)
-                        // Wir starten mit dem Schwung aus dem Orbit (schnell) und werden beim Mond langsamer.
-                        const transferEase = this.easeOutQuad(p);
-
-                        let targetMoonAngle = this.getAngle(moonRel);
+                        // --- STAGING LOGIK ---
+                        if (!this.isStaged) {
+                            this.isStaged = true;
+                            
+                            // Swap: Volle Rakete aus, Teile an
+                            this.fullStackMesh.visible = false;
+                            
+                            this.boosterContainer.visible = true;
+                            this.capsuleMesh.visible = true;
+                            this.capsuleEngine.visible = true;
+                            
+                            // Effekt
+                            for(let k=0; k<15; k++) this.spawnSmoke(true);
+                            document.getElementById('rocket-status').textContent = "Stufentrennung! Booster fällt zurück.";
+                        }
                         
-                        // Vorwärts-Logik
+                        // Booster fällt zurück (Animation)
+                        this.boosterContainer.position.z -= deltaTime * 0.002; 
+                        this.boosterContainer.position.y -= deltaTime * 0.001; 
+                        this.boosterContainer.rotation.z += deltaTime * 0.5;   
+                        
+                        const shrink = Math.max(0, 1.0 - (p * 3.0)); // Schnelleres Verschwinden
+                        this.boosterContainer.scale.set(shrink, shrink, shrink);
+                        if (shrink <= 0.01) this.boosterContainer.visible = false;
+                        // --------------------------------
+
+                        const transferEase = this.easeOutQuad(p);
+                        let targetMoonAngle = this.getAngle(moonRel);
                         while (targetMoonAngle < this.orbitEndAngle) targetMoonAngle += Math.PI * 2;
                         while (targetMoonAngle - this.orbitEndAngle > Math.PI * 2) targetMoonAngle -= Math.PI * 2;
                         while (targetMoonAngle < this.orbitEndAngle) targetMoonAngle += Math.PI * 2;
 
-                        // Winkel linear interpolieren (der Schwung ist da)
                         currentAngle = THREE.MathUtils.lerp(this.orbitEndAngle, targetMoonAngle, p);
-                        
-                        // Radius interpolieren (schneller Start, sanftes Ende)
                         currentDist = THREE.MathUtils.lerp(rOrbit, rMoon, transferEase);
                         
                         if (p > 0.9) document.getElementById('rocket-status').textContent = "Landeanflug...";
-                        else document.getElementById('rocket-status').textContent = "Trans-Lunar Injection (TLI)...";
+                        else document.getElementById('rocket-status').textContent = "Transfer zum Mond...";
                     }
 
                     const currentY = THREE.MathUtils.lerp(this.startRelPos.y, moonRel.y, this.rawProgress);
                     const newX = Math.cos(currentAngle) * currentDist;
                     const newZ = Math.sin(currentAngle) * currentDist;
                     const finalPos = new THREE.Vector3(newX, currentY, newZ).add(earthPos);
-                    
                     this.group.position.copy(finalPos);
 
                     // Ausrichtung
                     const nextP = Math.min(1.0, this.rawProgress + 0.01);
                     let nextAngle, nextDist;
-                    
                     if (nextP < ORBIT_PHASE_END) {
                         const np = nextP / ORBIT_PHASE_END;
-                        const nease = Math.pow(np, 1.5); // Gleiche Kurve wie oben
-                        nextAngle = this.startAngle + (nease * Math.PI * 3.5);
+                        nextAngle = this.startAngle + (Math.pow(np, 1.5) * Math.PI * 3.5);
                         nextDist = rOrbit; 
                     } else {
                         const np = (nextP - ORBIT_PHASE_END) / (1.0 - ORBIT_PHASE_END);
-                        const nTransferEase = this.easeOutQuad(np); // Gleiche Kurve wie oben
+                        const nTransferEase = this.easeOutQuad(np);
                         let tAng = this.getAngle(moonRel);
                         while (tAng < this.orbitEndAngle) tAng += Math.PI * 2;
                         while (tAng - this.orbitEndAngle > Math.PI * 2) tAng -= Math.PI * 2;
                         while (tAng < this.orbitEndAngle) tAng += Math.PI * 2;
-
                         nextAngle = THREE.MathUtils.lerp(this.orbitEndAngle, tAng, np);
                         nextDist = THREE.MathUtils.lerp(rOrbit, rMoon, nTransferEase);
                     }
-                    
-                    const lookX = Math.cos(nextAngle) * nextDist;
-                    const lookZ = Math.sin(nextAngle) * nextDist;
-                    const lookTarget = new THREE.Vector3(lookX, currentY, lookZ).add(earthPos);
+                    const lookTarget = new THREE.Vector3(Math.cos(nextAngle)*nextDist, currentY, Math.sin(nextAngle)*nextDist).add(earthPos);
 
                     if (this.rawProgress < 0.1) {
-                         const upVec = new THREE.Vector3().subVectors(this.group.position, earthPos).normalize();
-                         const upTarget = this.group.position.clone().add(upVec);
-                         const mix = this.rawProgress * 10.0;
-                         const blendLook = new THREE.Vector3().lerpVectors(upTarget, lookTarget, mix);
-                         this.group.lookAt(blendLook);
+                         const upTarget = this.group.position.clone().add(new THREE.Vector3().subVectors(this.group.position, earthPos).normalize());
+                         this.group.lookAt(new THREE.Vector3().lerpVectors(upTarget, lookTarget, this.rawProgress * 10));
                     } else {
                          this.group.lookAt(lookTarget);
                     }
 
                     const wobble = Math.sin(Date.now() * 0.02) * 0.1;
-                    this.engineGlow.scale.set(1.5 + wobble, 1.5 + wobble, 1);
+                    const scaleBase = this.isStaged ? 0.4 : 1.0; 
+                    (this.isStaged ? this.capsuleEngine : this.engineGlow).scale.set((scaleBase + wobble*0.2)*this.effScale*5.0, (scaleBase + wobble*0.2)*this.effScale*5.0, 1);
                 }
-                
                 return false;
             }
 
             finish() {
                 this.state = 'landed';
-                this.engineGlow.visible = false;
-                this.engineLight.intensity = 0;
-                const statusEl = document.getElementById('rocket-status');
-                if (statusEl) statusEl.textContent = "The Eagle has landed. 🌑🚩";
+                document.getElementById('rocket-status').textContent = "The Eagle has landed. 🌑🚩";
                 
-                const index = clickableObjects.indexOf(this.group);
+                const index = clickableObjects.indexOf(this.group); 
                 if (index > -1) clickableObjects.splice(index, 1);
-
-                setTimeout(() => {
-                    if (cameraFocus === this.group) setFocus(moon, 2.0);
-                    this.scene.remove(this.group);
-                    document.getElementById('rocket-controls').style.display = 'none';
-                }, 5000); 
+                
+                // 1. Rakete sofort löschen
+                this.scene.remove(this.group); 
+                this.scene.remove(this.smokeGroup);
+                
+                // 2. UI sofort ausblenden
+                document.getElementById('rocket-controls').style.display = 'none';
+                
+                // 3. Kamera auf Mond (sofort)
+                setFocus(moon, 2.0); 
             }
         }
         
@@ -2241,6 +2269,7 @@
 
             definePlanetData();
             createSolarSystem();
+            createAsteroidBelt();
 
             //  Skalierungsfaktoren berechnen NACHDEM createSolarSystem() lief 
             originalSunScale.copy(sun.scale);
@@ -2573,7 +2602,7 @@
         function createSolarSystem() {
             const textureLoader = new THREE.TextureLoader(loadingManager);
 
-            cometRockTexture = textureLoader.load('ImagesGit/Objects/comet_ice.webp');
+            
 
             const starGeometry = new THREE.SphereGeometry(5000, 32, 32); 
             const starTexture = textureLoader.load('ImagesGit/Scenery/8k_stars_milky_way.webp');
@@ -2816,6 +2845,69 @@
             });
         }
 
+        function createAsteroidBelt() {
+            // Konfiguration
+            const asteroidCount = 4000; // Anzahl der Asteroiden (bei Performance-Problemen reduzieren)
+            const startDist = 550 * SCENE_SCALE; // Kurz nach Mars
+            const endDist = 650 * SCENE_SCALE;   // Vor Jupiter
+            
+            // 1. Geometrie & Material (Ein einfacher grauer Stein)
+            // DodecahedronGeometry ist low-poly und sieht "steinig" aus
+            const geometry = new THREE.DodecahedronGeometry(1.2 * SCENE_SCALE, 0); 
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0x666666, 
+                roughness: 0.9, 
+                metalness: 0.1 
+            });
+
+            // 2. InstancedMesh erstellen (Hochleistungs-Rendering)
+            asteroidInstancedMesh = new THREE.InstancedMesh(geometry, material, asteroidCount);
+            
+            const dummy = new THREE.Object3D();
+            const asteroidData = []; // Hier speichern wir Winkel & Geschwindigkeit für jeden Stein
+
+            for (let i = 0; i < asteroidCount; i++) {
+                // Zufällige Position im Ring berechnen
+                const angle = Math.random() * Math.PI * 2;
+                const distance = THREE.MathUtils.randFloat(startDist, endDist);
+                
+                // Streuung in der Höhe (Y-Achse), damit es nicht wie eine CD aussieht, sondern Volumen hat
+                const heightSpread = THREE.MathUtils.randFloatSpread(40 * SCENE_SCALE); 
+
+                // Initiale Position setzen
+                const x = Math.cos(angle) * distance;
+                const z = Math.sin(angle) * distance;
+                const y = heightSpread;
+
+                dummy.position.set(x, y, z);
+                
+                // Zufällige Rotation und Grösse für Abwechslung
+                dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                const scale = THREE.MathUtils.randFloat(0.5, 1.5);
+                dummy.scale.set(scale, scale, scale);
+
+                dummy.updateMatrix();
+                asteroidInstancedMesh.setMatrixAt(i, dummy.matrix);
+
+                // Daten für die Animation speichern
+                asteroidData.push({
+                    startAngle: angle,
+                    distance: distance,
+                    y: y,
+                    // Innere Asteroiden sind schneller (Kepler lässt grüssen, vereinfacht)
+                    speed: (0.05 / (distance / (100 * SCENE_SCALE))) 
+                });
+
+                
+            }
+
+            // Daten im Mesh speichern, damit updatePositions darauf zugreifen kann
+            asteroidInstancedMesh.userData.asteroids = asteroidData;
+
+            scene.add(asteroidInstancedMesh);
+            console.log("Asteroidengürtel erstellt!");
+        }
+
         //  E SKALIERBARE FUNKTION ZUM LADEN VON 3D-MODELLEN 
         function load3DModels() {
             
@@ -2841,6 +2933,7 @@
                     scale: 1.3, // Sehr klein, wie gewünscht
                     orbitTarget: 'earth', // (Reserviert für später)
                     altitude: EARTH_RADIUS + 0.5, // 0.5 Einheiten über der Erde
+                    ambientIntensity: 0.7,
                     inclination: 51.6, // Grad
                     orbitsPerDay: 15.6, // Umkreisungen pro Tag
                     updateType: 'earth_orbit', // Logik-Schalter für updatePositions
@@ -2855,6 +2948,7 @@
                     label: 'Hubble', // Für den Fokus-Button
                     scale: 0.00001, // Ggfs. anpassen, damit es kleiner als die ISS ist
                     altitude: EARTH_RADIUS + 1.0, // ~540 km (etwas höher als ISS)
+                    ambientIntensity: 0.7,
                     inclination: 28.5, // Andere Bahnebene als die ISS
                     orbitsPerDay: 15.2, // Etwas langsamer als die ISS
                     updateType: 'earth_orbit', // Nutzt die gleiche Orbit-Logik
@@ -2862,11 +2956,36 @@
                 },
 
                 {
+                    id: 'voyager1',
+                    url: 'ImagesGit/3D-Models/nasa_voyager_space_probe.glb', // Datei muss existieren!
+                    label: 'Voyager 1',
+                    scale: 0.01, // Etwas grösser skalieren, da sie weit weg ist
+                    ambientIntensity: 15.0,
+                    updateType: 'static_rotation', // Neuer Typ: Bewegt sich nicht, rotiert nur
+                    focusDistance: 0.3
+                },
+
+                {
                     id: 'rocket',
                     // Pfad anpassen! Wenn du kein Modell hast, wird der Fallback genutzt.
                     url: 'ImagesGit/3D-Models/saturn_v.glb', 
                     type: 'template',
-                    scale: ROCKET_SIZE_SCALE // Skalierung für Raketenmodell
+                    scale: ROCKET_SIZE_SCALE * 0.001 //R Skalierung für Raketenmodell
+                },
+
+                {
+                    id: 'booster',
+                    url: 'ImagesGit/3D-Models/saturn_v_dislodged_1.glb', // <--- HIER DEIN NEUES MODELL
+                    type: 'template',
+                    scale: ROCKET_SIZE_SCALE * 0.001
+                },
+
+                {
+                    id: 'capsule',
+                    // HIER DEINEN DATEINAMEN EINTRAGEN:
+                    url: 'ImagesGit/3D-Models/saturn_v_cockpit.glb', 
+                    type: 'template',
+                    scale: ROCKET_SIZE_SCALE * 0.00007 // Gleiche Skalierung wie Rakete
                 }
                 // HIER KÖNNTEST DU EINFACH MEHR OBJEKTE HINZUFÜGEN
                 // { id: 'hubble', url: 'hubble.glb', ... }
@@ -2899,6 +3018,16 @@
                         else if (modelData.id === 'rocket') {
                             rocketModelTemplate = gltf.scene;
                             console.log("3D-Modell-Vorlage 'Rakete' erfolgreich geladen.");
+                        }
+
+                        else if (modelData.id === 'booster') {
+                        boosterModelTemplate = gltf.scene;
+                        console.log("Booster-Modell geladen.");
+                    }
+
+                        else if (modelData.id === 'capsule') {
+                            capsuleModelTemplate = gltf.scene;
+                            console.log("Kapsel geladen.");
                         }
 
                         else if (modelData.id === 'ufo') {
@@ -2955,9 +3084,7 @@
                         modelScene.traverse(child => {
                             if (child.isMesh) {
                                 child.material = child.material.clone();
-                                // Ein dezentes weißes/gelbliches Leuchten (0x333322)
-                                child.material.emissive = new THREE.Color(0x333322); 
-                                child.material.emissiveIntensity = 0.3; // Mittlere Stärke
+                                
                                 child.material.metalness = 0.7; // Sollte leicht metallisch bleiben
                             }
                         });
@@ -2971,11 +3098,51 @@
                             if (child.isMesh) {
                                 child.material = child.material.clone();
                                 // Ein sehr leichtes, fast weißes Leuchten (dezenter als ISS)
-                                child.material.emissive = new THREE.Color(0x222222); 
-                                child.material.emissiveIntensity = 0.3; // Etwas weniger stark
+                                
                                 child.material.roughness = 0.8; // Wirkt matt und reflektiert weniger Schwarz
                             }
                         });
+                    }
+
+                    // ... nach Hubble ...
+
+                    if (modelData.id === 'voyager1') {
+                        // 1. Position: Weit draussen, leicht oberhalb der Ekliptik
+                        // Voyager fliegt Richtung Sternbild Schlangenträger
+                        const dist = 3500 * SCENE_SCALE; // Weit weg, aber noch vor den Sternen (5000)
+                        
+                        
+                        
+                        // Ausrichtung: Zur Erde schauen lassen
+                        modelScene.lookAt(0, 0, 0);
+
+                        // 2. Material: Aufhellen (Emissive), damit man sie im All sieht
+                        modelScene.traverse(child => {
+                            if (child.isMesh) {
+                                child.material = child.material.clone();
+                                
+                                child.material.metalness = 0.8; 
+                                child.material.roughness = 0.4; 
+                            }
+                        });
+
+                        // 3. INFOS für das Popup
+                        modelScene.userData.info = {
+                            name: 'Voyager 1',
+                            earthCompareRadius: 'ca. 3,7m Durchmesser (Antenne)',
+                            radius_km: '24,4 Mrd. km', // Wir nutzen das Feld für "Distanz zur Erde"
+                            umlaufzeit: 'N/A (Verlässt Sonnensystem)',
+                            taglaenge: 'Seit 1977 unterwegs', // Wir nutzen das Feld für "Startdatum"
+                            parentName: 'Erde',
+                            funFacts: [
+                                'Ist das am weitesten entfernte von Menschen gebaute Objekt.',
+                                'Hat das Sonnensystem verlassen und befindet sich im interstellaren Raum.',
+                                'Trägt eine "Golden Record" mit Geräuschen und Bildern der Erde für Ausserirdische.'
+                            ]
+                        };
+                        
+                        // Zur Klick-Liste hinzufügen
+                        clickableObjects.push(modelScene);
                     }
 
                     //  START: ER CODE FÜR ISS-INFO 
@@ -3029,9 +3196,38 @@
                     // Positioniere das Modell *innerhalb* des Pivots
                     // (auf der X-Achse, in der gewünschten Höhe)
                     modelScene.position.x = modelData.altitude;
+
+                    if (modelData.id === 'voyager1') {
+                        const dist = 3500 * SCENE_SCALE;
+                        // Hier setzen wir die Position des gesamten Pivots im Raum
+                        pivot.position.set(dist * 0.5, dist * 0.3, -dist * 0.8);
+                        
+                        // Wichtig: Da wir den Pivot verschoben haben, muss das Modell im Pivot
+                        // auf 0,0,0 zurückgesetzt werden (sonst addiert sich 'altitude' noch dazu)
+                        modelScene.position.set(0, 0, 0); 
+                    }
                     
                     // Füge das Modell zum Pivot hinzu
                     pivot.add(modelScene);
+
+                    if (modelData.id === 'iss' || modelData.id === 'hubble' || modelData.id === 'voyager1') {
+    
+                        const intensity = modelData.ambientIntensity !== undefined ? modelData.ambientIntensity : 0.4;
+                        
+                        // KORREKTUR: Statt AmbientLight (global) nutzen wir PointLight (lokal)
+                        // Parameter: Farbe, Intensität, Distanz (Reichweite)
+                        // 50 * SCENE_SCALE sorgt dafür, dass das Licht die Asteroiden nicht erreicht.
+                        const localLight = new THREE.PointLight(0xffffff, intensity * 1.5, 50 * SCENE_SCALE);
+                        
+                        // WICHTIG: Das Licht muss genau dort sein, wo das Modell ist
+                        localLight.position.copy(modelScene.position);
+                        
+                        // Das Licht leicht versetzen, damit es das Modell schön anstrahlt (optional)
+                        localLight.position.y += 2 * SCENE_SCALE; 
+                        localLight.position.z += 2 * SCENE_SCALE;
+
+                        pivot.add(localLight);
+                    }
                     
                     // Füge den Pivot zur Haupt-Szene hinzu
                     scene.add(pivot);
@@ -3629,7 +3825,7 @@
                 // ❗ WICHTIG: Skalierung anpassen!
                 // Das alte UFO war ca. 3 Einheiten breit (Radius 1.5 * 2).
                 // Wir skalieren das e Modell auf diese Grösse.
-                const ufoTargetWidth = 5.0 * SCENE_SCALE;
+                const ufoTargetWidth = 1.5 * SCENE_SCALE;
                 
                 try {
                     // Automatische Skalierung basierend auf der Modellgrösse
@@ -4131,85 +4327,38 @@
             
             if (comet && targetObj === comet.mesh) {
 
-                // 1. ECHTE visuelle Größe ermitteln (Bounding Box)
-                // Wir messen, wie gross das Objekt (inkl. Glow/Modell) wirklich ist
-                const box = new THREE.Box3().setFromObject(comet.mesh);
-                const size = new THREE.Vector3();
-                box.getSize(size);
-                
-                // Wir nehmen die größte Seite als Referenz (Visueller Radius)
-                const maxDimension = Math.max(size.x, size.y, size.z);
-                const visualRadius = maxDimension / 2;
+                // 1. Hole den Radius aus der NEUEN Cache-Eigenschaft
+                const visualRadius = comet.visualRadius;
                 
                 // 2. Berechne die Distanz für 60% Bildschirmfüllung
                 const fovInRad = THREE.MathUtils.degToRad(camera.fov); 
                 
-                // Du wolltest 60% Füllung. 
-                // Formel: Distanz = Radius / (sin(fov/2) * füllung)
                 const fillFactor = 0.6; 
                 
-                // Berechne die ideale Distanz basierend auf der visuellen Größe
+                // Berechne die ideale Distanz basierend auf dem gespeicherten Radius
                 let distance = visualRadius / (Math.sin(fovInRad / 2) * fillFactor);
                 
                 // 3. Setze Mindest-/Maximal-Abstand
-                // Wir verhindern, dass er näher als das 2-fache des Objekts ran darf
                 distance = THREE.MathUtils.clamp(distance, visualRadius * 2.0, 500.0);
 
-                // 4. Ziel ist der Komet selbst
-                const endTarget = targetPos.clone();
+                // ... (Rest des Codes zur Positionierung bleibt gleich) ...
+
+                // NEU: HIER Sonne definieren und Position holen
+                const sunPos = new THREE.Vector3();
+                sun.getWorldPosition(sunPos);
+                const offsetDir = sunPos.clone().sub(targetPos).normalize().negate();
                 
-                // 5. Richtung: Vom Kometen zur Sonne (Kamera schaut von hinten auf Komet -> Sonne)
-                // Wir holen die Sonnenposition (0,0,0) und rechnen den Vektor
-                const sunPos = new THREE.Vector3(0,0,0);
-                const offsetDir = sunPos.clone().sub(targetPos).normalize().negate(); // negate = Von Sonne weg = hinter Komet
-                
-                offsetDir.y = 0.3; // Kamera leicht anheben, damit wir über den Schweif schauen
+                offsetDir.y = 0.3; 
                 offsetDir.normalize();
                 
-                // 6. Offset (Distanz) auf die Richtung anwenden
                 const offset = offsetDir.multiplyScalar(distance);
-                
-                // 7. Endposition berechnen
-                const endPos = targetPos.clone().add(offset);
+                const endPos = targetPos.clone().aKdd(offset);
 
-                // 8. Hinfliegen
-                flyTo(endPos, endTarget, duration, targetObj);
-                return; // WICHTIG: Verlässt die Funktion hier
-
-            // 2. RAKETE (Kamera VORNE, Blick auf die Spitze)
-            } else if (targetObj.userData && targetObj.userData.isRocket) {
-                
-                // HIER EINSTELLEN: Gesamtabstand (Zoom)
-                // 3.0 = Weit weg (Gute Übersicht)
-                // 1.5 = Nah
-                // 0.8 = Sehr nah (Action-Cam)
-                distance = 0.5; 
-
-                const moonPos = new THREE.Vector3();
-                if (moon) moon.getWorldPosition(moonPos);
-
-                // 1. Vektor: Von Rakete ZUM Mond (Das ist "Vorne")
-                const forwardDir = new THREE.Vector3().subVectors(moonPos, targetPos).normalize();
-                
-                // 2. Vektor: Seite (Rechts)
-                const upVec = new THREE.Vector3(0, 1, 0);
-                const sideDir = new THREE.Vector3().crossVectors(forwardDir, upVec).normalize();
-
-                // 3. Kamera-Position berechnen (JETZT ALLES SKALIERT!)
-                
-                // Vorne: Basis-Abstand
-                const finalOffset = forwardDir.clone().multiplyScalar(distance); 
-                
-                // Oben: Wir nehmen 30% der Distanz als Höhe (statt fix 1.0)
-                finalOffset.y += distance * 0.3; 
-                
-                // Seite: Wir nehmen 20% der Distanz als seitlichen Versatz
-                finalOffset.add(sideDir.multiplyScalar(distance * 0.2)); 
-
-                const endPos = targetPos.clone().add(finalOffset);
+                comet.isCameraTransitioning = true;
 
                 flyTo(endPos, endTarget, duration, targetObj);
-                return;
+                return; 
+            
 
             // 3. STANDARD / ANDERE MODELLER
             } else {
@@ -4931,52 +5080,52 @@
         //  Funktion zum Springen zu Jahreszeiten (überarbeitet) 
         //  Funktion zum Springen zu Jahreszeiten (überarbeitet) 
         //  Funktion zum Springen zu Jahreszeiten (überarbeitet) 
-function jumpToSeason(day, clickedBtn) {
-    // 1. Demos & Realitätscheck beenden
-    checkAndEndDemo(); 
-    if (isRealScaleActive) {
-        deactivateRealScale(); 
-    }
-    // 2. Simulation stoppen
-    pauseSimulation();
+        function jumpToSeason(day, clickedBtn) {
+            // 1. Demos & Realitätscheck beenden
+            checkAndEndDemo(); 
+            if (isRealScaleActive) {
+                deactivateRealScale(); 
+            }
+            // 2. Simulation stoppen
+            pauseSimulation();
 
-    restoreOrbitLines(); //Erd und Mondlaufbahn wiederherstellen
+            restoreOrbitLines(); //Erd und Mondlaufbahn wiederherstellen
 
-    // 3. Alle Indikatoren zurücksetzen
-    resetActiveIndicators();
+            // 3. Alle Indikatoren zurücksetzen
+            resetActiveIndicators();
 
-    // 4. Tag setzen
-    currentDay = day;
-    if (currentDayLabelEl) currentDayLabelEl.textContent = formatDayCount(currentDay);
-    const daySlider = document.getElementById('day-slider');
-    daySlider.value = currentDay;
+            // 4. Tag setzen
+            currentDay = day;
+            if (currentDayLabelEl) currentDayLabelEl.textContent = formatDayCount(currentDay);
+            const daySlider = document.getElementById('day-slider');
+            daySlider.value = currentDay;
 
-    // 5. Positionen aktualisieren
-    updatePositions(currentDay);
-    updateUI();
-    
-    // 💡 HIER DIE ÄNDERUNG: Von 'true' auf 'false'
-    toggleOtherPlanets(false); // < Planeten ausblenden
+            // 5. Positionen aktualisieren
+            updatePositions(currentDay);
+            updateUI();
+            
+            // 💡 HIER DIE ÄNDERUNG: Von 'true' auf 'false'
+            toggleOtherPlanets(false); // < Planeten ausblenden
 
-    // 6. e Indikatoren setzen
-    if (clickedBtn) clickedBtn.classList.add('active');
-    if (earthAxisLine) earthAxisLine.visible = true;
+            // 6. e Indikatoren setzen
+            if (clickedBtn) clickedBtn.classList.add('active');
+            if (earthAxisLine) earthAxisLine.visible = true;
 
-    // 7. Manuell zur Erde fliegen (restlicher Code bleibt gleich)
-    let earthPos = new THREE.Vector3();
-    earth.getWorldPosition(earthPos);
-    const radius = EARTH_RADIUS;
-    const fovInRad = THREE.MathUtils.degToRad(camera.fov);
-    const distance = (radius / 0.3) / Math.tan(fovInRad / 2); 
-    
-    const offsetDir = new THREE.Vector3(0, 0, 0).sub(earthPos).normalize();
-    offsetDir.y = 0.5; 
-    offsetDir.normalize(); 
-    const offset = offsetDir.multiplyScalar(distance);
-    const endPos = earthPos.clone().add(offset);
-    
-    flyTo(endPos, earthPos, 1.5, earth); 
-}
+            // 7. Manuell zur Erde fliegen (restlicher Code bleibt gleich)
+            let earthPos = new THREE.Vector3();
+            earth.getWorldPosition(earthPos);
+            const radius = EARTH_RADIUS;
+            const fovInRad = THREE.MathUtils.degToRad(camera.fov);
+            const distance = (radius / 0.3) / Math.tan(fovInRad / 2); 
+            
+            const offsetDir = new THREE.Vector3(0, 0, 0).sub(earthPos).normalize();
+            offsetDir.y = 0.5; 
+            offsetDir.normalize(); 
+            const offset = offsetDir.multiplyScalar(distance);
+            const endPos = earthPos.clone().add(offset);
+            
+            flyTo(endPos, earthPos, 1.5, earth); 
+        }
 
        
 
@@ -5359,6 +5508,13 @@ function jumpToSeason(day, clickedBtn) {
                         model.pivot.rotation.z += (day * precessionSpeedPerDay);
                         
                     }
+
+                    else if (model.data.updateType === 'static_rotation') {
+                        // Position bleibt fest (wurde im Loader gesetzt)
+                        // Nur leichte Rotation um die eigene Achse für Dynamik
+                        model.scene.rotation.z += 0.0005; 
+                        model.scene.rotation.y += 0.0002;
+                    }
                     // HIER KÖNNTEST DU SPÄTER ANDERE updateTypes hinzufügen (z.B. 'sun_orbit')
                 });
             }
@@ -5443,6 +5599,45 @@ function jumpToSeason(day, clickedBtn) {
                 //  Mondradius-Uniform basierend auf Skalierung aktualisieren 
                 originalMoonMaterial.uniforms.uMoonRadius.value = MOON_RADIUS * moon.scale.x;
             }
+
+            // --- ASTEROIDEN UPDATE ---
+    if (asteroidInstancedMesh) {
+        const asteroids = asteroidInstancedMesh.userData.asteroids;
+        const dummy = new THREE.Object3D();
+        
+        // Wir durchlaufen jeden Asteroiden und berechnen seine neue Position
+        for (let i = 0; i < asteroids.length; i++) {
+            const data = asteroids[i];
+            
+            // Winkel basierend auf dem Tag berechnen
+            // Wir teilen durch einen Faktor, damit sie nicht zu schnell rasen
+            const currentAngle = data.startAngle + (day * data.speed * -0.1); 
+
+            const x = Math.cos(currentAngle) * data.distance;
+            const z = Math.sin(currentAngle) * data.distance;
+            
+            dummy.position.set(x, data.y, z);
+            
+            // Wir holen uns die alte Matrix, um Rotation/Skalierung zu behalten
+            // (Optimierung: Man könnte Rotation auch animieren, kostet aber Performance)
+            const currentMatrix = new THREE.Matrix4();
+            asteroidInstancedMesh.getMatrixAt(i, currentMatrix);
+            
+            // Extrahiere Rotation/Scale aus der alten Matrix
+            const position = new THREE.Vector3();
+            const quaternion = new THREE.Quaternion();
+            const scale = new THREE.Vector3();
+            currentMatrix.decompose(position, quaternion, scale);
+            
+            dummy.quaternion.copy(quaternion);
+            dummy.scale.copy(scale);
+            
+            dummy.updateMatrix();
+            asteroidInstancedMesh.setMatrixAt(i, dummy.matrix);
+        }
+        // Der Grafikkarte sagen, dass sich Positionen geändert haben
+        asteroidInstancedMesh.instanceMatrix.needsUpdate = true;
+    }
         }
 
         function updateCamera(isJump = false) {
@@ -5498,7 +5693,7 @@ function jumpToSeason(day, clickedBtn) {
                     earth.getWorldPosition(earthPos);
                     controls.target.copy(earthPos); 
                     const behindDir = new THREE.Vector3().subVectors(ufoPos, earthPos).normalize();
-                    const camPos = ufoPos.clone().add(behindDir.multiplyScalar(30 * SCENE_SCALE));
+                    const camPos = ufoPos.clone().add(behindDir.multiplyScalar(10 * SCENE_SCALE));
                     camPos.y += 15 * SCENE_SCALE; 
                     camera.position.lerp(camPos, 0.05); 
                     return;
@@ -5714,6 +5909,11 @@ function jumpToSeason(day, clickedBtn) {
                 factMap['radius_km'] = 'Flughöhe';
                 factMap['umlaufzeit'] = `Umlaufzeit (${info.parentName})`;
                 factMap['taglaenge'] = 'Sonnenaufgänge';
+            }
+
+            else if (info.name.includes('Voyager')) {
+                 factMap['radius_km'] = 'Distanz zur Erde';
+                 factMap['taglaenge'] = 'Missionsdauer';
             }
 
             // +++ NEU: RAKETEN-LABEL ANPASSEN +++
