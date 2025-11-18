@@ -5549,7 +5549,7 @@ function jumpToSeason(day, clickedBtn) {
             let angle = Math.atan2(vecEarthToSun.z, vecEarthToSun.x) - Math.atan2(vecEarthToMoon.z, vecEarthToMoon.x);
             angle = (angle + Math.PI * 2) % (Math.PI * 2);
             let phaseIndex = Math.floor(normalizedAngle = angle / (Math.PI * 2) * 8 + 0.5) % 8;
-            const phaseNames = ["mond", "Zunehmende Sichel", "Zunehmender Halbmond", "Zunehmendes Drittel", "Vollmond", "Abnehmendes Drittel", "Abnehmender Halbmond", "Abnehmende Sichel"];
+            const phaseNames = ["Neumond", "Zunehmende Sichel", "Zunehmender Halbmond", "Zunehmendes Drittel", "Vollmond", "Abnehmendes Drittel", "Abnehmender Halbmond", "Abnehmende Sichel"];
             let phaseName = phaseNames[phaseIndex];
             
             let infoText = `Mondphase: ${phaseName}`;
