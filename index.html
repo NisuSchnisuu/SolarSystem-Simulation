@@ -1500,7 +1500,7 @@
                 this.timer = 0;
                 
                 // --- EINSTELLUNGEN ---
-                this.TOTAL_FLIGHT_TIME = 40.0; 
+                this.TOTAL_FLIGHT_TIME = 30.0; 
                 this.launchSpeed = 0.5;       
                 this.moonCruiseSpeed = 1.0;   
                 
@@ -1638,15 +1638,34 @@
 
             // ... (createSmokeTexture und spawnSmoke und updateSmoke bleiben unverändert) ...
             createSmokeTexture() {
+                // 1. Auflösung drastisch erhöhen (von 64 auf 512 für Retina-Displays)
+                const size = 512; 
                 const canvas = document.createElement('canvas');
-                canvas.width = 64; canvas.height = 64;
+                canvas.width = size; 
+                canvas.height = size;
+                
                 const context = canvas.getContext('2d');
-                const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
-                gradient.addColorStop(0, 'rgba(255,255,255,1)');
-                gradient.addColorStop(1, 'rgba(0,0,0,0)');
+                const center = size / 2;
+                
+                // 2. Verlauf weicher zeichnen
+                const gradient = context.createRadialGradient(center, center, 0, center, center, center);
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');  // Kern: Weiß
+                gradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.8)'); // Mitte: Stark
+                gradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.2)'); // Rand: Weich
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');        // Ende: Transparent
+                
                 context.fillStyle = gradient;
-                context.fillRect(0,0,64,64);
-                return new THREE.CanvasTexture(canvas);
+                context.fillRect(0, 0, size, size);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                
+                // 3. WICHTIG: Mipmaps ausschalten!
+                // Das verhindert, dass das iPad die Textur "kaputt komprimiert".
+                texture.minFilter = THREE.LinearFilter;
+                texture.magFilter = THREE.LinearFilter;
+                texture.generateMipmaps = false; 
+                
+                return texture;
             }
 
             spawnSmoke(isSpace) {
@@ -1962,7 +1981,7 @@
                             // PHASE 3: KAPSEL (Draufsicht)
                             targetZ = 0.5;       // Nah an der Kapsel
                             targetDist = -1.0;    // Fast mittig (kaum seitlicher Versatz)
-                            targetHeight = 0.0;  // Hochfahren (Draufsicht von oben)
+                            targetHeight = -3.0;  // Hochfahren (Draufsicht von oben)
                             lookAhead = 10.0;    // Blick weit nach vorne -> Mond im Fokus
                             
                         } else if (this.hasStaged1) {
@@ -1975,7 +1994,7 @@
 
                         // 2. ANIMATIONS-GESCHWINDIGKEIT (Lerp)
                         // War vorher 1.0 -> Jetzt 4.0 für deutlich schnellere Übergänge
-                        const lerpSpeed = deltaTime * 4.0; 
+                        const lerpSpeed = deltaTime * 2.0; 
 
                         this.camCurrentZ = THREE.MathUtils.lerp(this.camCurrentZ, targetZ, lerpSpeed);
                         this.camCurrentDist = THREE.MathUtils.lerp(this.camCurrentDist, targetDist, lerpSpeed);
