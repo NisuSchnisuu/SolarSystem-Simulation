@@ -138,25 +138,72 @@
             padding-bottom: 5px;
         }
 
+        /* --- VOLLBILD-BUTTON (SVG-Style) --- */
         #fullscreen-btn {
-            position: fixed;       /* Fixiert an einer Stelle, egal wie man scrollt */
-            top: 10px;             /* Abstand von oben */
-            right: 10px;           /* Abstand von rechts (die typische Position) */
-            z-index: 1000;         /* Damit er über der 3D-Szene liegt */
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
             
-            background: rgba(0, 0, 0, 0.5); /* Halbtransparenter Hintergrund */
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            padding: 8px 12px;
-            font-size: 20px;       /* Größe des Icons */
+            background: transparent; 
+            border: none;
             cursor: pointer;
-            transition: all 0.2s ease;
+            padding: 5px; /* Etwas Klickfläche */
+            
+            /* Flexbox zentriert das Icon im Button */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            
+            transition: transform 0.2s ease;
         }
 
+        /* Styling für das SVG-Icon selbst */
+        #fullscreen-btn svg {
+            width: 35px;  /* Größe des Icons */
+            height: 35px;
+            fill: rgba(255, 255, 255, 0.7); /* Farbe: Leicht transparentes Weiß */
+            
+            /* Schlagschatten für Sichtbarkeit auf hellen Hintergründen */
+            filter: drop-shadow(0 0 2px rgba(0,0,0,0.8)); 
+            
+            transition: fill 0.2s ease, filter 0.2s ease;
+        }
+
+        /* Hover-Effekt */
         #fullscreen-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: scale(1.1); /* Leichter Zoom-Effekt beim Drüberfahren */
+            transform: scale(1.1); /* Button wächst leicht */
+        }
+
+        #fullscreen-btn:hover svg {
+            fill: #fff; /* Wird strahlend weiß */
+            /* Leuchtender Glow-Effekt beim Hover */
+            filter: drop-shadow(0 0 5px rgba(0, 255, 255, 0.8)); 
+        }
+
+        /* --- IPAD / MOBILE FIX (Final) --- */
+
+        /* 1. Desktop Standard: Alles bleibt oben */
+        body.is-fullscreen #ui-container {
+            top: 10px !important; 
+        }
+
+        body.is-fullscreen #fullscreen-btn {
+            top: 10px !important; 
+        }
+
+        /* 2. Nur auf Tablets & Handys (Bildschirme kleiner als 1024px) */
+        @media (max-width: 1024px) {
+            
+            /* Das Menü rutscht runter (um Platz zu machen oder Konflikte zu vermeiden) */
+            body.is-fullscreen #ui-container {
+                top: 60px !important; 
+            }
+
+            /* Der Button bleibt aber STUR oben (überschreibt eventuelle andere Regeln) */
+            body.is-fullscreen #fullscreen-btn {
+                top: 10px !important; 
+            }
         }
 
         label {
@@ -6839,37 +6886,62 @@
             popup.style.display = 'flex';
         }
 
-        // --- VOLLBILD FUNKTION ---
+        // --- VOLLBILD FUNKTION (SVG Icons) ---
         const fullscreenBtn = document.getElementById('fullscreen-btn');
 
-        fullscreenBtn.addEventListener('click', () => {
-            if (!document.fullscreenElement) {
-                // In den Vollbildmodus wechseln
-                document.documentElement.requestFullscreen().catch((err) => {
-                    console.error(`Fehler beim Aktivieren des Vollbildmodus: ${err.message}`);
-                });
-                fullscreenBtn.textContent = "✕"; // Icon zu "Schließen" ändern
+        // Die SVG-Pfade für die Icons (genau wie in deinem Bild)
+        // 1. Pfeile nach außen (Enter Fullscreen)
+        const iconEnter = `
+        <svg viewBox="0 0 24 24">
+            <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+        </svg>`;
+
+        // 2. Pfeile nach innen (Exit Fullscreen)
+        const iconExit = `
+        <svg viewBox="0 0 24 24">
+            <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>
+        </svg>`;
+
+        function updateFullscreenState() {
+            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+
+            if (isFullscreen) {
+                // Wir sind im Vollbild -> Pfeile zeigen nach INNEN
+                fullscreenBtn.innerHTML = iconExit;
                 fullscreenBtn.title = "Vollbild beenden";
+                document.body.classList.add('is-fullscreen');
             } else {
-                // Vollbildmodus verlassen
+                // Wir sind NICHT im Vollbild -> Pfeile zeigen nach AUSSEN
+                fullscreenBtn.innerHTML = iconEnter;
+                fullscreenBtn.title = "Vollbild aktivieren";
+                document.body.classList.remove('is-fullscreen');
+            }
+        }
+
+        fullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                // Starten
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.documentElement.webkitRequestFullscreen) {
+                    document.documentElement.webkitRequestFullscreen();
+                }
+            } else {
+                // Beenden
                 if (document.exitFullscreen) {
                     document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
                 }
-                fullscreenBtn.textContent = "⛶"; // Icon zurücksetzen
-                fullscreenBtn.title = "Vollbild aktivieren";
             }
         });
 
-        // Event-Listener, falls der Nutzer ESC drückt (damit sich das Icon auch dann zurücksetzt)
-        document.addEventListener('fullscreenchange', () => {
-            if (!document.fullscreenElement) {
-                fullscreenBtn.textContent = "⛶";
-                fullscreenBtn.title = "Vollbild aktivieren";
-            } else {
-                fullscreenBtn.textContent = "✕";
-                fullscreenBtn.title = "Vollbild beenden";
-            }
-        });
+        // Listener für Änderungen
+        document.addEventListener('fullscreenchange', updateFullscreenState);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenState);
+
+        // Initiale Ausführung
+        updateFullscreenState();
 
         init();
     </script>
