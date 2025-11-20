@@ -1885,6 +1885,15 @@
                     if (dLabel) dLabel.textContent = "0.10";
                 }
 
+                // --- UI AUTOMATISCH MINIMIEREN ---
+                const uiContainer = document.getElementById('ui-container');
+                const toggleBtn = document.getElementById('toggle-ui');
+                if (uiContainer && toggleBtn) {
+                    uiContainer.classList.add('minimized');
+                    toggleBtn.textContent = '☰'; // Icon ändern
+                    toggleBtn.title = 'Menü anzeigen';
+                }
+
                 // 1. Positionierung der Rakete initialisieren
                 currentDay = 0.8; 
                 const daySlider = document.getElementById('day-slider');
@@ -2351,6 +2360,15 @@
                 //  Abbruch-Button verstecken
                 const abortBtn = document.getElementById('rocket-abort-btn');
                 if(abortBtn) abortBtn.style.display = 'none';
+
+                // --- UI WIEDER AUFKLAPPEN ---
+                const uiContainer = document.getElementById('ui-container');
+                const toggleBtn = document.getElementById('toggle-ui');
+                if (uiContainer && toggleBtn) {
+                    uiContainer.classList.remove('minimized');
+                    toggleBtn.textContent = '✕'; // Icon zurücksetzen
+                    toggleBtn.title = 'Menü verbergen';
+                }
 
                 // ---  Kamera Button verstecken & Kamera Reset ---
                 const btn = document.getElementById('rocket-cam-btn');
