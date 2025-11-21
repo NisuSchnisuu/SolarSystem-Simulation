@@ -832,6 +832,81 @@
             display: none; 
         }
 
+        /* --- RAKETEN HUD STYLES --- */
+        #launch-hud {
+            display: none; /* Standardmäßig unsichtbar */
+            position: fixed;
+            top: 30px;           /* Abstand von oben */
+            left: 50%;
+            transform: translateX(-50%);
+            
+            background: rgba(0, 20, 40, 0.85); /* Dunkelblau/Schwarz transparent */
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            
+            border-radius: 8px;
+            padding: 10px 20px;
+            min-width: 280px;
+            
+            /* Flexbox für Icon + Text nebeneinander */
+            
+            align-items: center;
+            gap: 15px;
+            
+            z-index: 2000; /* Über allem anderen */
+            font-family: "Courier New", monospace; /* Technischer Look */
+            transition: opacity 0.3s ease;
+        }
+
+        /* Das Icon links */
+        #hud-icon {
+            font-size: 32px;
+            filter: drop-shadow(0 0 5px rgba(255,255,255,0.5));
+        }
+
+        #hud-content {
+            flex-grow: 1;
+            text-align: left;
+        }
+
+        #hud-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00ffff; /* Cyan */
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+
+        #hud-sub {
+            font-size: 13px;
+            color: #cccccc;
+        }
+
+        /* Animierter Balken unten am Fenster */
+        #hud-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: #00ffff;
+            width: 0%; /* Wird per JS animiert */
+            transition: width 0.2s linear;
+            box-shadow: 0 0 10px #00ffff;
+        }
+
+        /* Animation fürs Einblenden */
+        @keyframes hud-pop {
+            0% { transform: translateX(-50%) scale(0.8); opacity: 0; }
+            100% { transform: translateX(-50%) scale(1); opacity: 1; }
+        }
+        
+        .hud-visible {
+            display: flex !important;
+            animation: hud-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
         /* 2. WICHTIG: Versteckt Pfeil, Header & Inhalt wenn minimiert (löst auch dein Trennstrich-Problem) */
         #ui-container.minimized #ui-fixed-header,
         #ui-container.minimized #ui-scrollable-content,
@@ -891,6 +966,7 @@
                 <div id="rocket-controls" style="display: none; margin-top: 10px; border-top: 1px dashed #444; padding-top: 10px;">
                     <button id="launch-rocket-btn" class="btn btn-danger btn-pulse" style="width: 100%; background-color: #b700ff;">🚀 Raketenstart verfügbar!</button>
                     <div id="rocket-status" style="font-size: 12px; text-align: center; margin-top: 5px; color: #aaa;"></div>
+                    <button id="rocket-dismiss-btn" class="btn btn-secondary" style="width: 100%; margin-top: 5px; font-size: 11px; padding: 4px;">❌ Kein Interesse</button>
                     <button id="rocket-cam-btn" class="btn btn-warning" style="display: none; width: 100%; margin-top: 8px; font-size: 12px;">🎥 Kino-Modus</button>
                     <button id="rocket-abort-btn" class="btn btn-secondary" style="display: none; width: 100%; margin-top: 5px; font-size: 12px; background-color: #555;">❌ Mission abbrechen</button>
                 </div>
@@ -1040,6 +1116,16 @@
 
     <button id="info-toast-button" class="btn btn"></button>
 
+    <!--Launch Hud-->
+    <div id="launch-hud">
+        <div id="hud-icon">⏱️</div>
+        <div id="hud-content">
+            <div id="hud-title">SYSTEM CHECK</div>
+            <div id="hud-sub">Warte auf Startfreigabe...</div>
+        </div>
+        <div id="hud-bar"></div>
+    </div>
+
     <script>
         //  Globale Variablen 
         let scene, camera, renderer, controls;
@@ -1066,7 +1152,7 @@
         // --- RAKETEN KONFIGURATION ---
         const ROCKET_FLIGHT_DURATION_SECONDS = 40.0; // Wie lange der Flug dauert (in echten Sekunden)
         const ROCKET_SIZE_SCALE = 1.0; // Grösse des Modells (ähnlich wie ISS)
-        const ROCKET_PROBABILITY = 0.3; // 30% Chance pro Sitzung, dass sie erscheint
+        const ROCKET_PROBABILITY = 0.2; // 30% Chance pro Sitzung, dass sie erscheint
         
         // Rakete Liftoff-Phase Höhe und Dauer
         const LIFTOFF_DURATION_SECONDS = 9.0; // Die Rakete steigt 12 Sekunden lang nur senkrecht
@@ -1243,6 +1329,12 @@
         const UFO_SPEED_TO_EARTH = 300 * SCENE_SCALE;
         let ufoLeaveTimer = 0; 
         // --
+
+        // --- FLAT EARTH VARIABLES ---
+        let isFlatEarth = false; 
+        let isFlagOnMoon = false; // Speichert, ob die Flagge schon steht
+        let flatAnimPhase = 'idle'; // 'idle', 'flying_to_pos', 'anticipation', 'wobble', 'splat', 'restoring'
+        let flatAnimTimer = 0;
         
         //  Komet Variablen und Klasse 
         let comet; 
@@ -1955,9 +2047,15 @@
             launch() {
                 if (this.state !== 'ready') return;
 
+                // --- HUD INITIALISIEREN ---
+                updateLaunchHUD(true, "SEQUENZ START", "Kamera-Positionierung...", "🎥", 0);
+
                 // --- UI AUFRÄUMEN & HELLIGKEIT SETZEN ---
                 setLaunchModeUI(true); // Alles ausblenden ausser Rakete & Helligkeit
 
+                // In Rocket.launch():
+                const dismissBtn = document.getElementById('rocket-dismiss-btn');
+                if (dismissBtn) dismissBtn.style.display = 'none'; // Verstecken beim Start
                 //  Abbruch-Button anzeigen
                 const abortBtn = document.getElementById('rocket-abort-btn');
                 if(abortBtn) abortBtn.style.display = 'block';
@@ -2159,6 +2257,11 @@
                 // Countdown...
                 if (this.state === 'countdown') {
                     this.timer -= deltaTime;
+
+                    //HUD countdown
+                    // Wir zeigen T- Minus an
+                    updateLaunchHUD(true, "T-MINUS", `T- ${this.timer.toFixed(1)} Sekunden`, "⏱️", (1.0 - (this.timer/5.0))*100);
+                    
                     // (Wackeln Logik hier...)
                     if (this.timer < 2.0 && this.timer > 0) {
                         const intensity = (2.0 - this.timer) * 0.002 * SCENE_SCALE; 
@@ -2230,9 +2333,46 @@
                     
                     this.rawProgress += (deltaTime / this.TOTAL_FLIGHT_TIME) * currentSpeedFactor;
 
+                    // HUD updates
+                    const pct = this.rawProgress * 100;
+                    
+                    // Nur Text updaten, wenn kein spezielles Event ist (um Flackern zu vermeiden, einfache Logik)
+                    // Wir definieren Events anhand des Fortschritts (p)
+                    const p = this.rawProgress;
+
+                    if (p < 0.15) {
+                        // Startphase (Geht von 0.0 bis 0.15)
+                        // Wir rechnen das auf 0-100% für diese Phase um
+                        const phasePercent = (p / 0.15) * 100;
+                        
+                        // Nutzung von phasePercent statt pct für Text und Balken
+                        updateLaunchHUD(true, "MAXIMALER SCHUB", `Höhe gewinnen... (${phasePercent.toFixed(0)}%)`, "🔥", phasePercent);
+                    } 
+                    else if (p >= 0.15 && p < 0.18) {
+                        // Stufe 1 Trennung (Kurz anzeigen)
+                        updateLaunchHUD(true, "STUFENTRENNUNG", "Booster abgeworfen", "⛓️‍💥", 100);
+                    }
+                    else if (p >= 0.18 && p < 0.40) {
+                        // Orbit Phase
+                        updateLaunchHUD(true, "ORBIT ERREICHT", "Parkbahn um die Erde", "🌍", pct);
+                    }
+                    else if (p >= 0.40 && p < 0.75) {
+                        // TLI (Trans Lunar Injection) - Flug zum Mond
+                        updateLaunchHUD(true, "TLI MANÖVER", "Reise zum Mond läuft", "🌌", pct);
+                    }
+                    else if (p >= 0.75 && p < 0.80) {
+                        // Stufe 2 Trennung / Kapsel
+                        updateLaunchHUD(true, "KAPSEL SEPARATION", "Landeanflug initiiert", "🛰️", pct);
+                    }
+                    else if (p >= 0.80) {
+                        // Landung
+                        updateLaunchHUD(true, "LANDESSEQUENZ", "Bremsmanöver aktiv", "🌖", pct);
+                    }
+                    // -------------------------------------------
+
                     if (this.rawProgress >= 1.0) { this.finish(); return true; }
 
-                    const p = this.rawProgress;
+
                     const newPos = this.calculateTrajectory(p);
                     this.group.position.copy(newPos);
                     
@@ -2432,6 +2572,16 @@
 
             finish() {
                 this.state = 'landed';
+
+                plantFlagOnMoon();
+
+                // --- NEU: ERFOLGSMELDUNG ---
+                updateLaunchHUD(true, "THE EAGLE HAS LANDED", "Mission erfolgreich beendet.", "🦅", 100);
+                
+                // Nach 5 Sekunden ausblenden
+                setTimeout(() => updateLaunchHUD(false), 6000);
+                // ---------------------------
+
                 document.getElementById('rocket-status').textContent = "Mondlandung erfolgreich.";
                 const index = clickableObjects.indexOf(this.group); 
                 if (index > -1) clickableObjects.splice(index, 1);
@@ -2482,6 +2632,11 @@
             }
 
             abort() {
+
+                // --- NEU: HUD AUSBLENDEN ---
+                updateLaunchHUD(true, "SYSTEM CHECK", "Warte auf Startfreigabe...", "⏱️", 0);
+                // ---------------------------
+
                 // 1. Status setzen
                 this.state = 'aborted';
                 document.getElementById('rocket-status').textContent = "Mission abgebrochen.";
@@ -2491,6 +2646,10 @@
                 if (index > -1) clickableObjects.splice(index, 1);
                 this.scene.remove(this.group); 
                 this.scene.remove(this.smokeGroup);
+
+                // In Rocket.finish() und Rocket.abort():
+                const dismissBtn = document.getElementById('rocket-dismiss-btn');
+                if (dismissBtn) dismissBtn.style.display = 'block'; // Wieder da für nächstes Mal
 
                 // 3. UI Wiederherstellen (Ganz wichtig!)
                 setLaunchModeUI(false); 
@@ -2532,6 +2691,8 @@
                 const asteroidsCb = document.getElementById('asteroids-checkbox');
                 if (asteroidInstancedMesh) asteroidInstancedMesh.visible = (asteroidsCb && asteroidsCb.checked);
             }
+
+
         }
         
         //  DOM-Elemente 
@@ -2935,6 +3096,31 @@
                 console.warn("Fehler beim Zurücksetzen der Indikatoren:", e);
             }
         }
+
+        // Hilfsfunktion für das HUD
+        function updateLaunchHUD(isVisible, title, subtext, icon, progressPercent) {
+            const hud = document.getElementById('launch-hud');
+            if (!hud) return;
+
+            if (!isVisible) {
+                hud.classList.remove('hud-visible');
+                hud.style.display = 'none';
+                return;
+            }
+
+            hud.style.display = 'flex'; // Sicherstellen, dass es da ist
+            hud.classList.add('hud-visible');
+
+            if (title) document.getElementById('hud-title').textContent = title;
+            if (subtext) document.getElementById('hud-sub').textContent = subtext;
+            if (icon) document.getElementById('hud-icon').textContent = icon;
+            
+            // Balken-Update (Optional)
+            const bar = document.getElementById('hud-bar');
+            if (bar && progressPercent !== undefined) {
+                bar.style.width = progressPercent + '%';
+            }
+        }
         
         
         function formatDayCount(day) {
@@ -2960,6 +3146,60 @@
                 const yearPlural = (years === 1) ? "Jahr" : "Jahre";
                 return `${sign}${years} ${yearPlural} ${daysFixed} ${dayPlural}`;
             }
+        }
+
+        function plantFlagOnMoon() {
+            if (isFlagOnMoon) return; // Nur eine Flagge pro Session!
+            if (!moon) return;
+
+            // 1. Gruppe für die Flagge erstellen
+            const flagGroup = new THREE.Group();
+            
+            // Grösse anpassen (etwa so gross wie ein Astronaut/kleine Kapsel im Verhältnis)
+            const scale = 0.0015 * SCENE_SCALE; 
+            flagGroup.scale.set(scale, scale, scale);
+
+            // 2. Der Mast (Grauer Zylinder)
+            const poleGeo = new THREE.CylinderGeometry(0.1, 0.1, 6, 8);
+            const poleMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.4 });
+            const pole = new THREE.Mesh(poleGeo, poleMat);
+            pole.position.y = 3; // Damit der Mast auf dem Boden steht (halbe Höhe)
+            flagGroup.add(pole);
+
+            // 3. Die Flagge (Ebene mit Bild)
+            const loader = new THREE.TextureLoader();
+            // URL einer USA Flagge (Wikimedia Commons)
+            const flagTexture = loader.load('https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Flag_of_the_United_States.svg/640px-Flag_of_the_United_States.svg.png');
+            
+            const flagGeo = new THREE.PlaneGeometry(3, 1.9); // Standard Seitenverhältnis
+            const flagMat = new THREE.MeshBasicMaterial({ 
+                map: flagTexture, 
+                side: THREE.DoubleSide, // Von beiden Seiten sichtbar
+                transparent: true
+            });
+            const flag = new THREE.Mesh(flagGeo, flagMat);
+            
+            // Positionierung am Mast (oben rechts dran)
+            flag.position.set(1.5 + 0.1, 5, 0); 
+            flagGroup.add(flag);
+
+            // 4. Auf dem Mond positionieren
+            // Wir platzieren sie dort, wo die Rakete im Code landet (ungefähr auf der Vorderseite, leicht versetzt)
+            // Koordinaten relativ zum Mond-Mittelpunkt
+            const moonRadius = MOON_RADIUS; // Radius des Mond-Meshs
+            
+            // Position: "Vorne" auf dem Mond (Richtung Erde/Kamera)
+            flagGroup.position.set(moonRadius, 0, 0); 
+            
+            // Rotation: Damit der Mast senkrecht aus der Oberfläche ragt
+            flagGroup.rotation.z = -Math.PI / 2; 
+            
+            // WICHTIG: Wir fügen die Flagge dem MOND hinzu, nicht der Szene!
+            // So rotiert sie automatisch mit dem Mond mit.
+            moon.add(flagGroup);
+
+            isFlagOnMoon = true;
+            console.log("Die Flagge wurde gehisst! 🇺🇸");
         }
 
         function init() {
@@ -3135,15 +3375,56 @@
                 }
             });
 
+            // --- LISTENER FÜR "START ABLEHNEN" BUTTON ---
+            const dismissBtn = document.getElementById('rocket-dismiss-btn');
+            if (dismissBtn) {
+                dismissBtn.addEventListener('click', () => {
+                    // 1. Das HUD sofort ausschalten
+                    updateLaunchHUD(false);
+
+                    // 2. Den ganzen Raketen-Kontroll-Bereich ausblenden
+                    if (rocketControls) {
+                        rocketControls.style.display = 'none';
+                    }
+
+                    // 3. Logik-Variable zurücksetzen
+                    rocketSpawnAllowed = false;
+
+                    console.log("Raketenstart vom Nutzer abgelehnt.");
+                });
+            }
+
             // 2. Die Lotterie entscheidet nur über das AUTOMATISCHE Erscheinen
-            if (Math.random() < ROCKET_PROBABILITY) {
-                console.log("Glück gehabt! Ein Raketenstart ist verfügbar.");
+            const diceRoll = Math.random(); // Wir würfeln eine Zahl zwischen 0.0 und 1.0
+            console.log(`🎲 Raketen-Lotterie: Gewürfelt wurde ${diceRoll.toFixed(2)} (Benötigt: < ${ROCKET_PROBABILITY})`);
+
+            if (diceRoll < ROCKET_PROBABILITY) {
+                console.log("🎉 GLÜCK GEHABT! Ein Raketenstart ist verfügbar.");
                 rocketSpawnAllowed = true;
                 
-                // Wir zeigen den Button erst nach einer kurzen Verzögerung an
+                // --- NEU: ZUFÄLLIGE VERZÖGERUNG (4 bis 8 Minuten) ---
+                // 1 Minute = 60.000 Millisekunden
+                const minMinutes = 2;
+                const maxMinutes = 5;
+                
+                // Zufallszahl zwischen min und max (in Millisekunden umgerechnet)
+                const randomDelay = (Math.random() * (maxMinutes - minMinutes) + minMinutes) * 60 * 1000;
+                
+                console.log(`⏱️ Der Start-Button erscheint in ${(randomDelay / 1000 / 60).toFixed(1)} Minuten.`);
+
+                // Wir warten die berechnete Zeit
                 setTimeout(() => {
                     if (rocketControls) rocketControls.style.display = 'block';
-                }, 500000);
+                    
+                    // HUD als "Einladung" anzeigen!
+                    updateLaunchHUD(true, "SYSTEM CHECK", "Warte auf Startfreigabe...", "⏱️", 0);
+                    
+                    // Kleiner Sound oder Log-Hinweis, wenn er erscheint
+                    console.log("🚀 Raketenstart JETZT verfügbar!");
+                    
+                }, randomDelay); 
+            } else {
+                console.log("❌ Kein Raketenstart in dieser Sitzung.");
             }
 
             animate();
@@ -3182,6 +3463,11 @@
                         
                         console.log("Raketen-Modus per Shortcut aktiviert!");
                     }
+                }
+
+                // Flat earth
+                if (e.shiftKey && (e.key === 'F' || e.key === 'f')) {
+                    toggleFlatEarthMode();
                 }
             });
             
@@ -6045,12 +6331,140 @@
             flyTo(endPos, earthPos, 1.5, earth); 
         }
 
-       
+        function toggleFlatEarthMode() {
+            // Verhindern, dass man klickt, während eine Animation läuft
+            if (flatAnimPhase !== 'idle') return;
+
+            if (!isFlatEarth) {
+                // START: Wir machen sie platt!
+                
+                // 1. Simulation pausieren (damit sich die Erde nicht wegdreht beim Drücken)
+                if (isPlaying) pauseSimulation();
+
+                // 2. UI ausblenden für dramatischen Effekt
+                // (Optional, kannst du weglassen, wenn du willst)
+                
+                // 3. Kamerafahrt zur Seite der Erde (Äquator-Blick), damit man die Kante sieht
+                const earthPos = new THREE.Vector3();
+                earth.getWorldPosition(earthPos);
+                
+                // Vektor zur Sonne (Lichtrichtung), damit die Erde schön beleuchtet ist
+                const sunPos = new THREE.Vector3(0,0,0);
+                const dirToSun = new THREE.Vector3().subVectors(sunPos, earthPos).normalize();
+                
+                // Kamera seitlich versetzen (90 Grad zur Sonne)
+                const sideDir = new THREE.Vector3(-dirToSun.z, 0, dirToSun.x).normalize();
+                
+                // Position: Etwa 5 Erdradien entfernt
+                const camPos = earthPos.clone().add(sideDir.multiplyScalar(EARTH_RADIUS * 5));
+                
+                // Callback-Funktion: Was passiert, wenn die Kamera angekommen ist?
+                const onArrival = () => {
+                    flatAnimPhase = 'anticipation'; // Start der Animations-Kette
+                    flatAnimTimer = 0;
+                };
+
+                // Fokus auf "System" setzen, damit OrbitControls nicht an der Erde kleben
+                // aber wir zielen manuell
+                flyTo(camPos, earthPos, 1.5, null, onArrival); 
+                
+            } else {
+                // START: Wir pumpen sie wieder auf
+                flatAnimPhase = 'restoring';
+                flatAnimTimer = 0;
+                if (infoToastButton) {
+                    infoToastButton.textContent = "Puh... Physik wiederhergestellt.";
+                    infoToastButton.style.display = 'block';
+                    setTimeout(() => infoToastButton.style.display = 'none', 3000);
+                }
+            }
+        }
 
 
         function animate() {
             requestAnimationFrame(animate);
-            const deltaTime = clock.getDelta(); 
+            const deltaTime = clock.getDelta();
+
+            // --- FLAT EARTH ANIMATION LOOP ---
+            if (flatAnimPhase !== 'idle') {
+                // Timer hochzählen
+                flatAnimTimer += deltaTime;
+
+                if (flatAnimPhase === 'anticipation') {
+                    // Phase 1: Luftholen / Strecken (0.5 Sekunden)
+                    // Die Erde wird dünner und höher (wie beim Einatmen vor dem Schlag)
+                    const progress = Math.min(1.0, flatAnimTimer / 0.5);
+                    const stretch = 1.0 + (Math.sin(progress * Math.PI) * 0.2); // Geht bis 1.2
+                    const thin = 1.0 - (Math.sin(progress * Math.PI) * 0.1);    // Geht bis 0.9
+                    earth.scale.set(thin, stretch, thin);
+                    
+                    if (progress >= 1.0) {
+                        flatAnimPhase = 'wobble';
+                        flatAnimTimer = 0;
+                    }
+
+                } else if (flatAnimPhase === 'wobble') {
+                    // Phase 2: Angst-Zittern / Widerstand (0.8 Sekunden)
+                    const progress = Math.min(1.0, flatAnimTimer / 0.8);
+                    // Schnelles Wackeln mit abnehmender Stärke
+                    const shake = Math.sin(flatAnimTimer * 30) * (0.1 * (1.0 - progress)); 
+                    earth.scale.set(1.0 + shake, 1.0 - shake, 1.0 + shake);
+
+                    if (progress >= 1.0) {
+                        flatAnimPhase = 'splat';
+                        flatAnimTimer = 0;
+                    }
+
+                } else if (flatAnimPhase === 'splat') {
+                    // Phase 3: DER SPLAT! (Sehr schnell, 0.2 Sekunden)
+                    const progress = Math.min(1.0, flatAnimTimer / 0.2);
+                    
+                    // Y-Achse: Von 1.0 runter auf 0.05 (fast flach)
+                    // Wir nutzen "easeOutBounce" oder einfach eine harte Kurve für den Comic-Effekt
+                    const currentY = 1.0 - (0.95 * progress); 
+                    
+                    // X/Z-Achse: Dehnt sich aus wie Teig (Volumenerhalt)
+                    // Von 1.0 auf 1.5
+                    const currentXZ = 1.0 + (0.5 * progress);
+
+                    earth.scale.set(currentXZ, currentY, currentXZ);
+
+                    if (progress >= 1.0) {
+                        flatAnimPhase = 'idle'; // Fertig
+                        isFlatEarth = true;
+                        // Info anzeigen
+                        if (infoToastButton) {
+                            infoToastButton.textContent = "⚠️ ACHTUNG: Erde wurde plattgedrückt!";
+                            infoToastButton.style.display = 'block';
+                            infoToastButton.classList.add('btn-danger');
+                            setTimeout(() => { 
+                                infoToastButton.style.display = 'none'; 
+                                infoToastButton.classList.remove('btn-danger');
+                            }, 4000);
+                        }
+                    }
+                } else if (flatAnimPhase === 'restoring') {
+                    // Zurück zur Kugel (Sanft, 1.0 Sekunde)
+                    const progress = Math.min(1.0, flatAnimTimer / 1.0);
+                    
+                    // Lerp von IST-Zustand (1.5, 0.05, 1.5) zurück zu (1, 1, 1)
+                    const currentY = 0.05 + (0.95 * progress);
+                    const currentXZ = 1.5 - (0.5 * progress);
+                    
+                    // Kleines "Nachwabbeln" am Ende (Elastic Out)
+                    const elastic = 1.0 + (Math.sin(progress * Math.PI * 4) * 0.05 * (1.0 - progress));
+                    
+                    earth.scale.set(currentXZ * elastic, currentY * elastic, currentXZ * elastic);
+
+                    if (progress >= 1.0) {
+                        earth.scale.set(1, 1, 1); // Sauberer Abschluss
+                        flatAnimPhase = 'idle';
+                        isFlatEarth = false;
+                    }
+                }
+            }
+            //---------------------------------
+             
             
             if (isRealScaleActive) {
                 if (realityCheckPhase === 'growing') {
