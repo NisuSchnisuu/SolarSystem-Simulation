@@ -233,7 +233,24 @@
         #rewind-btn.playing:hover {
             background-color: #0056b3;
         }
-        /*  Ende   */
+
+        #rewind-btn {
+            /* Flexbox sorgt für perfekte Zentrierung */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            
+            /* Optional: Padding leicht anpassen, falls der Button zu breit/hoch wirkt */
+            padding: 8px 12px; 
+        }
+
+        #rewind-btn svg {
+            width: 18px; /* Angenehme Größe im Verhältnis zum Text daneben */
+            height: 18px;
+            fill: currentColor; /* WICHTIG: Nimmt die Textfarbe (Weiß) an */
+            pointer-events: none; /* Klicks gehen durch das Icon auf den Button */
+        }
+        /*  --------   */
 
 
         .btn-secondary {
@@ -839,13 +856,13 @@
     <div id="distance-label">0 Mio. km</div>
 
     <div id="ui-container">
-        <button id="fullscreen-btn" title="Vollbild umschalten">⛶</button>
-        <button id="toggle-ui" class="btn btn-secondary" title="Menü verbergen">✕</button>
+        <button id="fullscreen-btn" title="Vollbild umschalten"></button>
+        <button id="toggle-ui" class="btn btn-secondary" title="Menü verbergen"></button>
 
         <div id="ui-fixed-header">
             <div class="control-group" style="margin-top: 25px; margin-bottom: 0;"> <h3>Steuerung</h3>
                 <div class="btn-group" style="margin-bottom: 15px;" id="play-group">
-                    <button id="rewind-btn" class="btn btn-secondary" title="Zurückspulen">⏮&#xFE0E;</button>
+                    <button id="rewind-btn" class="btn btn-secondary" title="Zurückspulen"></button>
                     <button id="play-pause-btn" class="btn">Pause</button>
                 </div>
                 
@@ -6868,6 +6885,18 @@
             }
             detailsEl.innerHTML = detailsHTML;
             popup.style.display = 'flex';
+        }
+
+        // --- REWIND BUTTON ICON ---
+        
+        const iconRewind = `
+            <svg viewBox="0 0 24 24">
+                <path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/>
+            </svg>`;
+
+        const rewindBtn = document.getElementById('rewind-btn');
+        if (rewindBtn) {
+            rewindBtn.innerHTML = iconRewind;
         }
 
         // --- VOLLBILD FUNKTION (Mit iPad Fix & SVG Icons) ---
