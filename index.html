@@ -72,7 +72,7 @@
         #ui-scrollable-content {
             flex-grow: 1; /* Nimmt den restlichen Platz ein */
             overflow-y: auto; /* NUR dieser Bereich scrollt */
-            padding-bottom: 120px; /* Das alte Padding für das Scroll-Ende */
+            padding-bottom: 5px; /* Das alte Padding für das Scroll-Ende */
             
             /* Optional: Scrollbar-Styling für bessere Optik */
             scrollbar-width: thin;
@@ -932,7 +932,7 @@
 
     <div id="ui-container">
         <button id="fullscreen-btn" title="Vollbild umschalten"></button>
-        <button id="toggle-ui" class="btn btn-secondary" title="Menü verbergen"></button>
+        <button id="toggle-ui" class="btn btn-secondary" title="Menü verbergen">✕</button>
 
         <div id="ui-fixed-header">
             <div class="control-group" style="margin-top: 25px; margin-bottom: 0;"> <h3>Steuerung</h3>
@@ -1131,6 +1131,9 @@
         let scene, camera, renderer, controls;
         let sun, earth, moon, moonPivot;
         let earthTiltPivot;
+
+        // Globale Variable für die Fallback-Textur (Laden wir nur 1x statt 100x!)
+        const surfaceFallbackTexture = new THREE.TextureLoader().load('https://upload.wikimedia.org/wikipedia/commons/8/89/HD_transparent_picture.png');
         
         //  Globale Variable für Achsenlinie 
         let earthAxisLine = null;
@@ -1178,6 +1181,9 @@
         let cometModelTemplate = null;
         let cometRockTexture;
         let ufoModelTemplate = null;
+        let astronautTemplate = null;
+        let landerTemplate = null;
+        let flagTemplate = null
         let asteroidInstancedMesh = null;
 
 
@@ -1727,7 +1733,7 @@
                 this.timer = 0;
                 
                 // --- EINSTELLUNGEN ---
-                this.TOTAL_FLIGHT_TIME = 40.0; 
+                this.TOTAL_FLIGHT_TIME = 5.0; 
                 this.launchSpeed = 0.5;       
                 this.moonCruiseSpeed = 1.0;   
                 
@@ -2870,6 +2876,74 @@
             }
         `;
 
+        // NEU: Vertex Shader für Objekte auf der Oberfläche
+        const surfaceObjectVertexShader = `
+            varying vec2 vUv;
+            varying vec3 vNormal;
+            varying vec3 vWorldPosition;
+            void main() {
+                vUv = uv;
+                // Normale in Weltkoordinaten umrechnen (wichtig für Lichtberechnung bei Rotation)
+                vNormal = normalize(mat3(modelMatrix) * normal);
+                vec4 worldPos = modelMatrix * vec4(position, 1.0);
+                vWorldPosition = worldPos.xyz;
+                gl_Position = projectionMatrix * viewMatrix * worldPos;
+            }
+        `;
+
+        // NEU: Fragment Shader (Repariert für Lander & Slider)
+        const surfaceObjectFragmentShader = `
+            uniform sampler2D map;
+            uniform vec3 uColor;
+            uniform bool uHasTexture;
+            uniform vec3 uSunPosition;
+            uniform vec3 uMoonCenter;        // NEU: Position des Mond-Mittelpunkts
+            uniform float uNightBrightness;  // Slider Wert
+            uniform float uDirectSunIntensity;
+            
+            varying vec2 vUv;
+            varying vec3 vNormal;
+            varying vec3 vWorldPosition;
+
+            void main() {
+                // 1. Textur oder Farbe laden
+                vec4 texColor = vec4(1.0, 1.0, 1.0, 1.0);
+                if (uHasTexture) {
+                    texColor = texture2D(map, vUv);
+                }
+                vec3 baseColor = texColor.rgb * uColor;
+
+                // 2. Wo ist die Sonne?
+                vec3 sunDir = normalize(uSunPosition - vWorldPosition);
+
+                // 3. GLOBALE TAG/NACHT ERKENNUNG
+                // Wir berechnen den Vektor vom Mond-Kern zur Oberfläche (das ist "Oben")
+                vec3 surfaceUp = normalize(vWorldPosition - uMoonCenter);
+                
+                // Zeigt der Boden an dieser Stelle zur Sonne? (1 = Mittag, 0 = Dämmerung, -1 = Mitternacht)
+                float globalDayFactor = dot(surfaceUp, sunDir);
+                
+                // Weicher Übergang (Terminator), damit es nicht flackert
+                // 0.0 bis 1.0 (0 = Nachtseite, 1 = Tagseite)
+                float isDaySide = smoothstep(-0.2, 0.2, globalDayFactor);
+
+                // 4. LICHT BERECHNUNG
+                
+                // A) Direktes Sonnenlicht (Sorgt für 3D-Effekt und Schattenwurf des Objekts selbst)
+                float directLight = max(0.0, dot(vNormal, sunDir));
+
+                // B) Umgebungslicht (Ambient)
+                // Wenn Tag: Helles Ambient (0.6), damit man auch im Schatten was sieht.
+                // Wenn Nacht: Dunkles Ambient (Slider-Wert), damit es ganz schwarz werden kann.
+                float ambientIntensity = mix(uNightBrightness, 0.6, isDaySide);
+
+                // Gesamthelligkeit = Ambient + (Direktes Licht * Boost * Tag-Faktor)
+                float totalLight = ambientIntensity + (directLight * uDirectSunIntensity * isDaySide);
+
+                gl_FragColor = vec4(baseColor * totalLight, texColor.a);
+            }
+        `;
+
         
 
         // UPDATE: Generic Ring Fragment Shader
@@ -3149,57 +3223,136 @@
         }
 
         function plantFlagOnMoon() {
-            if (isFlagOnMoon) return; // Nur eine Flagge pro Session!
+            if (isFlagOnMoon) return;
             if (!moon) return;
 
-            // 1. Gruppe für die Flagge erstellen
-            const flagGroup = new THREE.Group();
+            const moonRadius = MOON_RADIUS; 
             
-            // Grösse anpassen (etwa so gross wie ein Astronaut/kleine Kapsel im Verhältnis)
-            const scale = 0.0015 * SCENE_SCALE; 
-            flagGroup.scale.set(scale, scale, scale);
+            // 1. FLAGGE (Jetzt als 3D Modell)
+            if (flagTemplate) {
+                const flagGroup = flagTemplate.clone();
+                
+                // Shader anwenden!
+                applySurfaceShader(flagGroup);
 
-            // 2. Der Mast (Grauer Zylinder)
-            const poleGeo = new THREE.CylinderGeometry(0.1, 0.1, 6, 8);
-            const poleMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.4 });
-            const pole = new THREE.Mesh(poleGeo, poleMat);
-            pole.position.y = 3; // Damit der Mast auf dem Boden steht (halbe Höhe)
-            flagGroup.add(pole);
+                // Positionieren (Werte evtl. anpassen je nach Modell)
+                flagGroup.position.set(moonRadius, 0, 0); 
+                flagGroup.rotation.z = Math.PI / 2; 
+                flagGroup.rotation.y = Math.PI; // Drehen, damit sie zur Kamera zeigt
+                
+                moon.add(flagGroup);
+            } else {
+                console.warn("Flaggen-Modell noch nicht geladen!");
+                // Fallback: Deine alte Plane-Logik hier rein, falls Modell fehlt
+            }
 
-            // 3. Die Flagge (Ebene mit Bild)
-            const loader = new THREE.TextureLoader();
-            // URL einer USA Flagge (Wikimedia Commons)
-            const flagTexture = loader.load('https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Flag_of_the_United_States.svg/640px-Flag_of_the_United_States.svg.png');
-            
-            const flagGeo = new THREE.PlaneGeometry(3, 1.9); // Standard Seitenverhältnis
-            const flagMat = new THREE.MeshBasicMaterial({ 
-                map: flagTexture, 
-                side: THREE.DoubleSide, // Von beiden Seiten sichtbar
-                transparent: true
-            });
-            const flag = new THREE.Mesh(flagGeo, flagMat);
-            
-            // Positionierung am Mast (oben rechts dran)
-            flag.position.set(1.5 + 0.1, 5, 0); 
-            flagGroup.add(flag);
+            // 2. ASTRONAUT
+            if (astronautTemplate) {
+                const astro = astronautTemplate.clone();
+                const astroScale = 0.01 * SCENE_SCALE; 
+                astro.scale.set(astroScale, astroScale, astroScale);
+                astro.position.set(moonRadius, 0, 0.1 * SCENE_SCALE); 
+                astro.rotation.z = Math.PI / 2; 
+                astro.rotation.y = Math.PI; 
 
-            // 4. Auf dem Mond positionieren
-            // Wir platzieren sie dort, wo die Rakete im Code landet (ungefähr auf der Vorderseite, leicht versetzt)
-            // Koordinaten relativ zum Mond-Mittelpunkt
-            const moonRadius = MOON_RADIUS; // Radius des Mond-Meshs
-            
-            // Position: "Vorne" auf dem Mond (Richtung Erde/Kamera)
-            flagGroup.position.set(moonRadius, 0, 0); 
-            
-            // Rotation: Damit der Mast senkrecht aus der Oberfläche ragt
-            flagGroup.rotation.z = -Math.PI / 2; 
-            
-            // WICHTIG: Wir fügen die Flagge dem MOND hinzu, nicht der Szene!
-            // So rotiert sie automatisch mit dem Mond mit.
-            moon.add(flagGroup);
+                const northAmount = 0.03;  // Verschiebung nach Norden (z.B. 0.0 bis 1.0)
+                const eastAmount = -0.03;   // Verschiebung nach Osten  (z.B. 0.0 bis 1.0)
+
+                // 1. Wir setzen eine Richtung (die 1.0 bei X sorgt dafür, dass er auf der Vorderseite bleibt)
+                astro.position.set(1.0, northAmount, eastAmount);
+                
+                // 2. WICHTIG: Wir "normieren" den Vektor (Länge 1) und skalieren ihn auf den Mondradius
+                // So klebt er immer perfekt auf der Oberfläche, egal welche Zahlen du oben eingibst.
+                astro.position.normalize().multiplyScalar(moonRadius);
+                
+                // WICHTIG: Shader anwenden!
+                applySurfaceShader(astro);
+                
+                moon.add(astro);
+            } 
+
+            // 3. LANDER
+            if (landerTemplate) {
+                const lander = landerTemplate.clone();
+                const landerScale = 0.0045 * SCENE_SCALE;
+                lander.scale.set(landerScale, landerScale, landerScale);
+                const heightCorrection = 0.0085 * SCENE_SCALE;
+                lander.position.set(moonRadius - heightCorrection, 0, -0.08 * SCENE_SCALE);
+                lander.rotation.z = -Math.PI / 2.0; 
+                lander.rotation.y = Math.PI / 0.492; 
+                
+                // WICHTIG: Shader anwenden!
+                applySurfaceShader(lander);
+
+                moon.add(lander);
+            }
 
             isFlagOnMoon = true;
-            console.log("Die Flagge wurde gehisst! 🇺🇸");
+            console.log("Die Flagge, der Astronaut und der Lander stehen! 🇺🇸👨‍🚀🚀");
+        }
+
+        // Globale Liste, damit der Slider darauf zugreifen kann
+        let surfaceObjectsMaterials = [];
+
+        function applySurfaceShader(object3D, textureUrl = null) {
+            const loader = new THREE.TextureLoader();
+            let specificTex = null;
+            
+            // Wenn eine spezielle Textur für dieses Modell (z.B. Flagge) angegeben wurde, laden wir sie hier 1x
+            if (textureUrl) {
+                specificTex = loader.load(textureUrl);
+                specificTex.flipY = false;
+            }
+
+            object3D.traverse((child) => {
+                if (child.isMesh) {
+                    let oldColor = new THREE.Vector3(1, 1, 1);
+                    let hasTexture = false;
+                    let tex = null;
+
+                    // 1. Farbe retten
+                    if (child.material.color) {
+                        oldColor.set(child.material.color.r, child.material.color.g, child.material.color.b);
+                    }
+
+                    // 2. Textur zuweisen (Hier lag das Performance-Problem!)
+                    if (specificTex) {
+                        // Fall A: Wir haben eine URL übergeben (z.B. Flagge)
+                        tex = specificTex;
+                        hasTexture = true;
+                    } else if (child.material.map) {
+                        // Fall B: Das Modell hat schon eine Textur
+                        tex = child.material.map;
+                        hasTexture = true;
+                    } else {
+                        // Fall C: Keine Textur (z.B. Lander Body) -> Nimm die globale Fallback-Textur
+                        tex = surfaceFallbackTexture; 
+                        hasTexture = false; 
+                    }
+
+                    const sliderEl = document.getElementById('darkness-slider');
+                    const currentBrightness = sliderEl ? parseFloat(sliderEl.value) : 0.04;
+
+                    const newMat = new THREE.ShaderMaterial({
+                        vertexShader: surfaceObjectVertexShader,
+                        fragmentShader: surfaceObjectFragmentShader,
+                        uniforms: {
+                            map: { value: tex },
+                            uColor: { value: oldColor },
+                            uHasTexture: { value: hasTexture },
+                            uSunPosition: { value: new THREE.Vector3(0, 0, 0) },
+                            uMoonCenter: { value: new THREE.Vector3() }, // Wird in updatePositions gesetzt
+                            uNightBrightness: { value: currentBrightness },
+                            uDirectSunIntensity: { value: 1.3 }
+                        },
+                        transparent: true, 
+                        side: THREE.DoubleSide
+                    });
+
+                    child.material = newMat;
+                    surfaceObjectsMaterials.push(newMat);
+                }
+            });
         }
 
         function init() {
@@ -4087,6 +4240,27 @@
                     url: 'ImagesGit/3D-Models/saturn_v_cockpit.glb', 
                     type: 'template',
                     scale: ROCKET_SIZE_SCALE * 0.00005
+                },
+
+                {
+                    id: 'astronaut',
+                    url: 'ImagesGit/3D-Models/astronaut.glb', // Bitte Datei hochladen!
+                    type: 'template',
+                    scale: 0.000015 * SCENE_SCALE // Start-Skalierung (wird unten angepasst)
+                },
+
+                {
+                    id: 'flag',
+                    url: 'ImagesGit/3D-Models/us_flag_compressed.glb', // <--- DEIN NEUES FLAGGEN MODELL
+                    type: 'template',
+                    scale: 0.004 * SCENE_SCALE // Skalierung anpassen!
+                },
+
+                {
+                    id: 'lander',
+                    url: 'ImagesGit/3D-Models/Apollo Lunar Module.glb', // Bitte Datei hochladen!
+                    type: 'template',
+                    scale: 0.003 * SCENE_SCALE
                 }
                 // HIER KÖNNTEST DU EINFACH MEHR OBJEKTE HINZUFÜGEN
                 // { id: 'hubble', url: 'hubble.glb', ... }
@@ -4155,6 +4329,18 @@
                         else if (modelData.id === 'capsule') {
                             capsuleModelTemplate = gltf.scene;
                             console.log("Kapsel geladen.");
+                        }
+                        else if (modelData.id === 'astronaut') {
+                            astronautTemplate = gltf.scene;
+                            console.log("Astronaut geladen.");
+                        }
+                        else if (modelData.id === 'lander') {
+                            landerTemplate = gltf.scene;
+                            console.log("Lander geladen.");
+                        }
+                        else if (modelData.id === 'flag') {
+                            flagTemplate = gltf.scene;
+                            console.log("Flagge geladen.");
                         }
 
                         return; // Wichtig: Hier abbrechen für Templates
@@ -4556,6 +4742,12 @@
                 // UPDATE: Loop durch alle Ring-Materials
                 planetRingMaterials.forEach(entry => {
                     if (entry.ringMat) entry.ringMat.uniforms.uNightBrightness.value = brightness;
+                });
+
+                surfaceObjectsMaterials.forEach(mat => {
+                    if (mat.uniforms && mat.uniforms.uNightBrightness) {
+                        mat.uniforms.uNightBrightness.value = brightness;
+                    }
                 });
                 
                 darknessLabel.textContent = brightness.toFixed(2);
@@ -6933,44 +7125,57 @@
             }
 
             // --- ASTEROIDEN UPDATE ---
-    if (asteroidInstancedMesh) {
-        const asteroids = asteroidInstancedMesh.userData.asteroids;
-        const dummy = new THREE.Object3D();
-        
-        // Wir durchlaufen jeden Asteroiden und berechnen seine e Position
-        for (let i = 0; i < asteroids.length; i++) {
-            const data = asteroids[i];
-            
-            // Winkel basierend auf dem Tag berechnen
-            // Wir teilen durch einen Faktor, damit sie nicht zu schnell rasen
-            const currentAngle = data.startAngle + (day * data.speed * -0.1); 
+            if (asteroidInstancedMesh) {
+                const asteroids = asteroidInstancedMesh.userData.asteroids;
+                const dummy = new THREE.Object3D();
+                
+                // Wir durchlaufen jeden Asteroiden und berechnen seine e Position
+                for (let i = 0; i < asteroids.length; i++) {
+                    const data = asteroids[i];
+                    
+                    // Winkel basierend auf dem Tag berechnen
+                    // Wir teilen durch einen Faktor, damit sie nicht zu schnell rasen
+                    const currentAngle = data.startAngle + (day * data.speed * -0.1); 
 
-            const x = Math.cos(currentAngle) * data.distance;
-            const z = Math.sin(currentAngle) * data.distance;
-            
-            dummy.position.set(x, data.y, z);
-            
-            // Wir holen uns die alte Matrix, um Rotation/Skalierung zu behalten
-            // (Optimierung: Man könnte Rotation auch animieren, kostet aber Performance)
-            const currentMatrix = new THREE.Matrix4();
-            asteroidInstancedMesh.getMatrixAt(i, currentMatrix);
-            
-            // Extrahiere Rotation/Scale aus der alten Matrix
-            const position = new THREE.Vector3();
-            const quaternion = new THREE.Quaternion();
-            const scale = new THREE.Vector3();
-            currentMatrix.decompose(position, quaternion, scale);
-            
-            dummy.quaternion.copy(quaternion);
-            dummy.scale.copy(scale);
-            
-            dummy.updateMatrix();
-            asteroidInstancedMesh.setMatrixAt(i, dummy.matrix);
+                    const x = Math.cos(currentAngle) * data.distance;
+                    const z = Math.sin(currentAngle) * data.distance;
+                    
+                    dummy.position.set(x, data.y, z);
+                    
+                    // Wir holen uns die alte Matrix, um Rotation/Skalierung zu behalten
+                    // (Optimierung: Man könnte Rotation auch animieren, kostet aber Performance)
+                    const currentMatrix = new THREE.Matrix4();
+                    asteroidInstancedMesh.getMatrixAt(i, currentMatrix);
+                    
+                    // Extrahiere Rotation/Scale aus der alten Matrix
+                    const position = new THREE.Vector3();
+                    const quaternion = new THREE.Quaternion();
+                    const scale = new THREE.Vector3();
+                    currentMatrix.decompose(position, quaternion, scale);
+                    
+                    dummy.quaternion.copy(quaternion);
+                    dummy.scale.copy(scale);
+                    
+                    dummy.updateMatrix();
+                    asteroidInstancedMesh.setMatrixAt(i, dummy.matrix);
+                }
+                // Der Grafikkarte sagen, dass sich Positionen geändert haben
+                asteroidInstancedMesh.instanceMatrix.needsUpdate = true;
+            }
+
+            // Position des Mondes für die Shader aktualisieren
+            if (moon && surfaceObjectsMaterials.length > 0) {
+                const moonWorldPos = new THREE.Vector3();
+                moon.getWorldPosition(moonWorldPos);
+                
+                surfaceObjectsMaterials.forEach(mat => {
+                    if (mat.uniforms && mat.uniforms.uMoonCenter) {
+                        mat.uniforms.uMoonCenter.value.copy(moonWorldPos);
+                    }
+                });
+            }
         }
-        // Der Grafikkarte sagen, dass sich Positionen geändert haben
-        asteroidInstancedMesh.instanceMatrix.needsUpdate = true;
-    }
-        }
+        
 
         function updateCamera(isJump = false) {
             if (isCameraTransitioning || isJump) return;
