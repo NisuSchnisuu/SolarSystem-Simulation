@@ -1173,6 +1173,7 @@
             }
             
             light.castShadow = false; 
+            
             object3D.add(light);
             
             // Wir speichern wichtige Daten für die Steuerung
@@ -1391,6 +1392,7 @@
         // --- FLAT EARTH VARIABLES ---
         let isFlatEarth = false; 
         let isFlagOnMoon = false; // Speichert, ob die Flagge schon steht
+        let hasMoonMissionLanded = false;
         let flatAnimPhase = 'idle'; // 'idle', 'flying_to_pos', 'anticipation', 'wobble', 'splat', 'restoring'
         let flatAnimTimer = 0;
         
@@ -2630,8 +2632,13 @@
 
             finish() {
                 this.state = 'landed';
+                hasMoonMissionLanded = true;
 
-                plantFlagOnMoon();
+                if (typeof moonSurfaceObjects !== 'undefined') {
+                    moonSurfaceObjects.forEach(obj => {
+                        obj.visible = true; // Tadaaa! Sie sind da.
+                    });
+                }
 
                 // --- NEU: ERFOLGSMELDUNG ---
                 updateLaunchHUD(true, "THE EAGLE HAS LANDED", "Mission erfolgreich beendet.", "🦅", 100);
@@ -2698,6 +2705,14 @@
 
                 // 1. Status setzen
                 this.state = 'aborted';
+                hasMoonMissionLanded = false;
+    
+                // Objekte wieder verstecken!
+                if (typeof moonSurfaceObjects !== 'undefined') {
+                    moonSurfaceObjects.forEach(obj => {
+                        obj.visible = false;
+                    });
+                }
                 document.getElementById('rocket-status').textContent = "Mission abgebrochen.";
 
                 // 2. Objekte entfernen
@@ -3344,12 +3359,15 @@
                 flagGroup.rotation.z = Math.PI / 2; 
                 flagGroup.rotation.y = Math.PI; // Drehen, damit sie zur Kamera zeigt
                 
+                flagGroup.visible = false;
+
                 moon.add(flagGroup);
 
                 moonSurfaceObjects.push(flagGroup);
                 
                 // (Objekt, Stärke 0.6, Reichweite 5 Meter)
-                addFillLight(flagGroup, 0.3, 5, null, 0.0);
+                
+                addFillLight(flagGroup, 0.001, 2, new THREE.Vector3(0, 2.0, 1.0), 0.0);
             } else {
                 console.warn("Flaggen-Modell noch nicht geladen!");
                 // Fallback: Deine alte Plane-Logik hier rein, falls Modell fehlt
@@ -3373,7 +3391,6 @@
                 astro.traverse((child) => {
                     if (child.isMesh) {
                         child.material = child.material.clone(); // Wichtig: Klonen!
-                        child.material.color.setHex(0xffffff);   // Reinweiß
                         child.material.metalness = 0.8;          // Wenig Metall (Stoff)
                         child.material.roughness = 0.8;          // Rau (Stoff)
                     }
@@ -3383,13 +3400,15 @@
                 // So klebt er immer perfekt auf der Oberfläche, egal welche Zahlen du oben eingibst.
                 astro.position.normalize().multiplyScalar(moonRadius);
                 
+                astro.visible = false;
+
                 // WICHTIG: Shader anwenden!
                 applySurfaceShader(astro);
 
                 moon.add(astro);
                 moonSurfaceObjects.push(astro);
                 astronautMesh = astro;
-                addFillLight(astro, 1.6, 8, new THREE.Vector3(0, 2.0, 1.0), 0.43);
+                addFillLight(astro, 1.2, 4, new THREE.Vector3(0, 2.0, 1.0), 0.43);
             } 
 
             // 3. LANDER
@@ -3397,35 +3416,60 @@
                 const lander = landerTemplate.clone();
                 const landerScale = 0.00025 * SCENE_SCALE;
                 lander.scale.set(landerScale, landerScale, landerScale);
+                
                 const heightCorrection = 0.0082 * SCENE_SCALE;
                 lander.position.set(moonRadius - heightCorrection, 0, -0.08 * SCENE_SCALE);
+                
                 lander.rotation.z = -Math.PI / 2.0; 
                 lander.rotation.y = Math.PI / 0.492;
                 
-                // --- NEU: MATERIAL FIX FÜR DEN LANDER ---
                 lander.traverse((child) => {
                     if (child.isMesh) {
-                        // Wir erstellen eine Kopie des Materials, um es sicher zu bearbeiten
-                        child.material = child.material.clone(); 
-                        
-                        // Das ist der Trick:
-                        // Metalness runter = Das Material nimmt Licht besser an (wie Plastik/Stein)
-                        // Roughness hoch = Das Licht verteilt sich weicher auf der Oberfläche
-                        child.material.metalness = 0.3; 
-                        child.material.roughness = 0.7;
-                        
-                        // Optional: Ein minimales "Selbstleuchten" für die grauen Teile, 
-                        // damit sie sich vom schwarzen All abheben (Dunkelgrau statt Schwarz)
-                        child.material.emissive.setHex(0x151515);
+                        // Prüfen, ob es der Schatten ist
+                        // (Meistens heißt das Mesh "Plane", "Shadow" oder ähnlich)
+                        const isShadow = child.name.toLowerCase().includes('shadow') || child.name.toLowerCase().includes('plane');
+
+                        if (isShadow) {
+                            // --- LÖSUNG FÜR DEN SCHATTEN ---
+                            // Wir wechseln zu MeshBasicMaterial -> Das ignoriert Licht komplett!
+                            child.material = new THREE.MeshBasicMaterial({
+                                map: child.material.map, // Die alte Textur beibehalten
+                                transparent: true,
+                                opacity: 0.8, // Wie dunkel der Schatten sein soll
+                                color: 0x000000 // Zwingend Schwarz
+                            });
+                            
+                            // WICHTIG: Wir schließen den Schatten vom Shader-Update aus,
+                            // indem wir ihm eine Markierung geben (oder einfach nicht bearbeiten)
+                            child.userData.ignoreShader = true; 
+
+                        } else {
+                            // --- LÖSUNG FÜR DEN LANDER ---
+                            child.material = child.material.clone(); 
+                            child.material.metalness = 0.3; 
+                            child.material.roughness = 0.7;
+                            child.material.emissive.setHex(0x151515);
+                        }
                     }
                 });
                 
-                // WICHTIG: Shader anwenden!
+                lander.visible = false; // Erstmal unsichtbar (wegen Anti-Lag)
+
+                // Shader nur anwenden, wenn es NICHT der Schatten ist
+                // (Wir müssen applySurfaceShader leicht anpassen oder hier manuell filtern)
+                // Einfacher Trick: Da MeshBasicMaterial (der Schatten) eh keine Lights nutzt, 
+                // stört der Shader meist nicht, aber sauberer ist es, applySurfaceShader anzupassen.
+                // Für jetzt lassen wir applySurfaceShader laufen, da der BasicMaterial-Trick meist reicht.
                 applySurfaceShader(lander);
 
                 moon.add(lander);
                 moonSurfaceObjects.push(lander);
-                addFillLight(lander, 0.8, 30, new THREE.Vector3(0, 4.0, 0.0), 0.0);
+
+                // --- LÖSUNG FÜR DIE OBERSEITE ---
+                // Intensity: Von 0.8 auf 1.2 erhöht (heller)
+                // Position: Y von 4.0 auf 15.0 erhöht (deutlich höher über dem Dach)
+                // Position: Z auf 5.0 gesetzt (leicht versetzt zur Kamera hin, für bessere 3D-Wirkung)
+                addFillLight(lander, 1.2, 8, new THREE.Vector3(0, 180.0, -80.0), 0.0);
             }
 
             isFlagOnMoon = true;
@@ -3437,6 +3481,7 @@
 
         function applySurfaceShader(object3D) {
             object3D.traverse((child) => {
+                if (child.userData.ignoreShader) return;
                 if (child.isMesh && child.material) {
                     
                     // Wir klonen das Original-Material, damit wir es bearbeiten können,
@@ -3514,6 +3559,7 @@
             // Wird aufgerufen, wenn ALLES geladen ist
             loadingManager.onLoad = () => {
                 console.log('Alle Assets geladen.');
+                plantFlagOnMoon();
                 const loadingScreen = document.getElementById('loading-screen');
                 if (loadingScreen) {
                     loadingScreen.style.opacity = '0'; // Fade-Out starten
@@ -6624,7 +6670,10 @@
             }
             if (moonSurfaceObjects.length > 0) {
                 moonSurfaceObjects.forEach(obj => {
-                    obj.visible = modeAllowsVisibility;
+                    // Das Objekt darf nur sichtbar sein, wenn:
+                    // 1. Der allgemeine Modus es erlaubt (modeAllowsVisibility)
+                    // 2. UND die Rakete tatsächlich gelandet ist (hasMoonMissionLanded)
+                    obj.visible = modeAllowsVisibility && hasMoonMissionLanded;
                 });
             }
         }
