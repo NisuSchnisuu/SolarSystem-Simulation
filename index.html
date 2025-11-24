@@ -1511,7 +1511,7 @@
                 if (cometModelTemplate) {
                     this.mesh = cometModelTemplate.clone();
                     
-                    const fixedVisualScale = 0.02; 
+                    const fixedVisualScale = 0.11; 
                     this.mesh.scale.set(fixedVisualScale, fixedVisualScale, fixedVisualScale);
                     this.radius = fixedVisualScale * 0.5; 
                     
@@ -1584,7 +1584,17 @@
                 this.age = 0;
                 
                 // Komet-Info für Popup
-                this.mesh.userData.info = {
+                const hitboxGeo = new THREE.SphereGeometry(this.radius * 6.0, 8, 8); 
+                const hitboxMat = new THREE.MeshBasicMaterial({ 
+                    visible: false, // Unsichtbar
+                    wireframe: true 
+                });
+                
+                this.hitbox = new THREE.Mesh(hitboxGeo, hitboxMat);
+                this.group.add(this.hitbox); // Bewegt sich mit dem Kometen mit
+
+                // 2. Info an die HITBOX hängen (nicht mehr an das Mesh)
+                this.hitbox.userData.info = {
                     name: 'Komet 67P (Tschurjumow-Gerassimenko)', type: 'comet', radius_km: `ca. 4,1 × 3,3 km`, velocity: `bis zu 135.000 km/h (Perihel)`, umlaufzeit: '6,44 Jahre',
                     funFacts: [
                         'Kometen sind "schmutzige Schneebälle" aus Eis, Staub und Gestein.',
@@ -1592,7 +1602,9 @@
                         'Der Schweif zeigt immer von der Sonne weg (Sonnenwind).'
                     ]
                 };
-                clickableObjects.push(this.mesh);
+
+                // 3. Nur die Hitbox klickbar machen
+                clickableObjects.push(this.hitbox);
             }
 
             update(deltaTime) {
@@ -1657,6 +1669,11 @@
                 this.particles = [];
                 
                 this.group.remove(this.mesh);
+                if (this.hitbox) {
+                    this.group.remove(this.hitbox);
+                    this.hitbox.geometry.dispose();
+                    this.hitbox.material.dispose();
+                }
                 this.scene.remove(this.group);
                 this.scene.remove(this.tailGroup); 
                 
@@ -1672,7 +1689,7 @@
                     });
                 }
 
-                const index = clickableObjects.indexOf(this.mesh);
+                const index = clickableObjects.indexOf(this.hitbox); 
                 if (index > -1) clickableObjects.splice(index, 1);
             }
             
@@ -1703,7 +1720,7 @@
                     const spawnPos = this.group.position.clone().add(spawnOffset);
 
                     // ÄNDERUNG 1: Viel kleiner (0.15 bis 0.4 statt 0.5 bis 1.2)
-                    const particleSize = THREE.MathUtils.randFloat(0.015, 0.04) * SCENE_SCALE; 
+                    const particleSize = THREE.MathUtils.randFloat(0.08, 0.2) * SCENE_SCALE; 
 
                     const particleMat = new THREE.MeshBasicMaterial({ 
                         color: this.color.clone().lerp(new THREE.Color(0xffffff), 0.4), 
@@ -1724,7 +1741,7 @@
                     
                     const tailDir = new THREE.Vector3().addVectors(
                         oppositeVelocity.multiplyScalar(1.0), // 100% Einfluss der Flugbahn (bleibt hinten)
-                        fromSun.multiplyScalar(0.3)           // Nur 30% Sonnenwind (lenkt leicht ab)
+                        fromSun.multiplyScalar(0.5)           // Nur 30% Sonnenwind (lenkt leicht ab)
                     ).normalize();
 
                     // Weniger Streuung für einen strafferen Schweif
@@ -1741,7 +1758,7 @@
                             THREE.MathUtils.randFloat(-0.2, 0.2)
                         ).multiplyScalar(2.0 * SCENE_SCALE), 
                         // ÄNDERUNG 1: Länger leben (4.0 bis 7.0 Sekunden)
-                        lifetime: THREE.MathUtils.randFloat(4.0, 7.0), 
+                        lifetime: THREE.MathUtils.randFloat(6.0, 10.0), 
                         age: 0,
                         initialOpacity: particleMat.opacity
                     });
@@ -5864,7 +5881,7 @@
 
             //   (Komet Kamerafokus) 
             
-            if (comet && targetObj === comet.mesh) {
+            if (comet && (targetObj === comet.mesh || targetObj === comet.hitbox)) {
 
                 // Comet Distance and Angle Calculation
                 // 1. Distanz definieren (WICHTIG: Sonst ist sie "undefined" -> schwarzer Bildschirm)
@@ -7641,7 +7658,9 @@
             
             if (comet && comet.mesh) {
                  const speedKmh = Math.round(comet.velocity.length() * 25000);
-                 comet.mesh.userData.info.velocity = `ca. ${speedKmh.toLocaleString('de-DE')} km/h`;
+                 if (comet.hitbox && comet.hitbox.userData.info) {
+                    comet.hitbox.userData.info.velocity = `ca. ${speedKmh.toLocaleString('de-DE')} km/h`;
+                 }
                  
                  infoText += ` | Komet: ${speedKmh.toLocaleString('de-DE')} km/h`;
             }
