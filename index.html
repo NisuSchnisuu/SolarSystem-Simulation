@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Sonnensystem-Simulation (6. Klasse) - Realistische Bahnen & Saturnschatten</title>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -24,6 +26,7 @@
             background-color: #000;
             color: #fff;
             overflow: hidden;
+            overscroll-behavior: none;
         }
 
         #container {
@@ -236,6 +239,25 @@
         }
         #rewind-btn.playing:hover {
             background-color: #0056b3;
+        }
+
+        #play-pause-btn {
+            /* Flexbox sorgt dafür, dass das Icon perfekt mittig ist */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            
+            /* Verhindert, dass der Button springt, wenn sich das Icon ändert */
+            min-width: 44px; 
+            padding: 8px 12px;
+        }
+
+        /* Style für das SVG im Button */
+        #play-pause-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor; /* WICHTIG: Nimmt die Textfarbe (Weiss) an */
+            pointer-events: none; /* Klicks gehen durch das Icon auf den Button */
         }
 
         #rewind-btn {
@@ -1179,6 +1201,8 @@
 
         let jupiterMoonShadowUniforms = null;
         let jupiterMoons = [];
+
+        let moonSurfaceObjects = [];
 
         // --- RAKETEN KONFIGURATION ---
         const ROCKET_FLIGHT_DURATION_SECONDS = 40.0; // Wie lange der Flug dauert (in echten Sekunden)
@@ -2621,7 +2645,8 @@
                 if (index > -1) clickableObjects.splice(index, 1);
                 this.scene.remove(this.group); 
                 this.scene.remove(this.smokeGroup);
-
+                
+                rocketSpawnAllowed = false;
                 // --- UI WIEDERHERSTELLEN ---
                 setLaunchModeUI(false); // Alle anderen Menüs wieder anzeigen
 
@@ -3320,6 +3345,8 @@
                 flagGroup.rotation.y = Math.PI; // Drehen, damit sie zur Kamera zeigt
                 
                 moon.add(flagGroup);
+
+                moonSurfaceObjects.push(flagGroup);
                 
                 // (Objekt, Stärke 0.6, Reichweite 5 Meter)
                 addFillLight(flagGroup, 0.3, 5, null, 0.0);
@@ -3359,9 +3386,8 @@
                 // WICHTIG: Shader anwenden!
                 applySurfaceShader(astro);
 
-                
-                
                 moon.add(astro);
+                moonSurfaceObjects.push(astro);
                 astronautMesh = astro;
                 addFillLight(astro, 1.6, 8, new THREE.Vector3(0, 2.0, 1.0), 0.43);
             } 
@@ -3398,7 +3424,7 @@
                 applySurfaceShader(lander);
 
                 moon.add(lander);
-                
+                moonSurfaceObjects.push(lander);
                 addFillLight(lander, 0.8, 30, new THREE.Vector3(0, 4.0, 0.0), 0.0);
             }
 
@@ -3754,7 +3780,11 @@
             
             if (isPlaying) {
                  playPauseBtn.classList.add('playing');
+                 playPauseBtn.innerHTML = iconPause;
+            } else {
+                playPauseBtn.innerHTML = iconPlay;
             }
+            
         }
         
         function definePlanetData() {
@@ -5308,18 +5338,45 @@
         }
 
         function pickNextPlanetTarget() {
-            const potentialTargets = clickableObjects.filter(obj =>
-                obj !== ufo && 
-                !obj.userData.isUFO && 
-                obj !== ufoCurrentTargetObject && 
-                obj !== earth && 
-                obj !== moon
-            );
+            const potentialTargets = clickableObjects.filter(obj => {
+                
+                // 1. Standard-Ausschlüsse (Sich selbst, aktuelles Ziel, UFOs)
+                if (obj === ufo || obj.userData.isUFO || obj === ufoCurrentTargetObject) return false;
+
+                // 2. Die großen Himmelskörper ausschließen
+                if (obj === earth || obj === moon) return false;
+
+                // 3. Objekte im Orbit der Erde ausschließen (ISS, Hubble)
+                if (obj.userData && obj.userData.info) {
+                    if (obj.userData.info.parentName === 'Erde') return false;
+                    if (obj.userData.info.name && obj.userData.info.name.includes('Voyager')) return false;
+                    if (obj.userData.info.type === 'rocket') return false;
+                }
+
+                // --- NEU: MOND-OBJEKTE AUSSCHLIESSEN ---
+                
+                // A) Prüfung über unsere neue Liste (die sauberste Methode)
+                // Wir prüfen: Existiert die Liste UND ist das Objekt darin enthalten?
+                if (typeof moonSurfaceObjects !== 'undefined' && moonSurfaceObjects.includes(obj)) {
+                    return false;
+                }
+
+                // B) Sicherheits-Check: Ist das Objekt ein direktes Kind des Mondes?
+                // Falls du sie versehentlich nicht in die Liste gepusht hast, fängt das hier sie ab.
+                if (obj.parent === moon) return false;
+
+                // ----------------------------------------
+
+                return true;
+            });
+
             if (potentialTargets.length > 0) {
                 const randomIndex = Math.floor(Math.random() * potentialTargets.length);
                 ufoCurrentTargetObject = potentialTargets[randomIndex];
+                // Optional: Log entfernen, wenn es nervt
+                // console.log("🛸 UFO neues Ziel:", ufoCurrentTargetObject.userData.info ? ufoCurrentTargetObject.userData.info.name : "Unbekannt");
             } else {
-                 ufoCurrentTargetObject = sun;
+                ufoCurrentTargetObject = sun;
             }
         }
 
@@ -5519,11 +5576,9 @@
         }
         
         // *** ÄNDERUNG 2: Handler-Funktionen für Zurückspulen ***
-        // *** ÄNDERUNG 2: Handler-Funktionen für Zurückspulen ***
         function toggleRewind() {
             // Prüfen, ob wir gerade zurückspulen
             if (isRewinding) {
-                // Ja -> also anhalten
                 stopRewind();
             } else {
                 // Nein -> also starten
@@ -5536,8 +5591,7 @@
                 // 2. Wenn die Simulation lief, stoppe sie DIREKT
                 if (isPlaying) {
                     isPlaying = false; 
-                    // 3. Aktualisiere den Play-Button manuell
-                    playPauseBtn.textContent = 'Play';
+                    playPauseBtn.innerHTML = iconPlay;
                     playPauseBtn.classList.remove('playing');
                 }
 
@@ -5560,7 +5614,8 @@
             //  Ende Änderung 2 
             
             isPlaying = !isPlaying;
-            playPauseBtn.textContent = isPlaying ? 'Pause' : 'Play';
+            playPauseBtn.innerHTML = isPlaying ? iconPause : iconPlay;
+            playPauseBtn.title = isPlaying ? "Pause" : "Abspielen";
             if (isPlaying) {
                 playPauseBtn.classList.add('playing');
             } else {
@@ -6099,7 +6154,7 @@
             
             const planetButtons = document.getElementById('planet-focus-buttons');
             document.getElementById('real-scale-controls').prepend(planetButtons); // Verschiebt das Element
-            planetButtons.style.display = 'flex'; // Sicherstellen, dass es sichtbar ist
+            planetButtons.style.display = 'grid'; // Sicherstellen, dass es sichtbar ist
             planetButtons.style.marginTop = '0px'; // Margin zurücksetzen
             
             // KORREKTUR 4: Trennlinien und Border entfernen
@@ -6440,9 +6495,11 @@
             
             
             isRealDistanceActive = !isRealDistanceActive;
+            updateSpecialObjectsVisibility(!isRealDistanceActive);
             const distBtn = document.getElementById('real-dist-btn');
             const planetButtons = document.getElementById('planet-focus-buttons'); 
             
+
             // UPDATE: Duration auf 10.0s erhöht (halb so schnell)
             flightStartState.progress = 0;
             if (isRealDistanceActive) {
@@ -6564,6 +6621,11 @@
             // Optional: Auch die Fokus-Buttons für ISS etc. ausblenden, wenn sie nicht zu sehen sind
             if (humanBtns) {
                 humanBtns.style.display = shouldShowHuman ? 'flex' : 'none';
+            }
+            if (moonSurfaceObjects.length > 0) {
+                moonSurfaceObjects.forEach(obj => {
+                    obj.visible = modeAllowsVisibility;
+                });
             }
         }
         
@@ -6878,7 +6940,7 @@
                         realityCheckPhase = 'active';
                         infoBox.textContent = "Wieder beim Grössenvergleich.";
                         
-                        document.getElementById('planet-focus-buttons').style.display = 'flex';
+                        document.getElementById('planet-focus-buttons').style.display = 'grid';
 
                         let earthPos = new THREE.Vector3(Math.cos(earthOrbitAngle) * currentEarthDistance, 0, -Math.sin(earthOrbitAngle) * currentEarthDistance);
                         
@@ -7704,7 +7766,6 @@
         }
 
         // --- REWIND BUTTON ICON ---
-        
         const iconRewind = `
             <svg viewBox="0 0 24 24">
                 <path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/>
@@ -7730,6 +7791,15 @@
 
         const fullscreenBtn = document.getElementById('fullscreen-btn');
         
+        // --- SVG ICONS DEFINITION ---
+        const iconPlay = `
+            <svg viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z"/> </svg>`;
+
+        const iconPause = `
+            <svg viewBox="0 0 24 24">
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/> </svg>`;
+
         // Initiales Icon setzen
         fullscreenBtn.innerHTML = iconEnter;
 
