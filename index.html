@@ -2567,18 +2567,36 @@
                         for(let k=0; k<8; k++) this.spawnSmoke(true);
                         if (document.getElementById('rocket-status')) document.getElementById('rocket-status').textContent = "TLI - Kapsel separiert";
                     }
-                    // ... (Debris Animation Code wie gehabt) ...
+                    // 1. BOOSTER (Debris 1)
                      if (this.debrisBooster.visible) {
                         this.debrisBooster.position.z -= deltaTime * 0.5 * SCENE_SCALE;
                         this.debrisBooster.rotation.x += deltaTime;
                         this.debrisBooster.scale.multiplyScalar(0.98); 
-                        if (this.debrisBooster.scale.x < 0.001) this.debrisBooster.visible = false;
+                        
+                        // Wenn es winzig ist: LÖSCHEN statt nur verstecken
+                        if (this.debrisBooster.scale.x < 0.001) {
+                            this.debrisBooster.visible = false;
+                            
+                            // WICHTIG: Speicher sofort freigeben!
+                            disposeObject(this.debrisBooster);
+                            this.group.remove(this.debrisBooster); 
+                        }
                     }
+
+                    // 2. ZWISCHENRING (Debris 2)
                     if (this.debrisStage2.visible) {
                         this.debrisStage2.position.z -= deltaTime * 0.3 * SCENE_SCALE;
                         this.debrisStage2.rotation.z += deltaTime * 0.5;
                         this.debrisStage2.scale.multiplyScalar(0.99);
-                        if (this.debrisStage2.scale.x < 0.001) this.debrisStage2.visible = false;
+                        
+                        // Wenn es winzig ist: LÖSCHEN statt nur verstecken
+                        if (this.debrisStage2.scale.x < 0.001) {
+                            this.debrisStage2.visible = false;
+                            
+                            // WICHTIG: Speicher sofort freigeben!
+                            disposeObject(this.debrisStage2);
+                            this.group.remove(this.debrisStage2);
+                        }
                     }
                     // Status Text Update (bleibt gleich)
                     const statusEl = document.getElementById('rocket-status');
