@@ -1183,8 +1183,7 @@
             nightTimeLights.push(light);
         }
 
-        // Globale Variable für die Fallback-Textur (Laden wir nur 1x statt 100x!)
-        const surfaceFallbackTexture = new THREE.TextureLoader().load('https://upload.wikimedia.org/wikipedia/commons/8/89/HD_transparent_picture.png');
+        
         
         //  Globale Variable für Achsenlinie 
         let earthAxisLine = null;
@@ -3307,56 +3306,7 @@
             }
         }
 
-        // 1. Textur: Ein simpler, weicher, schwarzer Fleck
-        function createShadowTexture() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 64; 
-            canvas.height = 64;
-            const ctx = canvas.getContext('2d');
-            
-            // Radialer Verlauf: Schwarz (Kern) -> Transparent (Rand)
-            const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-            gradient.addColorStop(0, 'rgba(0, 0, 0, 0.8)');   // Kern: Dunkel
-            gradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.4)'); // Mitte: Weich
-            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');     // Rand: Transparent
-            
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, 64, 64);
-            
-            return new THREE.CanvasTexture(canvas);
-        }
-
-        // 2. Schatten hinzufügen mit "Always-On-Top" Trick
-        function addDropShadow(object3D, size) {
-            const tex = createShadowTexture();
-            const mat = new THREE.MeshBasicMaterial({
-                map: tex,
-                transparent: true,
-                opacity: 0.8,         // Wie dunkel der Schatten ist
-                depthWrite: false,    // WICHTIG: Verhindert, dass der Schatten Löcher in andere Objekte stanzt
-                side: THREE.DoubleSide,
-                
-                // --- DER TRICK FÜR SICHTBARKEIT ---
-                polygonOffset: true,
-                polygonOffsetFactor: -4, // Zwingt die Grafikkarte, den Schatten VOR den Boden zu malen
-                polygonOffsetUnits: -4
-            });
-            
-            const geo = new THREE.PlaneGeometry(size, size);
-            const shadowMesh = new THREE.Mesh(geo, mat);
-            
-            // --- AUSRICHTUNG KORRIGIEREN ---
-            // Deine Objekte (Astronaut/Lander) sind so positioniert, dass die X-Achse vom Mond weg zeigt ("Oben").
-            // Eine PlaneGeometry liegt standardmäßig flach auf der Z-Achse.
-            // Wir drehen sie um 90 Grad (PI/2) auf der Y-Achse, damit ihre Fläche parallel zum Mondboden liegt.
-            shadowMesh.rotation.y = Math.PI / 2;
-
-            // Position: Ein winziges Stückchen die X-Achse hoch (lokal "oben"), 
-            // damit er nicht IM Fuß des Astronauten klebt.
-            shadowMesh.position.x = 0.01 * SCENE_SCALE; 
-            
-            object3D.add(shadowMesh);
-        }
+        
 
         function plantFlagOnMoon() {
             if (isFlagOnMoon) return;
@@ -3382,9 +3332,6 @@
 
                 moonSurfaceObjects.push(flagGroup);
                 
-                // (Objekt, Stärke 0.6, Reichweite 5 Meter)
-                
-                addFillLight(flagGroup, 0.001, 2, new THREE.Vector3(0, 2.0, 1.0), 0.0);
             } else {
                 console.warn("Flaggen-Modell noch nicht geladen!");
                 // Fallback: Deine alte Plane-Logik hier rein, falls Modell fehlt
@@ -3425,7 +3372,6 @@
                 moon.add(astro);
                 moonSurfaceObjects.push(astro);
                 astronautMesh = astro;
-                addFillLight(astro, 1.2, 4, new THREE.Vector3(0, 2.0, 1.0), 0.43);
             } 
 
             // 3. LANDER
@@ -3486,7 +3432,7 @@
                 // Intensity: Von 0.8 auf 1.2 erhöht (heller)
                 // Position: Y von 4.0 auf 15.0 erhöht (deutlich höher über dem Dach)
                 // Position: Z auf 5.0 gesetzt (leicht versetzt zur Kamera hin, für bessere 3D-Wirkung)
-                addFillLight(lander, 1.2, 8, new THREE.Vector3(0, 180.0, -80.0), 0.0);
+                addFillLight(lander, 1.2, 40, new THREE.Vector3(0, 180.0, -80.0), 0.0);
             }
 
             isFlagOnMoon = true;
@@ -3496,29 +3442,33 @@
         // Globale Liste für die Shader-Updates
         let surfaceObjectsMaterials = [];
 
+        // Optimierte Shader-Funktion
         function applySurfaceShader(object3D) {
             object3D.traverse((child) => {
                 if (child.userData.ignoreShader) return;
+                
                 if (child.isMesh && child.material) {
                     
-                    // Wir klonen das Original-Material, damit wir es bearbeiten können,
-                    // ohne andere Objekte zu beeinflussen, die vielleicht dasselbe Material nutzen.
-                    // WICHTIG: MeshStandardMaterial behält Normal Maps, Metalness, etc.
-                    child.material = child.material.clone();
+                    // PERFORMANCE FIX: 
+                    // Prüfen, ob wir dieses Material schon bearbeitet haben.
+                    // Wenn ja, brechen wir ab (da es sich um ein geteiltes Material handelt).
+                    if (surfaceObjectsMaterials.includes(child.material)) {
+                        return;
+                    }
 
-                    // Wir bereiten die Daten vor, die wir an den Shader senden wollen
-                    child.material.userData.shader = null; // Platzhalter
+                    // Wir entfernen das .clone(), damit Teile, die dasselbe Material nutzen 
+                    // (z.B. alle goldenen Folien), auch denselben Shader nutzen.
+                    // child.material = child.material.clone(); <--- GELÖSCHT
+
+                    child.material.userData.shader = null;
 
                     child.material.onBeforeCompile = (shader) => {
-                        // 1. Neue Uniforms hinzufügen (Variablen für den Shader)
                         shader.uniforms.uSunPosition = { value: new THREE.Vector3(0, 0, 0) };
                         shader.uniforms.uMoonCenter = { value: new THREE.Vector3(0, 0, 0) };
-                        shader.uniforms.uNightBrightness = { value: 0.04 }; // Startwert
+                        shader.uniforms.uNightBrightness = { value: 0.04 }; 
 
-                        // Referenz speichern, damit wir die Werte in animate() updaten können
                         child.material.userData.shader = shader;
 
-                        // 2. Vertex Shader anpassen (Wir brauchen die Welt-Position im Fragment Shader)
                         shader.vertexShader = `
                             varying vec3 vWorldPositionCustom;
                         ` + shader.vertexShader;
@@ -3531,7 +3481,6 @@
                             `
                         );
 
-                        // 3. Fragment Shader anpassen (Hier passiert die Magie)
                         shader.fragmentShader = `
                             uniform vec3 uSunPosition;
                             uniform vec3 uMoonCenter;
@@ -3539,30 +3488,21 @@
                             varying vec3 vWorldPositionCustom;
                         ` + shader.fragmentShader;
 
-                        // Wir fügen unsere Logik ganz am Ende ein, NACHDEM Three.js 
-                        // Licht, Schatten, Metalness und Texturen schon berechnet hat.
                         shader.fragmentShader = shader.fragmentShader.replace(
                             '#include <dithering_fragment>',
                             `
                             #include <dithering_fragment>
-
-                            // Tag/Nacht Berechnung (wie vorher)
                             vec3 surfaceUp = normalize(vWorldPositionCustom - uMoonCenter);
                             vec3 sunDir = normalize(uSunPosition - vWorldPositionCustom);
-                            
                             float globalDayFactor = dot(surfaceUp, sunDir);
                             float isDaySide = smoothstep(-0.2, 0.2, globalDayFactor);
-
-                            // Mischen: Wenn Tag -> Original Farbe (1.0). Wenn Nacht -> Slider-Wert.
                             float finalBrightness = mix(uNightBrightness, 1.0, isDaySide);
-
-                            // Das fertige Bild abdunkeln
                             gl_FragColor.rgb *= finalBrightness;
                             `
                         );
                     };
 
-                    // Material zur Liste hinzufügen, damit der Slider funktioniert
+                    // Material nur EINMAL zur Liste hinzufügen
                     surfaceObjectsMaterials.push(child.material);
                 }
             });
