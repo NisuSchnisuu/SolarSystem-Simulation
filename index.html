@@ -1470,6 +1470,7 @@
             constructor(scene) {
                 this.scene = scene;
                 this.particles = [];
+                this.particleGeometry = new THREE.PlaneGeometry(1, 1);
                 this.group = new THREE.Group();
                 scene.add(this.group);
                 
@@ -1653,12 +1654,33 @@
                     return true; 
                 }
                 this.age += cometDelta;
+                // 1. Distanz zwischen Kamera und Komet messen
+                const distToCamera = camera.position.distanceTo(this.group.position);
+
+                // 2. Schwellenwert berechnen
+                // "this.visualRadius" hast du im Constructor bereits berechnet.
+                // Der Faktor 4.0 bedeutet: Wenn die Kamera näher als 4x der Kometen-Radius ist.
+                // Erhöhe die Zahl (z.B. auf 8.0), wenn der Schweif FRÜHER verschwinden soll.
+                // Verringere sie (z.B. auf 2.0), wenn man NÄHER ran muss, bis er verschwindet.
+                const hideThreshold = this.visualRadius * 15.0; 
+
+                // 3. Sichtbarkeit umschalten
+                if (distToCamera < hideThreshold) {
+                    // Wir sind zu nah (Zoom) -> Schweif verstecken
+                    this.tailGroup.visible = false;
+                } else {
+                    // Wir sind weit genug weg -> Schweif zeigen
+                    this.tailGroup.visible = true;
+                }
                 return false; 
             }
             
             destroy() {
                 if (cameraFocus === this.mesh) setFocus(sun, 3.0);
                 if (cometControls) cometControls.style.display = 'none';
+                if (this.particleGeometry) {
+                    this.particleGeometry.dispose();
+                }
 
                 this.particles.forEach(p => {
                     this.tailGroup.remove(p.mesh);
@@ -1693,23 +1715,14 @@
             }
             
             generateTail(sunDistance, intensity, cometDelta) {
-                // Erscheint jetzt viel früher (schon bei kleinster Intensität)
-                if (intensity <= 0.0001) return;
+                if (intensity <= 0.05) return; // Wenn zu schwach, abbrechen
 
-                // Mehr Partikel: Basisrate erhöht
-                const spawnChance = (intensity + 0.2) * cometTimeScale; 
+                let loopCount = Math.ceil(intensity * 2.0); // Weniger Partikel
+                const spawnChance = (intensity + 0.1) * cometTimeScale; 
                 
-                // ÄNDERUNG 1: Viel mehr Partikel bei hoher Intensität
-                // Bei maximaler Nähe (intensity=1) bis zu 5 Loops pro Frame
-                let loopCount = Math.ceil(intensity * 5.0); 
-                // Mindestens 1 Versuch, wenn überhaupt sichtbar
-                if (loopCount < 1) loopCount = 1;
-
                 for(let k=0; k<loopCount; k++) {
-                    // Je weiter weg, desto seltener spawnen sie (um Ressourcen zu sparen, wenn er weit weg ist)
                     if (Math.random() > spawnChance) continue; 
 
-                    // Spawn-Bereich verkleinert, damit der Strahl "fokussierter" wirkt
                     const spawnOffset = new THREE.Vector3(
                         THREE.MathUtils.randFloat(-0.5, 0.5),
                         THREE.MathUtils.randFloat(-0.5, 0.5),
@@ -1717,33 +1730,32 @@
                     ).normalize().multiplyScalar(this.radius * 1.2);
 
                     const spawnPos = this.group.position.clone().add(spawnOffset);
-
-                    // ÄNDERUNG 1: Viel kleiner (0.15 bis 0.4 statt 0.5 bis 1.2)
-                    const particleSize = THREE.MathUtils.randFloat(0.08, 0.2) * SCENE_SCALE; 
+                    const particleSize = THREE.MathUtils.randFloat(0.15, 0.23) * SCENE_SCALE; 
 
                     const particleMat = new THREE.MeshBasicMaterial({ 
                         color: this.color.clone().lerp(new THREE.Color(0xffffff), 0.4), 
                         transparent: true, 
-                        opacity: intensity * 0.9, // Etwas transparenter am Start
+                        opacity: intensity * 0.7, 
                         side: THREE.DoubleSide,
                         depthWrite: false,
                         blending: THREE.AdditiveBlending 
                     });
                     
-                    const particleMesh = new THREE.Mesh(new THREE.PlaneGeometry(particleSize, particleSize), particleMat);
+                    // NEU: Nutze die geteilte Geometrie & setze Scale
+                    const particleMesh = new THREE.Mesh(this.particleGeometry, particleMat);
+                    particleMesh.scale.set(particleSize, particleSize, 1);
+                    
                     particleMesh.position.copy(spawnPos);
                     particleMesh.lookAt(camera.position);
                     
-                    // ÄNDERUNG 2: Vektorberechnung - Schweif folgt dem Kometen
                     const fromSun = this.group.position.clone().normalize(); 
                     const oppositeVelocity = this.velocity.clone().normalize().negate(); 
                     
                     const tailDir = new THREE.Vector3().addVectors(
-                        oppositeVelocity.multiplyScalar(1.0), // 100% Einfluss der Flugbahn (bleibt hinten)
-                        fromSun.multiplyScalar(0.5)           // Nur 30% Sonnenwind (lenkt leicht ab)
+                        oppositeVelocity.multiplyScalar(1.0), 
+                        fromSun.multiplyScalar(0.5)           
                     ).normalize();
 
-                    // Weniger Streuung für einen strafferen Schweif
                     tailDir.x += THREE.MathUtils.randFloat(-0.1, 0.1); 
                     tailDir.y += THREE.MathUtils.randFloat(-0.1, 0.1);
                     tailDir.z += THREE.MathUtils.randFloat(-0.1, 0.1);
@@ -1756,10 +1768,10 @@
                             THREE.MathUtils.randFloat(-0.2, 0.2),
                             THREE.MathUtils.randFloat(-0.2, 0.2)
                         ).multiplyScalar(2.0 * SCENE_SCALE), 
-                        // ÄNDERUNG 1: Länger leben (4.0 bis 7.0 Sekunden)
-                        lifetime: THREE.MathUtils.randFloat(6.0, 10.0), 
+                        lifetime: THREE.MathUtils.randFloat(12.0, 16.0), 
                         age: 0,
-                        initialOpacity: particleMat.opacity
+                        initialOpacity: particleMat.opacity,
+                        initialScale: particleSize
                     });
                     this.tailGroup.add(particleMesh);
                 }
@@ -1779,13 +1791,20 @@
                     
                     if (lifeRatio >= 1.0) {
                         this.tailGroup.remove(p.mesh);
-                        p.mesh.geometry.dispose();
                         p.mesh.material.dispose();
                     } else {
                         p.mesh.material.opacity = p.initialOpacity * (1.0 - lifeRatio);
-                        // Weniger Wachstum, damit sie klein bleiben
-                        const scale = 1.0 + (lifeRatio * 1.5);
-                        p.mesh.scale.set(scale, scale, scale); 
+                        
+                        // ALT (Falsch, überschreibt alles):
+                        // const scale = 1.0 + (lifeRatio * 1.5);
+                        // p.mesh.scale.set(scale, scale, scale); 
+
+                        // NEU (Richtig, nimmt die Startgröße mal Wachstum):
+                        const growthFactor = 1.0 + (lifeRatio * 1.5); // Wie stark es wächst
+                        const currentScale = p.initialScale * growthFactor;
+                        
+                        p.mesh.scale.set(currentScale, currentScale, 1); 
+                        
                         newParticles.push(p);
                     }
                 }
@@ -2606,6 +2625,22 @@
                     }
                     if (p < 0.2 || (p > this.TRANS_LUNAR_INJECTION_START && p < 0.6)) {
                          this.spawnSmoke(p > 0.2);
+                    }
+                    // OPTIMIERUNG: Rauch-System komplett löschen, wenn wir weit weg sind (ab 80%)
+                    // Wir prüfen: Sind wir weit genug? Existiert die Gruppe noch? Sind alle Partikel weg?
+                    if (this.rawProgress > 0.8 && this.smokeGroup && this.smokeParticles.length === 0) {
+                        
+                        console.log("Reinige Rauch-Speicher...");
+                        
+                        // 1. Die große Textur aus dem Speicher werfen
+                        if (this.smokeTexture) {
+                            this.smokeTexture.dispose();
+                            this.smokeTexture = null;
+                        }
+
+                        // 2. Den Container entfernen
+                        this.scene.remove(this.smokeGroup);
+                        this.smokeGroup = null; // Setzt es auf null, damit der Code hier nicht nochmal reinläuft
                     }
                 }
 
@@ -4694,7 +4729,7 @@
                     // Füge das Modell zum Pivot hinzu
                     pivot.add(modelScene);
 
-                    if (modelData.id === 'iss' || modelData.id === 'hubble' || modelData.id === 'voyager1') {
+                    if (modelData.id === 'iss' || modelData.id === 'hubble') {
     
                         const intensity = modelData.ambientIntensity !== undefined ? modelData.ambientIntensity : 0.4;
                         
