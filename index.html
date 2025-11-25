@@ -2666,6 +2666,9 @@
                 document.getElementById('rocket-status').textContent = "Mondlandung erfolgreich.";
                 const index = clickableObjects.indexOf(this.group); 
                 if (index > -1) clickableObjects.splice(index, 1);
+                // Bevor du remove machst:
+                disposeObject(this.group);       // <--- NEU: Speicher freigeben
+                disposeObject(this.smokeGroup);  // <--- NEU: Auch den Rauch löschen
                 this.scene.remove(this.group); 
                 this.scene.remove(this.smokeGroup);
                 
@@ -2734,6 +2737,9 @@
                 // 2. Objekte entfernen
                 const index = clickableObjects.indexOf(this.group); 
                 if (index > -1) clickableObjects.splice(index, 1);
+                // Bevor du remove machst:
+                disposeObject(this.group);       // <--- NEU: Speicher freigeben
+                disposeObject(this.smokeGroup);  // <--- NEU: Auch den Rauch löschen
                 this.scene.remove(this.group); 
                 this.scene.remove(this.smokeGroup);
 
@@ -3279,6 +3285,31 @@
                 bar.style.width = progressPercent + '%';
             }
         }
+
+        // Hilfsfunktion: Löscht Objekte komplett aus dem Speicher der Grafikkarte
+        function disposeObject(object) {
+            if (!object) return;
+            
+            object.traverse((child) => {
+                if (child.isMesh) {
+                    if (child.geometry) {
+                        child.geometry.dispose();
+                    }
+                    if (child.material) {
+                        // Material kann ein Array sein oder einzeln
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(mat => {
+                                if (mat.map) mat.map.dispose();     // Textur löschen
+                                mat.dispose();                      // Material löschen
+                            });
+                        } else {
+                            if (child.material.map) child.material.map.dispose();
+                            child.material.dispose();
+                        }
+                    }
+                }
+            });
+        }
         
         
         function formatDayCount(day) {
@@ -3572,7 +3603,7 @@
                 alpha: false  // < DAS IST DER E LÖSUNGSANSATZ
             });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -4037,7 +4068,7 @@
                 vertexShader: earthVertexShader, fragmentShader: earthFragmentShader,
                 uniforms: {
                     dayTexture: { value: textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/ImagesGit/Objects/earth_day.webp') },
-                    nightTexture: { value: textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/ImagesGit/Objects/8k_earth_nightmap.webp') },
+                    nightTexture: { value: textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/ImagesGit/Objects/2k_earth_nightmap.webp') },
                     uSunPosition: { value: new THREE.Vector3(0, 0, 0) }, uObjectWorldPosition: { value: new THREE.Vector3() }, uNightBrightness: { value: 0.3 },
                     uSofiDemoActive: { value: false }, uMoonPosition: { value: new THREE.Vector3() }, uMoonRadius: { value: MOON_RADIUS }, uSunRadius: { value: SUN_RADIUS }, 
 
