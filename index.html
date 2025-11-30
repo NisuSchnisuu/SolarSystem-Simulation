@@ -1112,6 +1112,15 @@
                         🔍 Reale Grössen
                     </button>
                 </div>
+                <div class="control-group" id="deep-space-controls" style="display: none; border-top: 1px solid #9900cc; margin-top: 20px; padding-top: 15px;">
+                    <h3 style="color: #e0b0ff;">⚠️ Anomalie entdeckt</h3>
+                    <p style="font-size: 12px; color: #ccc; margin-bottom: 10px;">
+                        Sensoren registrieren eine massive Gravitationsquelle.
+                    </p>
+                    <button id="warp-btn" class="btn btn-pulse" style="width: 100%; background: #1a0033; border: 1px solid #9900cc; color: #e0b0ff; text-transform: uppercase; font-weight: bold;">
+                        🕳️ Zum Ereignishorizont
+                    </button>
+                </div>
             </div>
             
         
@@ -3870,6 +3879,75 @@
                  playPauseBtn.innerHTML = iconPause;
             } else {
                 playPauseBtn.innerHTML = iconPlay;
+            }
+
+            // --- DEEP SPACE / BLACK HOLE LOGIK ---
+
+            // 1. Der Zustand: Ist die Mission freigeschaltet?
+            let isDeepSpaceUnlocked = false;
+
+            // 2. Die Funktion zum Freischalten (Das ist der Teil, den du später mit Aliens verbindest)
+            function unlockDeepSpaceMission() {
+                if (isDeepSpaceUnlocked) return; // Schon offen? Dann nichts tun.
+
+                isDeepSpaceUnlocked = true;
+                
+                // UI sichtbar machen
+                const controls = document.getElementById('deep-space-controls');
+                if (controls) {
+                    controls.style.display = 'block';
+                    
+                    // Optional: Automatisch dorthin scrollen, damit man es sieht
+                    controls.scrollIntoView({ behavior: 'smooth' });
+                }
+
+                // Optional: Ein Sound oder eine Toast-Nachricht abspielen
+                // (Hier nutzen wir deinen existierenden Toast-Button für Feedback)
+                const toast = document.getElementById('info-toast-button');
+                if (toast) {
+                    toast.textContent = "⚠️ WARNUNG: Wurmloch-Koordinaten empfangen!";
+                    toast.style.display = 'block';
+                    toast.style.backgroundColor = '#9900cc'; // Lila Warnung
+                    toast.style.color = '#fff';
+                    
+                    setTimeout(() => { 
+                        toast.style.display = 'none'; 
+                        // Farbe zurücksetzen für normale Infos
+                        toast.style.backgroundColor = '#00ffff'; 
+                        toast.style.color = '#000';
+                    }, 5000);
+                }
+                
+                console.log("Deep Space Mission freigeschaltet!");
+            }
+
+            // 3. Der Shortcut (Shift + D)
+            window.addEventListener('keydown', (e) => {
+                // Prüfen auf Shift + D
+                if (e.shiftKey && (e.key === 'D' || e.key === 'd')) {
+                    unlockDeepSpaceMission();
+                }
+            });
+
+            // 4. Der Warp-Knopf (Die Reise)
+            const warpBtn = document.getElementById('warp-btn');
+            if (warpBtn) {
+                warpBtn.addEventListener('click', () => {
+                    // Ladescreen kurz einblenden für Atmosphäre
+                    const loadingScreen = document.getElementById('loading-screen');
+                    const loadingText = document.getElementById('loading-text');
+                    
+                    if (loadingScreen) {
+                        loadingScreen.style.display = 'flex';
+                        loadingScreen.style.opacity = '1';
+                        if (loadingText) loadingText.textContent = "Initialisiere Sprungantrieb...";
+                    }
+
+                    // Nach 1.5 Sekunden zur neuen Datei wechseln
+                    setTimeout(() => {
+                        window.location.href = 'Deep_Space.html';
+                    }, 1500);
+                });
             }
             
         }
