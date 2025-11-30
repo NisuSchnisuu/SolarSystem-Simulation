@@ -1,0 +1,1997 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interstellar Simulation - Black Hole & Endurance</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    
+    <style>
+        html, body {
+            height: 100%; width: 100%; margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #000; color: #fff; overflow: hidden;
+            overscroll-behavior: none;
+        }
+        #container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        
+        /* NEU: Overlay für den Szenenübergang */
+        #scene-transition-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 9999; pointer-events: none;
+            opacity: 0; transition: opacity 1.5s ease-in-out;
+        }
+
+        #ui-container {
+            position: fixed; top: 10px; left: 10px;
+            background: rgba(0, 0, 0, 0.85); padding: 15px; border-radius: 12px;
+            max-width: 320px; width: calc(100% - 40px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: 85dvh; display: flex; flex-direction: column;
+            overflow-y: hidden; z-index: 1000; padding-bottom: 15px;
+            transition: max-width 0.3s ease, padding 0.3s ease;
+        }
+        #ui-container.minimized { max-width: 50px; padding: 10px; height: 30px; overflow: hidden; }
+        #ui-container.minimized .control-group, 
+        #ui-container.minimized #ui-scrollable-content { display: none !important; }
+        
+        #toggle-ui {
+            position: absolute; top: 10px; right: 10px; width: 30px; height: 30px;
+            background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        #ui-scrollable-content { flex-grow: 1; overflow-y: auto; padding-bottom: 30px; scrollbar-width: thin; scrollbar-color: #555 #333; }
+
+        .control-group { margin-bottom: 15px; }
+        .control-group h3 { font-size: 14px; font-weight: 600; margin: 0 0 10px 0; border-bottom: 1px solid #444; padding-bottom: 5px; color: #e0b0ff; }
+
+        .btn {
+            background-color: #222; color: white; border: 1px solid #555; padding: 10px 12px;
+            border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;
+            width: 100%; margin-bottom: 5px; transition: all 0.2s ease;
+            position: relative; overflow: hidden;
+        }
+        .btn:hover { filter: brightness(1.2); }
+        .btn.active { font-weight: bold; box-shadow: inset 0 0 15px rgba(255,255,255,0.1); }
+
+        .star-controls-wrapper {
+            display: none;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 0 0 8px 8px;
+            margin-top: -6px; margin-bottom: 10px; padding: 10px;
+            border-left: 1px solid transparent; border-right: 1px solid transparent; border-bottom: 1px solid transparent;
+        }
+        .star-type-btn { display: flex; align-items: center; justify-content: space-between; text-align: left; }
+        .star-icon { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+
+        #movable-controls { display: none; } 
+        .control-row { margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px; }
+
+        #info-popup {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95); padding: 20px; border-radius: 12px;
+            border: 1px solid #e0b0ff; z-index: 2000; width: 90%; max-width: 400px;
+            box-shadow: 0 0 30px rgba(111, 66, 193, 0.4);
+        }
+        #popup-title { margin: 0 0 15px 0; color: #e0b0ff; border-bottom: 1px solid #555; padding-bottom: 10px; }
+        #popup-details p { font-size: 14px; line-height: 1.5; color: #ccc; }
+        #popup-details strong { color: white; min-width: 120px; display: inline-block; }
+        
+        #info-toast-button {
+            display: none; position: fixed; bottom: 20px; right: 20px; z-index: 980;
+            background-color: #e0b0ff; color: #000; border: 2px solid #fff;
+            padding: 10px 15px; font-weight: bold; cursor: pointer;
+        }
+
+        #loading-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #050011; z-index: 9999; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; transition: opacity 0.5s;
+        }
+        .loader { width: 48px; height: 48px; border: 5px solid #FFF; border-bottom-color: #e0b0ff; border-radius: 50%; animation: rotation 1s linear infinite; }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .slider-val { float: right; font-family: monospace; color: #e0b0ff; }
+    </style>
+</head>
+<body>
+
+    <div id="scene-transition-overlay"></div>
+
+    <div id="loading-screen">
+        <div class="loader"></div>
+        <p id="loading-text" style="margin-top: 20px; color: #e0b0ff;">Lade Universum...</p>
+    </div>
+
+    <div id="container"></div>
+
+    <div id="ui-container">
+        <button id="toggle-ui">✕</button>
+        <div id="ui-scrollable-content">
+            <div class="control-group">
+                <h3>Navigation</h3>
+                <button id="view-galaxy" class="btn btn-focus active" style="border-color: #e0b0ff;">🌌 Gesamtansicht Galaxie</button>
+                <button id="back-to-solar" class="btn btn-secondary" style="border-color: #aaa;">☀️ Zurück zum Sonnensystem</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>Objekte & Sternentypen</h3>
+                <div id="star-buttons"></div>
+            </div>
+
+            <div class="control-group">
+                <h3>Globale Simulation</h3>
+                <label style="font-size: 12px; display: block; margin-bottom: 5px;">Galaxie-Rotation</label>
+                <input type="range" id="speed-slider" min="0" max="2" step="0.1" value="0.2" style="width: 100%;">
+            </div>
+
+            <div id="info-box" style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px; font-size: 13px; text-align: center; margin-top: 10px;">
+                Ansicht: Milchstrasse
+            </div>
+        </div>
+    </div>
+
+    <div id="movable-controls">
+        <div id="common-controls-content">
+            <div id="spin-control-container" class="control-row">
+                <label style="font-size: 12px; display: block; margin-bottom: 5px; color: #4fddff;">⭐ Stern-Eigendrehung</label>
+                <input type="range" id="star-spin-slider" min="0" max="2" step="0.1" value="1.0" style="width: 100%;">
+            </div>
+
+            <div id="brightness-control-container" class="control-row">
+                <label style="font-size: 12px; display: block; margin-bottom: 5px; color: #ffaa00;">
+                    🔥 Leuchtkraft <span id="brightness-display" class="slider-val">1.00</span>
+                </label>
+                <input type="range" id="shader-brightness-slider" min="0" max="100" step="1" value="100" style="width: 100%;">
+            </div>
+        </div>
+        
+        <div id="bh-specific-content" class="control-row">
+            <label style="display:flex;align-items:center;margin-bottom:5px;cursor:pointer;font-size:12px;color:#ddd;">
+                <input type="checkbox" id="cb-disk-visible" checked style="margin-right:8px;accent-color:#ff8822;"> Akkretionsscheibe
+            </label>
+            <label style="display:flex;align-items:center;cursor:pointer;font-size:12px;color:#ddd; margin-bottom: 10px;">
+                <input type="checkbox" id="cb-blue-mode" style="margin-right:8px;accent-color:#4fddff;"> Blauer Modus (Gargantua)
+            </label>
+            <label style="display:flex;align-items:center;margin-bottom:5px;cursor:pointer;font-size:12px;color:#ddd;">
+                <input type="checkbox" id="cb-fov-cinematic" checked style="margin-right:8px;accent-color:#ff00ff;"> 🔭 Cinematic Zoom (FOV 10)
+            </label>
+            
+            <button id="focus-endurance" class="btn btn-secondary" style="border-color: #aaa; font-size: 12px; margin-top: 5px; display:none;">
+                🛰️ Fokus: Endurance
+            </button>
+            <label style="display:none;align-items:center;cursor:pointer;font-size:12px;color:#00ff00; margin-top:10px; border-top:1px solid #333; padding-top:5px;">
+                <input type="checkbox" id="cb-debug-mode" style="margin-right:8px;accent-color:#00ff00;"> 🛠️ Debug / Positionieren
+            </label>
+        </div>
+
+        <div id="ns-specific-content" class="control-row">
+            <label style="display:flex;align-items:center;cursor:pointer;font-size:12px;color:#ddd;">
+                <input type="checkbox" id="cb-jets-visible" checked style="margin-right:8px;accent-color:#00ffff;"> Jets aktivieren
+            </label>
+        </div>
+    </div>
+
+    <div id="info-popup">
+        <h2 id="popup-title">Titel</h2>
+        <div id="popup-details"></div>
+        <button id="popup-close" class="btn btn-secondary" style="margin-top: 15px;">Schliessen</button>
+    </div>
+    <button id="info-toast-button"></button>
+
+    <div id="debug-panel" style="display:none; position:fixed; top:10px; right:50px; width:250px; background:rgba(0,0,0,0.9); border:1px solid #00ff00; padding:15px; border-radius:8px; z-index:1001; font-family:monospace;">
+        <h3 style="margin:0 0 10px 0; color:#00ff00; font-size:14px;">🛠️ Positionier-Hilfe</h3>
+        
+        <div style="margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;">
+            <strong style="color:#2255ff">Millers Planet</strong>
+            <div class="debug-row">X: <input type="range" id="dbg-p-x"><span id="val-p-x"></span></div>
+            <div class="debug-row">Y: <input type="range" id="dbg-p-y"><span id="val-p-y"></span></div>
+            <div class="debug-row">Z: <input type="range" id="dbg-p-z"><span id="val-p-z"></span></div>
+        </div>
+
+        <div style="margin-bottom:15px;">
+            <strong style="color:#aaa">Endurance</strong>
+            <div class="debug-row">X: <input type="range" id="dbg-e-x"><span id="val-e-x"></span></div>
+            <div class="debug-row">Y: <input type="range" id="dbg-e-y"><span id="val-e-y"></span></div>
+            <div class="debug-row">Z: <input type="range" id="dbg-e-z"><span id="val-e-z"></span></div>
+        </div>
+
+        <button id="btn-print-coords" style="width:100%; background:#004400; color:#00ff00; border:1px solid #00ff00; padding:5px; cursor:pointer;">💾 Werte in Konsole (F12)</button>
+        <div style="font-size:10px; color:#888; margin-top:5px;">Rot=X, Grün=Y, Blau=Z</div>
+    </div>
+
+    <style>
+        .debug-row { display:flex; align-items:center; font-size:11px; margin-top:4px; color:#ddd; }
+        .debug-row input { flex-grow:1; margin:0 5px; }
+        .debug-row span { width:35px; text-align:right; }
+    </style>
+
+    <script>
+        // ===========================================
+        // KONFIGURATION FÜR INTERSTELLAR OBJEKTE
+        // ===========================================
+        const INTERSTELLAR_CONFIG = {
+            planet: {
+                texturePath: 'Deep_space_Files/Textures/millers_planet.webp', 
+                radius: 0.015,
+                position: { x: -14.02, y: -2.25, z: 4.949 }, 
+                color: 0x2255ff
+            },
+            endurance: {
+                modelPath: 'Deep_space_Files/3D-Models/endurance.glb',
+                scale: 0.000005,
+                position: { x: -18.5, y: -3.0, z: 7.127 },
+                rotationSpeed: 0.2
+            }
+        };
+
+        const CONFIG = {
+            basePath: 'Deep_space_Files/3D-Models/', 
+            texturePath: 'Deep_space_Files/Textures/accretion_disc_2.webp', 
+            starTexturePath: 'ImagesGit/Scenery/8k_stars_milky_way.webp',
+            galaxyBgPath: 'Deep_space_Files/Textures/galaxy_texture.png',
+            starViewFill: 0.6, 
+            galaxy: { count: 10000, radius: 450, randomness: 0.5 },
+            universalModel: 'animated_star.glb'
+        };
+
+        const BH_SCREEN_FILL = 0.40; 
+
+        const DIST_FOV_10 = 20.8929; // Ziel-Distanz für Cinematic Zoom
+        const DIST_FOV_60 = 9.0842; // Ziel-Distanz für Standard Ansicht
+        
+        // Harte Limits für das Herauszoomen (OrbitControls)
+        const MAX_DIST_FOV_10 = 120.3742;
+        const MAX_DIST_FOV_60 = 30.6966;
+        // Referenzen
+        let millerMesh = null;
+        let enduranceMesh = null;
+        let interstellarGroup = null;
+
+        const bhVertexShader = `
+            varying vec3 vWorldPos; 
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                vWorldPos = worldPosition.xyz;
+                gl_Position = projectionMatrix * viewMatrix * worldPosition;
+            }
+        `;
+
+        // --- SCHWARZES LOCH SHADER (MODIFIZIERT) ---
+        const bhFragmentShader = `
+            precision highp float;
+            varying vec3 vWorldPos; 
+            varying vec2 vUv;
+            
+            uniform vec3 uBlackHolePos;
+            uniform float iTime;
+            uniform sampler2D iChannel1; 
+            uniform sampler2D iChannel0; 
+            uniform vec3 uColor;
+            uniform vec3 uColorOuter;
+            uniform float uDiskIntensity;
+            
+            uniform float uTilt; 
+            uniform float uFovScale; 
+            uniform float uDiskRotation; 
+
+            const float bhSize = 0.6;       
+            const float innerR = 1.5;       
+            const float outerR = 8.0;      
+
+            const float textureScale = outerR * 2.0; 
+
+            vec3 getBackground(vec3 dir) {
+                vec2 uv = vec2(atan(dir.z, dir.x), asin(dir.y));
+                uv *= vec2(0.1591, 0.3183); 
+                uv *= uFovScale; 
+                uv += 0.5;
+                return texture2D(iChannel0, uv).rgb;
+            }
+
+            vec3 rotateZ(vec3 p, float angle) {
+                float s = sin(angle);
+                float c = cos(angle);
+                return vec3(p.x * c - p.y * s, p.x * s + p.y * c, p.z);
+            }
+
+            void main() {
+                vec3 ro = cameraPosition - uBlackHolePos; 
+                vec3 rd = normalize(vWorldPos - cameraPosition); 
+                
+                vec3 p = ro;
+
+                float startDist = length(p);
+                float simulationRadius = 35.0; 
+                
+                if (startDist > simulationRadius) {
+                    p += rd * (startDist - simulationRadius);
+                }
+
+                vec3 col = vec3(0.0);
+                float accumulatedAlpha = 0.0; 
+                bool hitBH = false;
+                
+                float minDist = 1000.0;
+
+                for(int i=0; i<80; i++) { 
+                    float r = length(p);
+                    if (r < minDist) minDist = r;
+
+                    if(r > 0.2) { 
+                        float force = 0.8 / (r * r + 0.01); 
+                        rd += -normalize(p) * force * 0.05; 
+                        rd = normalize(rd);
+                    }
+                    
+                    vec3 prevP = p;
+                    float stepSize = max(0.02, r * 0.08); 
+                    p += rd * stepSize;
+                    
+                    vec3 pTilt = rotateZ(p, uTilt);
+                    vec3 prevPTilt = rotateZ(prevP, uTilt);
+
+                    if(pTilt.y * prevPTilt.y < 0.0) {
+                        float factor = abs(prevPTilt.y) / (abs(prevPTilt.y) + abs(pTilt.y));
+                        vec3 hitP_Flat = mix(prevPTilt, pTilt, factor);
+                        float dist = length(hitP_Flat);
+                        
+                        if(dist > innerR && dist < outerR && uDiskIntensity > 0.0) {
+                            
+                            float angle = uDiskRotation;
+                            float c = cos(angle);
+                            float s = sin(angle);
+                            
+                            float rotX = hitP_Flat.x * c - hitP_Flat.z * s;
+                            float rotZ = hitP_Flat.x * s + hitP_Flat.z * c;
+                            
+                            vec2 texUV = vec2(rotX, rotZ) / textureScale + 0.5;
+                            float texVal = texture2D(iChannel1, texUV).r;
+                            
+                            vec3 hitP_World = mix(prevP, p, factor);
+                            vec3 camUp = vec3(0.0, 1.0, 0.0);
+                            vec3 camRight = normalize(cross(rd, camUp));
+                            float sideFactor = dot(normalize(hitP_World), camRight);
+                            float doppler = 1.0 - (sideFactor * 0.7);
+                            doppler = max(0.4, doppler); 
+
+                            float density = texVal; 
+                            float distFactor = (dist - innerR) / (outerR - innerR);
+                            float heat = pow(max(0.0, 1.0 - distFactor), 1.5); 
+                            
+                            vec3 finalHot = uColor * 3.5;      
+                            vec3 finalCold = uColorOuter;
+                            vec3 diskColor = mix(finalCold, finalHot, heat * density);
+
+                            float fade = smoothstep(innerR, innerR + 0.5, dist) * smoothstep(outerR, outerR - 2.0, dist);
+                            float brightness = density * fade * uDiskIntensity * doppler;
+                            
+                            col += diskColor * brightness * 0.8; 
+                            
+                            // MODIFIKATION: Besseres Verstecken der Sterne hinter der Scheibe
+                            accumulatedAlpha += (brightness * 0.6) + (density * fade * 0.15);
+                        }
+                    }
+                    
+                    if(r < bhSize) {
+                        hitBH = true;
+                        accumulatedAlpha = 1.0; 
+                        break; 
+                    }
+                    if(r > 100.0) break; 
+                }
+                
+                if (!hitBH) {
+                    vec3 distortedBg = getBackground(rd);
+                    
+                    float ringThickness = 0.4; 
+                    vec3 lookDir = normalize(-ro); 
+                    vec3 camUpFixed = vec3(0.0, 1.0, 0.0);
+                    vec3 camRightVec = normalize(cross(lookDir, camUpFixed));
+                    float sideFactor = dot(rd, camRightVec); 
+                    
+                    float asymmetry = (sideFactor * 2.0 + 1.0) * 0.5;
+                    float shiftFocus = 4.0; 
+                    asymmetry = pow(clamp(asymmetry, 0.0, 1.0), shiftFocus);
+
+                    float extraThickness = 0.02; 
+                    float activeThickness = ringThickness + (asymmetry * extraThickness);
+
+                    float distToEdge = minDist - bhSize;
+                    
+                    // MODIFIKATION: Photonring nur sichtbar wenn Scheibe an (uDiskIntensity > 0.1)
+                    if (distToEdge > 0.0 && distToEdge < activeThickness && uDiskIntensity > 0.1) {
+                        float glow = 1.0 - (distToEdge / activeThickness);
+                        glow = pow(glow, 4.0); 
+                        
+                        vec3 yellowWhite = vec3(1.0, 0.95, 0.6); 
+                        vec3 ringColor = mix(uColor, yellowWhite, 0.65);
+                        float brightnessBoost = 2.0 + (asymmetry * 12.0);
+                        float occlusionStrength = 3.0; 
+                        float visibility = max(0.0, 1.0 - (accumulatedAlpha * occlusionStrength));
+                        col += ringColor * glow * brightnessBoost * visibility;
+                    }
+
+                    col += distortedBg * max(0.0, 1.0 - accumulatedAlpha);
+                }
+                
+                gl_FragColor = vec4(col, 1.0);
+            }
+        `;
+
+        const plasmaVertexShader = `
+            varying vec2 vUv;
+            varying vec3 vNormal;
+            varying vec3 vViewPosition;
+            varying vec3 vPos; 
+            void main() {
+                vUv = uv;
+                vPos = position; 
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                vViewPosition = -mvPosition.xyz; 
+                vNormal = normalize(normalMatrix * normal);
+                gl_Position = projectionMatrix * mvPosition;
+            }
+        `;
+
+        const plasmaFragmentShader = `
+            uniform float uTime;
+            uniform vec3 uColorA; 
+            uniform vec3 uColorB; 
+            uniform float uBrightness;
+            uniform float uNoiseScale;
+            uniform float uSpeed;
+            varying vec2 vUv;
+            varying vec3 vNormal;
+            varying vec3 vViewPosition;
+            varying vec3 vPos;
+            vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+            vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+            float snoise(vec3 v) {
+                const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+                const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+                vec3 i  = floor(v + dot(v, C.yyy) );
+                vec3 x0 = v - i + dot(i, C.xxx) ;
+                vec3 g = step(x0.yzx, x0.xyz);
+                vec3 l = 1.0 - g;
+                vec3 i1 = min( g.xyz, l.zxy );
+                vec3 i2 = max( g.xyz, l.zxy );
+                vec3 x1 = x0 - i1 + C.xxx;
+                vec3 x2 = x0 - i2 + C.yyy;
+                vec3 x3 = x0 - D.yyy;
+                i = mod289(i);
+                vec4 p = permute( permute( permute( i.z + vec4(0.0, i1.z, i2.z, 1.0 )) + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+                float n_ = 0.142857142857;
+                vec3  ns = n_ * D.wyz - D.xzx;
+                vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+                vec4 x_ = floor(j * ns.z);
+                vec4 y_ = floor(j - 7.0 * x_ );
+                vec4 x = x_ *ns.x + ns.yyyy;
+                vec4 y = y_ *ns.x + ns.yyyy;
+                vec4 h = 1.0 - abs(x) - abs(y);
+                vec4 b0 = vec4( x.xy, y.xy );
+                vec4 b1 = vec4( x.zw, y.zw );
+                vec4 s0 = floor(b0)*2.0 + 1.0;
+                vec4 s1 = floor(b1)*2.0 + 1.0;
+                vec4 sh = -step(h, vec4(0.0));
+                vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+                vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+                vec3 p0 = vec3(a0.xy,h.x);
+                vec3 p1 = vec3(a0.zw,h.y);
+                vec3 p2 = vec3(a1.xy,h.z);
+                vec3 p3 = vec3(a1.zw,h.w);
+                vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+                p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+                vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+                m = m * m;
+                return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+            }
+            void main() {
+                float noiseVal = snoise(vPos * uNoiseScale + vec3(uTime * uSpeed));
+                noiseVal = (noiseVal * 0.5) + 0.5;
+                noiseVal = pow(noiseVal, 2.0); 
+                vec3 finalColor = mix(uColorA, uColorB, noiseVal);
+                vec3 viewDir = normalize(vViewPosition); 
+                vec3 normal = normalize(vNormal);
+                float viewFactor = max(0.0, dot(normal, viewDir));
+                float fresnel = pow(1.0 - viewFactor, 8.0);
+                finalColor += uColorB * fresnel * 0.5;
+                gl_FragColor = vec4(finalColor * uBrightness, 1.0);
+            }
+        `;
+
+        const starTypes = [
+            {
+                id: 'black_hole', label: 'Sagittarius A*', color: '#ff8822', radius: 12.0, isShader: true,
+                desc: 'Das supermassereiche Schwarze Loch. In seiner Umlaufbahn: Millers Planet und die Endurance.',
+                details: { 'Entfernung': '26.673 Lichtjahre', 'Masse': '4,1 Mio Sonnenmassen' },
+                galaxyPos: new THREE.Vector3(0, 0, 0), rotationSpeed: 0.0,
+                brightness: 3.0, minBrightness: 0.21,
+                savedBrightness: 0.21
+            },
+            {
+                id: 'main_sequence', label: 'Hauptreihenstern', color: '#ffcc00', radius: 1.0, 
+                desc: 'Ein stabiler Stern wie unsere Sonne.', details: { 'Typ': 'Gelber Zwerg' },
+                galaxyPos: new THREE.Vector3(120, 5, 40), rotationSpeed: 0.5,
+                brightness: 2.0, minBrightness: 0.92,
+                shaderColors: { a: '#ff9900', b: '#ffdd88' },
+                savedBrightness: 1.5
+            },
+            {
+                id: 'red_giant', label: 'Roter Riese', color: '#ff3300', radius: 4.0, 
+                desc: 'Ein sterbender, aufgeblähter Stern.', details: { 'Typ': 'Roter Riese' },
+                galaxyPos: new THREE.Vector3(-150, -10, 80), rotationSpeed: 0.2,
+                brightness: 2.5, minBrightness: 1.34,
+                shaderColors: { a: '#F58427', b: '#F54627' },
+                savedBrightness: 2.5
+            },
+            {
+                id: 'white_dwarf', label: 'Weißer Zwerg', color: '#aaddff', radius: 0.3, 
+                desc: 'Der heiße Kern eines toten Sterns.', details: { 'Typ': 'Weißer Zwerg' },
+                galaxyPos: new THREE.Vector3(80, -5, -180), rotationSpeed: 1.0,
+                brightness: 3.5, minBrightness: 1.0,
+                shaderColors: { a: '#88ccff', b: '#eefaff' },
+                savedBrightness: 3.5
+            },
+            {
+                id: 'neutron_star', label: 'Neutronenstern', color: '#00ffff', radius: 0.15, 
+                desc: 'Extrem dichter Überrest einer Supernova.', details: { 'Typ': 'Pulsar' },
+                galaxyPos: new THREE.Vector3(-60, 15, -60), rotationSpeed: 8.0,
+                brightness: 5.0, minBrightness: 1.95,
+                hasJets: true, 
+                shaderColors: { a: '#0011cc', b: '#88ccff' },
+                jetColors: { a: '#27EBF5', b: '#0011ff' },
+                savedBrightness: 5.0
+            },
+            {
+                id: 'brown_dwarf', label: 'Brauner Zwerg', color: '#8B4513', radius: 0.8, 
+                desc: 'Ein "gescheiterter Stern".', details: { 'Typ': 'Substellar' },
+                galaxyPos: new THREE.Vector3(200, 20, 100), rotationSpeed: 0.8,
+                brightness: 0.8, minBrightness: 0.2,
+                shaderColors: { a: '#663300', b: '#995511' },
+                savedBrightness: 0.8
+            }
+        ];
+
+        let scene, camera, renderer, controls;
+        let composer; 
+        let usePostProcessing = true;
+        let bloomPass; 
+        
+        let galaxySystem;
+        let galaxyBgMesh; 
+        let galaxyCoreMesh;
+        let skyboxMesh; 
+        let starMeshes = {}; 
+        let clickableObjects = [];
+        
+        
+        let rotationSpeed = 0.05; 
+        let selfRotationMultiplier = 1.0; 
+        
+        let currentFocus = 'galaxy';
+        let currentSelectedInfo = null;
+        let blackHoleUniforms = null;
+        let noiseTexGlobal;
+
+        let currentActiveUniforms = null; 
+        let currentMinBrightness = 0.0;
+        let currentMaxBrightness = 5.0; 
+        let currentJetsUniforms = []; 
+
+        let isCameraTransitioning = false;
+        // ... zu den anderen globalen Variablen ...
+        let isFovAnimating = false;
+        let fovStartVal = 60;
+        let fovTargetVal = 60;
+        let fovAnimStartTime = 0;
+        const FOV_ANIM_DURATION = 2.0; // Dauer in Sekunden
+        // --- ENDURANCE SEQUENZ VARIABLEN ---
+        let isEnduranceSequenceActive = false;
+        let animTargetStart = new THREE.Vector3(); // Wo schauen wir beim Start hin?
+        let animTargetFinal = new THREE.Vector3(); // Wo wollen wir hin (Screenshot)?
+        let enduranceSeqStartTime = 0;
+        const ENDURANCE_FLIGHT_DURATION = 12.0; // 8 Sekunden Flugzeit
+        let enduranceOriginalPos = new THREE.Vector3(); // Zum Speichern der Ursprungsposition
+        let enduranceStartPosForAnim = new THREE.Vector3(); // Startpunkt der Animation
+        let camFovStartPos = new THREE.Vector3();
+        let camFovTargetPos = new THREE.Vector3();
+        let maxDistStartVal = 1000;
+        let maxDistTargetVal = 1000;
+        let camTransStartPos = new THREE.Vector3();
+        let camTransEndPos = new THREE.Vector3();
+        let camTransStartTarget = new THREE.Vector3();
+        let camTransEndTarget = new THREE.Vector3();
+        let camTransProgress = 0;
+        let camTransDuration = 1.0;
+        let camTransCallback = null;
+
+        // ===========================================
+        // DEBUG / POSITIONIERUNGS LOGIK
+        // ===========================================
+        let debugHelpers = [];
+
+        function toggleDebugMode(active) {
+            const panel = document.getElementById('debug-panel');
+            panel.style.display = active ? 'block' : 'none';
+
+            if (active) {
+                const axesHelper = new THREE.AxesHelper(20); 
+                const gridHelper = new THREE.GridHelper(60, 60, 0x444444, 0x222222);
+                scene.add(axesHelper);
+                scene.add(gridHelper);
+                debugHelpers.push(axesHelper, gridHelper);
+
+                if (millerMesh) {
+                    const pAxes = new THREE.AxesHelper(3);
+                    millerMesh.add(pAxes);
+                    debugHelpers.push(pAxes);
+                    initSlidersForObject('p', millerMesh.position);
+                }
+                if (enduranceMesh) {
+                    const eAxes = new THREE.AxesHelper(3);
+                    enduranceMesh.add(eAxes);
+                    debugHelpers.push(eAxes);
+                    initSlidersForObject('e', enduranceMesh.position);
+                } 
+            } else {
+                debugHelpers.forEach(obj => {
+                    if(obj.parent) obj.parent.remove(obj);
+                    if(obj.geometry) obj.geometry.dispose();
+                });
+                debugHelpers = [];
+            }
+        }
+
+        function initSlidersForObject(prefix, position) {
+            ['x', 'y', 'z'].forEach(axis => {
+                const input = document.getElementById(`dbg-${prefix}-${axis}`);
+                const display = document.getElementById(`val-${prefix}-${axis}`);
+                const currentVal = position[axis];
+
+                if (input && display) {
+                    input.min = (currentVal - 2.0).toFixed(3);
+                    input.max = (currentVal + 2.0).toFixed(3);
+                    input.step = "0.001";
+                    input.value = currentVal;
+                    display.textContent = currentVal.toFixed(3); 
+                }
+            });
+        }
+
+        function setupDebugListeners() {
+            document.getElementById('cb-debug-mode').addEventListener('change', (e) => {
+                toggleDebugMode(e.target.checked);
+            });
+            const axes = ['x', 'y', 'z'];
+            axes.forEach(axis => {
+                document.getElementById(`dbg-p-${axis}`).addEventListener('input', (e) => {
+                    const val = parseFloat(e.target.value);
+                    if(millerMesh) millerMesh.position[axis] = val;
+                    document.getElementById(`val-p-${axis}`).textContent = val.toFixed(1);
+                    updateDebugLines(); 
+                });
+            });
+            axes.forEach(axis => {
+                document.getElementById(`dbg-e-${axis}`).addEventListener('input', (e) => {
+                    const val = parseFloat(e.target.value);
+                    if(enduranceMesh) enduranceMesh.position[axis] = val;
+                    document.getElementById(`val-e-${axis}`).textContent = val.toFixed(1);
+                });
+            });
+
+            document.getElementById('btn-print-coords').addEventListener('click', () => {
+                console.log(`
+        planet: { ... position: { x: ${millerMesh.position.x.toFixed(2)}, y: ${millerMesh.position.y.toFixed(2)}, z: ${millerMesh.position.z.toFixed(2)} } },
+        endurance: { ... position: { x: ${enduranceMesh.position.x.toFixed(2)}, y: ${enduranceMesh.position.y.toFixed(2)}, z: ${enduranceMesh.position.z.toFixed(2)} } }
+                `);
+                alert("Werte wurden in die Konsole (F12) gedruckt!");
+            });
+        }
+
+        function updateDebugLines() {
+            debugHelpers.forEach(obj => {
+                if (obj.type === 'Line' && obj.userData.target) {
+                    const positions = obj.geometry.attributes.position.array;
+                    positions[3] = obj.userData.target.position.x;
+                    positions[4] = obj.userData.target.position.y;
+                    positions[5] = obj.userData.target.position.z;
+                    obj.geometry.attributes.position.needsUpdate = true;
+                }
+            });
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x050011, 0.0005);
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.00001, 20000);
+            camera.position.set(0, 500, 700);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ReinhardToneMapping;
+            renderer.toneMappingExposure = 1.5;
+            document.getElementById('container').appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxDistance = 3000;
+            controls.minDistance = 2;
+
+            composer = new THREE.EffectComposer(renderer);
+            const renderPass = new THREE.RenderPass(scene, camera);
+            composer.addPass(renderPass);
+
+            bloomPass = new THREE.UnrealBloomPass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight), 
+                1.2,  
+                0.5,  
+                0.7   
+            );
+            composer.addPass(bloomPass);
+
+            const ambient = new THREE.AmbientLight(0x444444);
+            scene.add(ambient);
+            const sunLight = new THREE.PointLight(0xffffff, 0.5, 0); 
+            scene.add(sunLight);
+
+            const textureLoader = new THREE.TextureLoader();
+            
+            noiseTexGlobal = textureLoader.load(
+                CONFIG.texturePath, 
+                undefined, undefined, 
+                () => { console.warn("Noise fallback"); return textureLoader.load('https://assets.codepen.io/163598/noise.png'); }
+            );
+            
+            noiseTexGlobal.wrapS = THREE.ClampToEdgeWrapping;
+            noiseTexGlobal.wrapT = THREE.ClampToEdgeWrapping;
+
+            createSkybox(); 
+            createStarfield();
+            createGalaxyBackground(); 
+            createGalaxyCore(); 
+            createGalaxy(); 
+            loadDetailScenes(); 
+
+            setupUI();
+            updateActiveButton('view-galaxy');
+            
+            window.addEventListener('resize', onResize);
+            window.addEventListener('click', onClick);
+
+            animate();
+            
+            setTimeout(() => {
+                document.getElementById('loading-screen').style.opacity = 0;
+                setTimeout(()=>document.getElementById('loading-screen').style.display='none', 500);
+            }, 1500);
+        }
+
+        function createSkybox() {
+            const textureLoader = new THREE.TextureLoader();
+            const texture = textureLoader.load(CONFIG.starTexturePath);
+            const geometry = new THREE.SphereGeometry(4000, 64, 64);
+            const material = new THREE.MeshBasicMaterial({
+                map: texture, 
+                side: THREE.BackSide, 
+                transparent: true,
+                opacity: 1.0,
+                depthWrite: false 
+            });
+            skyboxMesh = new THREE.Mesh(geometry, material);
+            skyboxMesh.visible = false; 
+            scene.add(skyboxMesh);
+        }
+
+        function createGalaxyBackground() {
+            const textureLoader = new THREE.TextureLoader();
+            const texture = textureLoader.load(CONFIG.galaxyBgPath);
+            const geometry = new THREE.PlaneGeometry(1200, 1200);
+            const material = new THREE.MeshBasicMaterial({
+                map: texture, side: THREE.DoubleSide, transparent: true,
+                opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending
+            });
+            galaxyBgMesh = new THREE.Mesh(geometry, material);
+            galaxyBgMesh.rotation.x = -Math.PI / 2; 
+            galaxyBgMesh.position.y = -5;
+            scene.add(galaxyBgMesh);
+        }
+
+        function createGalaxyCore() {
+            const spriteMaterial = new THREE.SpriteMaterial({
+                map: createParticleTexture(),
+                color: 0xffeebb,
+                transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false 
+            });
+            galaxyCoreMesh = new THREE.Sprite(spriteMaterial);
+            galaxyCoreMesh.scale.set(150, 150, 1);
+            galaxyCoreMesh.position.set(0, 0, 0);
+            scene.add(galaxyCoreMesh);
+        }
+
+        function createGalaxy() {
+            const p = CONFIG.galaxy;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(p.count * 3);
+            const colors = new Float32Array(p.count * 3);
+            const colorInside = new THREE.Color('#ffaa88');
+            const colorOutside = new THREE.Color('#3366ff');
+
+            for(let i=0; i<p.count; i++) {
+                const i3 = i * 3;
+                const radius = Math.random() * p.radius;
+                const angle = Math.random() * Math.PI * 2;
+                positions[i3] = Math.cos(angle) * radius; 
+                const spreadY = (p.randomness * 20) + (radius * 0.1); 
+                positions[i3+1] = (Math.random() - 0.5) * spreadY; 
+                positions[i3+2] = Math.sin(angle) * radius; 
+                const mixedColor = colorInside.clone();
+                mixedColor.lerp(colorOutside, radius / p.radius);
+                mixedColor.r += (Math.random() - 0.5) * 0.1;
+                mixedColor.b += (Math.random() - 0.5) * 0.1;
+                colors[i3] = mixedColor.r; colors[i3+1] = mixedColor.g; colors[i3+2] = mixedColor.b;
+            }
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            const material = new THREE.PointsMaterial({
+                size: 2.5, sizeAttenuation: true, depthWrite: false, blending: THREE.AdditiveBlending,
+                vertexColors: true, transparent: true, opacity: 0.8, map: createParticleTexture()
+            });
+            galaxySystem = new THREE.Points(geometry, material);
+            scene.add(galaxySystem);
+        }
+
+        function createImposterSprite(color, scale) {
+            const mat = new THREE.SpriteMaterial({ 
+                map: createParticleTexture(), color: color, transparent: true, opacity: 1.0, 
+                blending: THREE.AdditiveBlending, depthWrite: false
+            });
+            const sprite = new THREE.Sprite(mat);
+            sprite.scale.set(scale * 4.0, scale * 4.0, 1);
+            sprite.userData.isImposter = true;
+            return sprite;
+        }
+
+        function createNeutronJets(parentGroup, radius, colorA, colorB) {
+            const height = radius * 60.0;
+            const widthTop = radius * 0.1; 
+            const widthBottom = radius * 0.02;
+            
+            const geometry = new THREE.CylinderGeometry(widthTop, widthBottom, height, 32, 1, true);
+            geometry.translate(0, height / 2 + radius * 0.5, 0);
+
+            const jetUniforms = {
+                uTime: { value: Math.random() * 100 }, 
+                uColorA: { value: new THREE.Color(colorA) },
+                uColorB: { value: new THREE.Color(colorB) },
+                uBrightness: { value: 2.0 },
+                uNoiseScale: { value: 3.0 }, 
+                uSpeed: { value: 1.5 } 
+            };
+
+            if (!window.plasmaUniformsList) window.plasmaUniformsList = [];
+            window.plasmaUniformsList.push(jetUniforms);
+
+            const material = new THREE.ShaderMaterial({
+                uniforms: jetUniforms,
+                vertexShader: plasmaVertexShader,
+                fragmentShader: plasmaFragmentShader,
+                transparent: true,
+                side: THREE.DoubleSide,
+                blending: THREE.AdditiveBlending, 
+                depthWrite: false
+            });
+
+            const jet1 = new THREE.Mesh(geometry, material);
+            jet1.userData.isJet = true;
+            const jet2 = new THREE.Mesh(geometry, material);
+            jet2.rotation.x = Math.PI;
+            jet2.userData.isJet = true;
+
+            parentGroup.add(jet1);
+            parentGroup.add(jet2);
+            parentGroup.userData.jetMeshes = [jet1, jet2];
+            return jetUniforms; 
+        }
+
+        function createInterstellarContent(bhGroup) {
+            interstellarGroup = new THREE.Group();
+            bhGroup.add(interstellarGroup);
+            
+            const loader = new THREE.TextureLoader();
+            const gltfLoader = new THREE.GLTFLoader();
+            const dracoLoader = new THREE.DRACOLoader();
+            dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
+            gltfLoader.setDRACOLoader(dracoLoader);
+
+            const pConf = INTERSTELLAR_CONFIG.planet;
+            const pGeo = new THREE.SphereGeometry(pConf.radius, 64, 64);
+            
+            loader.load(pConf.texturePath, (tex) => {
+                millerMesh.material.map = tex;
+                millerMesh.material.needsUpdate = true;
+            }, undefined, (err) => {
+                console.warn("Planet Textur nicht gefunden, benutze Farbe.");
+            });
+
+            const pMat = new THREE.MeshStandardMaterial({
+                color: pConf.color, 
+                roughness: 0.2,
+                metalness: 0.1,
+                envMapIntensity: 1.0
+            });
+
+            millerMesh = new THREE.Mesh(pGeo, pMat);
+            millerMesh.position.set(pConf.position.x, pConf.position.y, pConf.position.z);
+            millerMesh.userData.info = {
+                label: "Millers Planet",
+                desc: "Ein Wasserplanet extrem nah am Ereignishorizont.",
+                details: { 'Schwerkraft': '130% der Erde', 'Zeitdilatation': '1 Stunde = 7 Jahre' }
+            };
+            clickableObjects.push(millerMesh);
+            interstellarGroup.add(millerMesh);
+
+            const eConf = INTERSTELLAR_CONFIG.endurance;
+            gltfLoader.load(eConf.modelPath, (gltf) => {
+                enduranceMesh = gltf.scene;
+                enduranceMesh.scale.set(eConf.scale, eConf.scale, eConf.scale);
+                enduranceMesh.position.set(eConf.position.x, eConf.position.y, eConf.position.z);
+                enduranceMesh.rotation.x = Math.PI / 2; 
+
+                enduranceMesh.traverse((child) => {
+                    if (child.isMesh) {
+                        child.userData.info = {
+                            label: "Endurance",
+                            desc: "Das Ring-Raumschiff der Lazarus-Mission.",
+                            details: { 'Crew': 'Cooper, Brand, Romilly', 'Status': 'Orbitaler Spin' }
+                        };
+                        clickableObjects.push(child);
+                        if(child.material) {
+                            child.material.emissive = new THREE.Color(0x000000);
+                            if(child.material.envMapIntensity !== undefined) {
+                                child.material.envMapIntensity = 0.1; 
+                            }
+                        }
+                    }
+                });
+
+                interstellarGroup.add(enduranceMesh);
+                dracoLoader.dispose();
+
+            }, undefined, (error) => {
+                console.warn("Endurance Model nicht gefunden oder Draco Fehler:", error);
+                const geo = new THREE.TorusGeometry(eConf.scale * 10, eConf.scale * 2, 16, 32);
+                const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                enduranceMesh = new THREE.Mesh(geo, mat);
+                enduranceMesh.position.set(eConf.position.x, eConf.position.y, eConf.position.z);
+                interstellarGroup.add(enduranceMesh);
+            });
+        }
+
+
+        function loadDetailScenes() {
+            const gltfLoader = new THREE.GLTFLoader();
+            const textureLoader = new THREE.TextureLoader();
+            const noiseTex = noiseTexGlobal;
+            
+            const starTex = textureLoader.load(
+                CONFIG.starTexturePath, undefined, undefined,
+                () => { return textureLoader.load('https://assets.codepen.io/163598/milkyway.jpg'); }
+            );
+            
+            starTex.wrapS = starTex.wrapT = THREE.RepeatWrapping;
+
+            starTypes.forEach(star => {
+                const group = new THREE.Group();
+                group.position.copy(star.galaxyPos);
+                
+                if (star.id === 'neutron_star') {
+                    group.rotation.z = 0.25; 
+                }
+
+                if (star.id === 'black_hole') {
+                    group.visible = false; 
+                } else {
+                    group.visible = true; 
+                    const imposter = createImposterSprite(star.color, star.radius);
+                    group.add(imposter);
+                }
+
+                if (star.id === 'black_hole') {
+                    blackHoleUniforms = {
+                        iTime: { value: 0 }, 
+                        iChannel0: { value: starTex }, 
+                        iChannel1: { value: noiseTex },
+                        uColor: { value: new THREE.Color(1.0, 0.55, 0.2) }, uColorOuter: { value: new THREE.Color(0.3, 0.05, 0.01) }, 
+                        uDiskIntensity: { value: 1.0 }, uAngle: { value: 0.0 }, uTilt: { value: -0.2 }, uDiskRotation: { value: 0.0 },
+                        uBlackHolePos: { value: star.galaxyPos },
+                        uFovScale: { value: 1.0 } 
+                    };
+                    
+                    const geometry = new THREE.BoxGeometry(star.radius * 5.0, star.radius * 5.0, star.radius * 5.0);
+                    const material = new THREE.ShaderMaterial({
+                        uniforms: blackHoleUniforms, vertexShader: bhVertexShader, fragmentShader: bhFragmentShader,
+                        transparent: true, blending: THREE.NormalBlending, depthWrite: false, side: THREE.BackSide
+                    });
+                    const shaderMesh = new THREE.Mesh(geometry, material);
+                    shaderMesh.userData.isBH = true; 
+                    shaderMesh.userData.info = star; 
+                    clickableObjects.push(shaderMesh);
+                    
+                    group.add(shaderMesh);
+                    group.userData.shaderMesh = shaderMesh;
+
+                    const bhLight = new THREE.PointLight(0xffaa00, 2.0, 100);
+                    group.add(bhLight);
+
+                    createInterstellarContent(group);
+
+                } else {
+                    const fullPath = CONFIG.basePath + CONFIG.universalModel;
+                    
+                    if (!window.plasmaUniformsList) window.plasmaUniformsList = [];
+
+                    gltfLoader.load(fullPath, (gltf) => {
+                        const model = gltf.scene;
+                        const box = new THREE.Box3().setFromObject(model);
+                        const size = box.getSize(new THREE.Vector3()).length();
+                        const scaleFactor = (star.radius * 2) / size;
+                        model.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                        model.userData.originalScale = scaleFactor;
+
+                        const plasmaUniforms = {
+                            uTime: { value: Math.random() * 100 }, 
+                            uColorA: { value: new THREE.Color(star.shaderColors.a) },
+                            uColorB: { value: new THREE.Color(star.shaderColors.b) },
+                            uBrightness: { value: star.brightness },
+                            uNoiseScale: { value: 2.0 }, 
+                            uSpeed: { value: 0.2 }
+                        };
+                        model.userData.plasmaUniforms = plasmaUniforms;
+                        window.plasmaUniformsList.push(plasmaUniforms);
+                        const plasmaMaterial = new THREE.ShaderMaterial({
+                            uniforms: plasmaUniforms, vertexShader: plasmaVertexShader, fragmentShader: plasmaFragmentShader,
+                            transparent: true 
+                        });
+                        model.traverse(c => {
+                            if (c.isMesh) {
+                                c.material = plasmaMaterial;
+                                c.userData.info = star;
+                                clickableObjects.push(c);
+                            }
+                        });
+                        group.add(new THREE.PointLight(star.color, star.brightness * 0.5, 50));
+                        group.add(model);
+                        if (star.hasJets) {
+                            const jColors = star.jetColors || { a: '#ffffff', b: '#0000ff' };
+                            const jetUniforms = createNeutronJets(model, size/2, jColors.a, jColors.b); 
+                            model.userData.jetUniforms = jetUniforms;
+                        }
+                    }, undefined, (error) => { console.error("Fehler beim Laden des Sterns:", error); });
+                }
+                starMeshes[star.id] = { group: group, data: star };
+                scene.add(group);
+            });
+        }
+
+        function calculateDistanceForScreenFill(radius, percent) {
+            const fovRad = (camera.fov * Math.PI) / 180;
+            return radius / (percent * Math.tan(fovRad / 2));
+        }
+
+        function calculateDistanceToFit(radius, fillFactor) {
+            const fovRad = camera.fov * (Math.PI / 180);
+            return radius / (fillFactor * Math.tan(fovRad / 2));
+        }
+
+        function transitionToGalaxy() {
+            resetEnduranceState();
+            camera.fov = 60; 
+            camera.updateProjectionMatrix();
+            
+            usePostProcessing = true;
+            renderer.toneMapping = THREE.ReinhardToneMapping;
+            renderer.toneMappingExposure = 1.5;
+            controls.enableRotate = true; 
+            controls.enablePan = true;    
+            document.querySelectorAll('.star-controls-wrapper').forEach(el => el.style.display = 'none');
+            document.getElementById('common-controls-content').appendChild(document.getElementById('spin-control-container'));
+            document.getElementById('common-controls-content').appendChild(document.getElementById('brightness-control-container'));
+            
+            document.getElementById('focus-endurance').style.display = 'none';
+
+            updateActiveButton('view-galaxy');
+            document.getElementById('info-box').textContent = "Ansicht: Milchstrasse";
+            
+
+            currentFocus = 'galaxy';
+            currentActiveUniforms = null; 
+            currentJetsUniforms = [];
+
+            galaxySystem.visible = true;
+            if(galaxyBgMesh) galaxyBgMesh.visible = true;
+            if(galaxyCoreMesh) galaxyCoreMesh.visible = true;
+            if(skyboxMesh) skyboxMesh.visible = false;
+
+            Object.values(starMeshes).forEach(entry => {
+                if(entry.data.id === 'black_hole') entry.group.visible = false;
+                else entry.group.visible = true;
+            });
+
+            flyTo(new THREE.Vector3(0, 500, 700), new THREE.Vector3(0,0,0), 3.0, () => {
+                controls.minDistance = 50; controls.maxDistance = 3000;
+                if(galaxySystem) galaxySystem.material.opacity = 1.0;
+            });
+        }
+
+        // ===========================================
+        // NEU: SEQUENZ-LOGIK FÜR BLACK HOLE
+        // ===========================================
+        const BH_ENTRY_POS = new THREE.Vector3(37.32600, 30.59838, 193.34332);
+        const GALAXY_CENTER_POS = new THREE.Vector3(0, 50, 50); 
+
+        function handleBlackHoleTransition() {
+            const overlay = document.getElementById('scene-transition-overlay');
+            
+            // Falls wir nicht in der Galaxie-Ansicht sind -> Erst rauszoomen
+            if (currentFocus !== 'galaxy') {
+                flyTo(new THREE.Vector3(0, 400, 600), new THREE.Vector3(0,0,0), 1.5, () => {
+                    currentFocus = 'galaxy';
+                    handleBlackHoleTransition(); // Rekursiver Aufruf
+                });
+                return;
+            }
+
+            // Wir sind in der Galaxie -> Start der Sequenz
+            document.getElementById('info-box').textContent = "Reiseziel: Sagittarius A* (Sequenzstart)";
+            
+            // 1. Flug zur Mitte starten
+            flyTo(GALAXY_CENTER_POS, new THREE.Vector3(0,0,0), 2.5, () => {
+                
+                // callback: Flug ist angekommen. Jetzt ist der Screen schwarz (siehe unten).
+                
+                // 2. Jetzt ALLES umstellen (FOV, Shader, Slider)
+                prepareBlackHoleScene();
+                
+                // 3. Kamera hart setzen (auf die Position aus Bild 1)
+                camera.position.copy(BH_ENTRY_POS);
+                camera.lookAt(new THREE.Vector3(0,0,0));
+                controls.target.set(0,0,0);
+                
+                // 4. Einblenden und finaler Anflug
+                setTimeout(() => {
+                    overlay.style.opacity = 0; 
+                    finalizeBlackHoleApproach();
+                }, 1000);
+            });
+
+            // Fade-To-Black starten (etwas verzögert nach Flugstart)
+            setTimeout(() => {
+                overlay.style.opacity = 1;
+            }, 1000); 
+        }
+
+        function setBlackHoleFOV(newFov) {
+            camera.fov = newFov;
+            camera.updateProjectionMatrix();
+            
+            // Wichtig: Dem Shader mitteilen, dass sich der Zoom geändert hat, 
+            // damit die Verzerrung (Lensing) korrekt bleibt.
+            if(blackHoleUniforms) {
+                blackHoleUniforms.uFovScale.value = 60.0 / newFov;
+            }
+        }
+
+        function animateFOV(targetFov) {
+            // 1. Setup für FOV & Zeit
+            isFovAnimating = true;
+            fovStartVal = camera.fov;
+            fovTargetVal = targetFov;
+            fovAnimStartTime = performance.now();
+
+            // 2. Setup für Position (Dolly Zoom)
+            camFovStartPos.copy(camera.position);
+
+            const bhEntry = starMeshes['black_hole'];
+            const bhPos = bhEntry.data.galaxyPos;
+            
+            // Ziel-Distanz für die Kamerafahrt (deine vorherigen Werte für die "perfekte Position")
+            const targetDistance = (targetFov === 10) ? DIST_FOV_10 : DIST_FOV_60;
+
+            const direction = new THREE.Vector3().subVectors(camera.position, bhPos).normalize();
+            camFovTargetPos.copy(bhPos).add(direction.multiplyScalar(targetDistance));
+
+            // 3. NEU: Setup für MaxDistance Limitierung
+            // Wir starten beim aktuellen Limit
+            maxDistStartVal = controls.maxDistance; 
+            // Wir wollen zum neuen Limit passend zum FOV
+            maxDistTargetVal = (targetFov === 10) ? MAX_DIST_FOV_10 : MAX_DIST_FOV_60;
+        }
+
+        // Setup Funktion: Macht alles bereit für das SL, während der Screen schwarz ist
+        function prepareBlackHoleScene() {
+            // 1. Sichtbarkeiten regeln
+            if(galaxySystem) galaxySystem.visible = false;
+            if(galaxyBgMesh) galaxyBgMesh.visible = false;
+            if(galaxyCoreMesh) galaxyCoreMesh.visible = false;
+            
+            const slEntry = starMeshes['black_hole'];
+            if (slEntry) {
+                slEntry.group.visible = true;
+                Object.values(starMeshes).forEach(o => { if(o.data.id !== 'black_hole') o.group.visible = false; });
+            }
+            
+            if(skyboxMesh) {
+                skyboxMesh.visible = true;
+                skyboxMesh.position.set(0,0,0);
+            }
+            
+            // 2. UI Status setzen
+            currentFocus = 'black_hole';
+            updateActiveButton('btn-black_hole');
+            
+            // Controls anzeigen
+            const controlsWrapper = document.getElementById(`controls-black_hole`);
+            document.querySelectorAll('.star-controls-wrapper').forEach(el => el.style.display = 'none');
+            
+            const spinContainer = document.getElementById('spin-control-container');
+            const brightContainer = document.getElementById('brightness-control-container');
+            
+            if(controlsWrapper) {
+                controlsWrapper.appendChild(spinContainer);
+                controlsWrapper.appendChild(brightContainer);
+                controlsWrapper.style.display = 'block';
+                document.getElementById('focus-endurance').style.display = 'block';
+            }
+
+            // 3. KAMERA & RENDERER - HIER IST DIE ÄNDERUNG
+            
+            // A) Checkbox visuell auf "AN" setzen (Häkchen reinmachen)
+            const fovCheckbox = document.getElementById('cb-fov-cinematic');
+            if(fovCheckbox) {
+                fovCheckbox.checked = true; 
+            }
+            
+            // B) FOV hart auf 10 setzen (Cinematic Look)
+            setBlackHoleFOV(10);
+
+            renderer.toneMapping = THREE.NoToneMapping;
+            renderer.toneMappingExposure = 1.0;
+
+            // 4. Slider & Shader Werte (wie gehabt)
+            const targetData = starMeshes['black_hole'];
+            const savedB = targetData.data.savedBrightness;
+            
+            currentActiveUniforms = blackHoleUniforms;
+            currentMaxBrightness = targetData.data.brightness;
+            
+            document.getElementById('brightness-display').textContent = savedB.toFixed(2);
+
+            let sliderPercent = (savedB - 1.5) / 5.0;
+            if (sliderPercent < 0) sliderPercent = 0;
+            if (sliderPercent > 1) sliderPercent = 1;
+            
+            document.getElementById('shader-brightness-slider').value = Math.round(sliderPercent * 100);
+
+            if(blackHoleUniforms) {
+                blackHoleUniforms.uDiskIntensity.value = savedB;
+            }
+
+            if (sliderPercent <= 0.02) {
+                usePostProcessing = false;
+                if(blackHoleUniforms) blackHoleUniforms.uDiskIntensity.value = 1.5;
+            } else {
+                usePostProcessing = true;
+            }
+        }
+
+        function finalizeBlackHoleApproach() {
+            const targetData = starMeshes['black_hole'];
+            
+            // ÄNDERUNG: Wir nutzen direkt den fixen Wert für FOV 10
+            const targetDist = DIST_FOV_10; 
+            
+            // Vektor berechnen (leicht von oben, wie vorher, aber mit exakter Distanz)
+            let approachVector = new THREE.Vector3(0, targetDist * 0.1, targetDist).normalize().multiplyScalar(targetDist); 
+            
+            flyTo(targetData.data.galaxyPos.clone().add(approachVector), targetData.data.galaxyPos, 4.0, () => {
+                controls.minDistance = 0.0001; 
+                controls.maxDistance = MAX_DIST_FOV_10;
+                document.getElementById('info-box').textContent = "Ziel erreicht: Sagittarius A*";
+            });
+        }
+
+        function transitionToStar(starId) {
+            resetEnduranceState();
+            // 1. ABSOLUTE PRIORITÄT: Wenn Schwarzes Loch gewählt wird -> Spezial-Sequenz starten
+            if (starId === 'black_hole') {
+                // Nur starten, wenn wir nicht schon dort sind
+                if (currentFocus !== 'black_hole') {
+                    handleBlackHoleTransition();
+                } else {
+                    // Wenn wir schon da sind, nur den End-Anflug machen
+                    finalizeBlackHoleApproach();
+                }
+                return; // HIER IST STOPP. Keine weitere Zeile in dieser Funktion wird ausgeführt!
+            }
+
+            // --- AB HIER: Code NUR für normale Sterne ---
+            
+            controls.enableRotate = true; 
+            controls.enablePan = true;    
+            
+            const targetData = starMeshes[starId];
+            if (!targetData) return;
+            
+            currentFocus = starId;
+            updateActiveButton('btn-'+starId);
+            document.getElementById('info-box').textContent = `Reiseziel: ${targetData.data.label}`;
+            
+            const controlsWrapper = document.getElementById(`controls-${starId}`);
+            document.querySelectorAll('.star-controls-wrapper').forEach(el => el.style.display = 'none');
+            
+            const spinContainer = document.getElementById('spin-control-container');
+            const brightContainer = document.getElementById('brightness-control-container');
+            
+            if(controlsWrapper) {
+                controlsWrapper.appendChild(spinContainer);
+                controlsWrapper.appendChild(brightContainer);
+                controlsWrapper.style.display = 'block';
+            }
+            
+            document.getElementById('focus-endurance').style.display = 'none';
+
+            // Slider Logik für normale Sterne
+            const savedB = targetData.data.savedBrightness;
+            const bMin = targetData.data.minBrightness || 0.0;
+            const bMax = targetData.data.brightness; 
+            const range = bMax - bMin;
+            let percent = 1.0;
+            if(range > 0.0001) percent = (savedB - bMin) / range;
+            percent = Math.max(0, Math.min(1, percent));
+            
+            document.getElementById('shader-brightness-slider').value = Math.round(percent * 100);
+            document.getElementById('brightness-display').textContent = savedB.toFixed(2);
+            
+            targetData.group.visible = true;
+            currentJetsUniforms = [];
+
+            // FOV zurücksetzen für normale Sterne
+            camera.fov = 60; 
+            camera.updateProjectionMatrix();
+
+            // Shader Setup
+            let meshUniforms = null;
+            targetData.group.traverse(c => {
+                if(c.userData.plasmaUniforms) meshUniforms = c.userData.plasmaUniforms;
+                if(c.userData.jetUniforms) currentJetsUniforms.push(c.userData.jetUniforms);
+            });
+            currentActiveUniforms = meshUniforms;
+            currentMaxBrightness = targetData.data.brightness; 
+            currentMinBrightness = targetData.data.minBrightness || 0.0;
+            
+            // PostProcessing an
+            if (!usePostProcessing) {
+                usePostProcessing = true;
+            }
+            renderer.toneMapping = THREE.ReinhardToneMapping;
+            renderer.toneMappingExposure = 1.5;
+            
+            applyBrightness(savedB);
+
+            // Szenen-Management
+            const starPos = targetData.data.galaxyPos; 
+            galaxySystem.visible = false;
+            if(galaxyBgMesh) galaxyBgMesh.visible = false;
+            if(galaxyCoreMesh) galaxyCoreMesh.visible = false;
+            if(skyboxMesh) {
+                skyboxMesh.visible = true;
+                skyboxMesh.position.copy(starPos); 
+            }
+
+            // Flug starten
+            const fitDistance = calculateDistanceToFit(targetData.data.radius, CONFIG.starViewFill);
+            let approachVector = new THREE.Vector3(0, 0, fitDistance);
+            const targetCamPos = starPos.clone().add(approachVector);
+            
+            flyTo(targetCamPos, starPos, 3.5, () => {
+                controls.minDistance = fitDistance * 0.1; 
+                controls.maxDistance = fitDistance * 20;
+            });
+        }
+
+        
+        // ===========================================
+        function transitionToEndurance() {
+            // 0. Status Check
+            if (isEnduranceSequenceActive) return;
+
+            // 1. Resetten & Speichern
+            resetEnduranceState();
+            if (enduranceMesh) {
+                enduranceOriginalPos.copy(enduranceMesh.position);
+            }
+
+            currentFocus = 'endurance';
+            document.getElementById('info-box').textContent = "Fokus: Endurance - Anflugsequenz...";
+
+            // 2. UI ANPASSUNGEN & BUTTON LOCK
+            const uiContainer = document.getElementById('ui-container');
+            if (!uiContainer.classList.contains('minimized')) {
+                uiContainer.classList.add('minimized');
+                document.getElementById('toggle-ui').textContent = '☰';
+            }
+            document.getElementById('focus-endurance').disabled = true;
+
+            // 3. SLIDER EINSTELLEN (Bloom aus!)
+            // Drehung verlangsamen
+            const spinSlider = document.getElementById('star-spin-slider');
+            spinSlider.value = 0.2; 
+            spinSlider.dispatchEvent(new Event('input'));
+
+            // Helligkeit auf ABSOLUTES MINIMUM (0)
+            // Dein Listener setzt bei Werten < 2 automatisch PostProcessing auf false -> Bloom aus.
+            const brightSlider = document.getElementById('shader-brightness-slider');
+            brightSlider.value = 0; 
+            brightSlider.dispatchEvent(new Event('input')); 
+
+            // 4. FOV SETUP
+            setBlackHoleFOV(10); 
+
+            // 5. DEFINITION DER 3 KAMERAPUNKTE (Deine Originalwerte)
+            const pos1 = new THREE.Vector3(-18.87651, -3.05551, 7.38676);
+            const posMid = new THREE.Vector3(-18.57196, -3.01136, 7.17039);
+            const posFinal = new THREE.Vector3(-18.51101, -3.00196, 7.13304);
+            // Zielpunkt (wo die Kamera hinschaut)
+            const targetGlobal = new THREE.Vector3(-18.50000, -3.00000, 7.12700);
+
+            controls.minDistance = 0.0001; 
+
+            // 6. DER 3-STUFIGE FLUG (Verschachtelt)
+            // STUFE 1
+            // 6. DER 3-STUFIGE FLUG (Verschachtelt)
+            // STUFE 1
+            flyTo(pos1, targetGlobal, 2.5, () => {
+                document.getElementById('info-box').textContent = "Fokus: Endurance - Annäherung...";
+                
+                // STUFE 2
+                flyTo(posMid, targetGlobal, 3.5, () => {
+                    document.getElementById('info-box').textContent = "Fokus: Endurance - Finaler Drift";
+                    
+                    // STUFE 3
+                    flyTo(posFinal, targetGlobal, 4.5, () => {
+                        
+                        document.getElementById('info-box').textContent = "Sequenz: Flug zu Millers Planet";
+                        
+                        // === SETUP KAMERASCHWENK ===
+                        // Startpunkt: Wo wir gerade hinschauen
+                        animTargetStart.copy(controls.target);
+                        
+                        // Zielpunkt: Wir nehmen den ursprünglichen Fokuspunkt und verschieben ihn
+                        // leicht, um einen Schwenk nach RECHTS zu simulieren.
+                        // (Bei Blickrichtung +X ist +Z meistens rechts)
+                        animTargetFinal.set(-18.50000, -3.00000, 7.12700); 
+                        
+                        // Wir addieren einen kleinen Offset für den "Rechts-Drall"
+                        // Falls der Schwenk zu stark/schwach ist, ändere die 0.05 hier:
+                        animTargetFinal.z += 0.0009; 
+                        animTargetFinal.x += 0.0001; // Leichte Korrektur der Tiefe
+
+                        // Endurance Startposition merken
+                        if(enduranceMesh) enduranceStartPosForAnim.copy(enduranceMesh.position);
+
+                        // === ACTION STARTEN ===
+                        isEnduranceSequenceActive = true;
+                        enduranceSeqStartTime = performance.now();
+
+                    }, 'easeOut');
+                    
+                }, 'easeInOut'); 
+            }, 'easeInOut');
+        }
+
+        function resetEnduranceState() {
+            isEnduranceSequenceActive = false;
+            
+            // Button entsperren
+            const btn = document.getElementById('focus-endurance');
+            if(btn) btn.disabled = false;
+
+            // NEU: UI wieder einblenden
+            const uiContainer = document.getElementById('ui-container');
+            if (uiContainer && uiContainer.classList.contains('minimized')) {
+                uiContainer.classList.remove('minimized');
+                // Icon zurücksetzen
+                const toggleBtn = document.getElementById('toggle-ui');
+                if(toggleBtn) toggleBtn.textContent = '✕'; // Oder '☰', je nach deinem Standard
+            }
+
+            // Endurance Reset
+            if (enduranceMesh && enduranceOriginalPos.lengthSq() > 0) {
+                enduranceMesh.position.copy(enduranceOriginalPos);
+                enduranceMesh.rotation.set(Math.PI / 2, 0, 0); 
+            }
+        }
+
+        function applyBrightness(value) {
+             if (currentActiveUniforms) {
+                if (currentActiveUniforms.uBrightness) currentActiveUniforms.uBrightness.value = value;
+                else if (currentActiveUniforms.uDiskIntensity) currentActiveUniforms.uDiskIntensity.value = value;
+            }
+            if (currentJetsUniforms.length > 0) {
+                currentJetsUniforms.forEach(u => u.uBrightness.value = value);
+            }
+        }
+
+        function flyTo(endPos, endTarget, duration, callback, easing = 'easeInOut') {
+            isCameraTransitioning = true;
+            window.camTransEasing = easing; 
+            camTransStartPos.copy(camera.position); 
+            camTransEndPos.copy(endPos);
+            camTransStartTarget.copy(controls.target); 
+            camTransEndTarget.copy(endTarget);
+            camTransProgress = 0; 
+            camTransDuration = duration; 
+            camTransCallback = callback;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = 0.016; 
+
+            if (isFovAnimating) {
+                // Zeit berechnen
+                const now = performance.now();
+                const elapsed = (now - fovAnimStartTime) / 1000; // in Sekunden
+                let t = Math.min(1.0, elapsed / FOV_ANIM_DURATION);
+
+                // Easing (Weiches Anfahren und Abbremsen)
+                // Formel: t * t * (3 - 2 * t) ist ein klassisches "SmoothStep"
+                const easeT = t * t * (3 - 2 * t);
+
+                // Wert interpolieren
+                const currentFov = fovStartVal + (fovTargetVal - fovStartVal) * easeT;
+
+                // Anwenden
+                camera.fov = currentFov;
+                camera.updateProjectionMatrix();
+
+                // Shader updaten (damit das Lensing nicht verzerrt)
+                if (blackHoleUniforms) {
+                    blackHoleUniforms.uFovScale.value = 60.0 / currentFov;
+                }
+
+                camera.position.lerpVectors(camFovStartPos, camFovTargetPos, easeT);
+                
+                controls.maxDistance = maxDistStartVal + (maxDistTargetVal - maxDistStartVal) * easeT;
+                // Ende prüfen
+                if (t >= 1.0) {
+                    isFovAnimating = false;
+                    // Sicherstellen, dass wir exakt auf dem Zielwert landen
+                    camera.fov = fovTargetVal;
+                    camera.updateProjectionMatrix();
+                }
+            }
+
+            // --- ENDURANCE SEQUENZ ---
+            if (isEnduranceSequenceActive && enduranceMesh && millerMesh) {
+                const now = performance.now();
+                const elapsed = (now - enduranceSeqStartTime) / 1000;
+                let t = elapsed / ENDURANCE_FLIGHT_DURATION;
+
+                if (t <= 1.0) {
+                    const easeT = t * t * (3 - 2 * t); 
+
+                    // 1. Schiff fliegt los (langsam)
+                    enduranceMesh.position.lerpVectors(enduranceStartPosForAnim, millerMesh.position, easeT * 0.05);
+                    
+                    // 2. Schiff rotiert
+                    enduranceMesh.rotation.x += delta * 0.5;
+
+                    // 3. KAMERA SCHWENK
+                    // Die Kamera selbst bewegt sich nicht mehr (sie steht auf posFinal),
+                    // aber wir drehen den Blickwinkel sanft zum Ziel.
+                    controls.target.lerpVectors(animTargetStart, animTargetFinal, easeT);
+                    
+                } else {
+                    // SEQUENZ ENDE
+                    isEnduranceSequenceActive = false;
+                    
+                    // Fade-Out ins Schwarze
+                    const overlay = document.getElementById('scene-transition-overlay');
+                    if(overlay) overlay.style.opacity = 1;
+
+                    setTimeout(() => {
+                        resetEnduranceState(); 
+                        prepareBlackHoleScene();
+                        
+                        // Reset Kamera
+                        const restartPos = new THREE.Vector3(37.32600, 30.59838, 193.34332);
+                        camera.position.copy(restartPos);
+                        camera.lookAt(new THREE.Vector3(0,0,0));
+                        controls.target.set(0,0,0);
+                        
+                        overlay.style.opacity = 0;
+                        finalizeBlackHoleApproach();
+                        
+                        document.getElementById('info-box').textContent = "Endurance Mission beendet.";
+                    }, 1500); 
+                }
+            }
+            // -----------------------------------
+            
+            if (window.plasmaUniformsList) {
+                window.plasmaUniformsList.forEach(u => {
+                    u.uTime.value += delta;
+                });
+            }
+
+            // ÄNDERUNG: Rotation erlauben, wenn Fokus auf SL ODER Endurance liegt
+            if (currentFocus === 'black_hole' || currentFocus === 'endurance') {
+                 if (enduranceMesh) {
+                     // Z-Achse ist meistens besser für den Spin, je nach Modell-Ausrichtung. 
+                     // Falls es vorher X war und gut aussah, lass es auf X.
+                     enduranceMesh.rotation.x += INTERSTELLAR_CONFIG.endurance.rotationSpeed * delta;
+                 }
+                 if (millerMesh) {
+                     millerMesh.rotation.y += 0.05 * delta;
+                 }
+            }
+            
+            if (currentFocus === 'galaxy') {
+                const rotStep = rotationSpeed * 0.02;
+                if (galaxySystem && galaxySystem.visible) galaxySystem.rotation.y -= rotStep;
+                if (galaxyBgMesh && galaxyBgMesh.visible) galaxyBgMesh.rotation.z -= rotStep;
+                const axis = new THREE.Vector3(0, 1, 0); 
+                Object.values(starMeshes).forEach(entry => {
+                    entry.group.position.applyAxisAngle(axis, -rotStep);
+                    entry.data.galaxyPos.copy(entry.group.position);
+                });
+            }
+            if (blackHoleUniforms) {
+                blackHoleUniforms.iTime.value += delta;
+                const sliderValue = selfRotationMultiplier; 
+                blackHoleUniforms.uDiskRotation.value += delta * 0.2 * sliderValue;
+                blackHoleUniforms.uFovScale.value = 60.0 / camera.fov;
+
+                const bhEntry = starMeshes['black_hole'];
+                if(bhEntry) {
+                const worldPos = new THREE.Vector3();
+                bhEntry.group.getWorldPosition(worldPos);
+                blackHoleUniforms.uBlackHolePos.value.copy(worldPos);
+                }
+            }
+            Object.values(starMeshes).forEach(entry => {
+                if (entry.data.id !== 'black_hole') {
+                    const spin = (entry.data.rotationSpeed || 0.1) * selfRotationMultiplier * 0.02;
+                    entry.group.rotation.y -= spin;
+                }
+            });
+            if (currentFocus !== 'black_hole') {
+                let distToFocus = 100000;
+                if (currentFocus !== 'galaxy' && starMeshes[currentFocus]) {
+                    distToFocus = camera.position.distanceTo(starMeshes[currentFocus].data.galaxyPos);
+                }
+                const fadeStart = 400; const fadeEnd = 20;
+                let zoomFactor = (distToFocus - fadeEnd) / (fadeStart - fadeEnd);
+                zoomFactor = Math.max(0, Math.min(1, zoomFactor)); 
+                if (galaxySystem) galaxySystem.material.opacity = Math.max(0.0, zoomFactor); 
+                if (galaxyBgMesh) galaxyBgMesh.material.opacity = Math.max(0.0, zoomFactor * 0.6);
+                if (galaxyCoreMesh) galaxyCoreMesh.material.opacity = Math.max(0.0, zoomFactor * 0.9);
+                Object.values(starMeshes).forEach(entry => {
+                    if (entry.data.id === 'black_hole') return;
+                    const isTarget = (entry.data.id === currentFocus);
+                    const group = entry.group;
+                    let imposter = null; let detail = null;
+                    group.children.forEach(c => {
+                        if (c.userData.isImposter) imposter = c;
+                        else if (c.isMesh || c.isGroup) { 
+                             if(!c.userData.isImposter && c.type !== 'PointLight') detail = c;
+                        }
+                    });
+                    if (isTarget) {
+                        if (imposter) imposter.material.opacity = zoomFactor;
+                        if (detail) {
+                            const targetScale = detail.userData.originalScale || 1.0; 
+                            const s = (1.0 - zoomFactor) * targetScale;
+                            detail.scale.set(s,s,s);
+                        }
+                    } else {
+                        if (imposter) imposter.material.opacity = 1.0;
+                        if (detail) detail.scale.set(0,0,0);
+                    }
+                });
+            }
+            
+            if (isCameraTransitioning) {
+                camTransProgress += delta / camTransDuration;
+                
+                let t = camTransProgress;
+                
+                if (!window.camTransEasing || window.camTransEasing === 'easeInOut') {
+                    t = camTransProgress < 0.5 ? 2 * camTransProgress * camTransProgress : -1 + (4 - 2 * camTransProgress) * camTransProgress;
+                } 
+                else if (window.camTransEasing === 'easeOut') {
+                    t = 1 - Math.pow(1 - camTransProgress, 3); 
+                }
+
+                if (camTransProgress >= 1) {
+                    isCameraTransitioning = false;
+                    camera.position.copy(camTransEndPos); 
+                    controls.target.copy(camTransEndTarget);
+                    if (camTransCallback) camTransCallback(); 
+                } else {
+                    camera.position.lerpVectors(camTransStartPos, camTransEndPos, t);
+                    controls.target.lerpVectors(camTransStartTarget, camTransEndTarget, t);
+                }
+            }
+            controls.update();
+            if (usePostProcessing && composer) { composer.render(); } else { renderer.render(scene, camera); }
+        }
+
+        function setupUI() {
+            document.getElementById('view-galaxy').addEventListener('click', transitionToGalaxy);
+            document.getElementById('back-to-solar').addEventListener('click', () => { window.location.href = 'index.html'; });
+            const btnContainer = document.getElementById('star-buttons');
+            starTypes.forEach(star => {
+                const wrapper = document.createElement('div'); wrapper.style.marginBottom = "5px";
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-secondary star-type-btn';
+                btn.id = `btn-${star.id}`;
+                btn.innerHTML = `<span class="star-icon" style="background-color: ${star.color}; box-shadow: 0 0 5px ${star.color};"></span>${star.label}`;
+                btn.style.borderColor = star.color; btn.style.color = star.color; 
+                btn.addEventListener('click', () => transitionToStar(star.id));
+                wrapper.appendChild(btn);
+                const controlsDiv = document.createElement('div');
+                controlsDiv.id = `controls-${star.id}`; controlsDiv.className = 'star-controls-wrapper';
+                controlsDiv.style.borderLeftColor = star.color; 
+                wrapper.appendChild(controlsDiv);
+                btnContainer.appendChild(wrapper);
+
+                if (star.id === 'black_hole') {
+                const bhContent = document.getElementById('bh-specific-content');
+                controlsDiv.appendChild(bhContent);
+
+                document.getElementById('cb-fov-cinematic').addEventListener('change', (e) => {
+                    if (currentFocus === 'black_hole') {
+                        const newFov = e.target.checked ? 10 : 60;
+                        animateFOV(newFov);
+                    }
+                });
+                
+                document.getElementById('focus-endurance').addEventListener('click', transitionToEndurance);
+
+                setTimeout(() => {
+                    const diskCheck = document.getElementById('cb-disk-visible');
+                    const newDiskCheck = diskCheck.cloneNode(true);
+                    diskCheck.parentNode.replaceChild(newDiskCheck, diskCheck);
+                    
+                    newDiskCheck.addEventListener('change', (e) => { 
+                        if(blackHoleUniforms) {
+                            const currentSliderVal = parseFloat(document.getElementById('shader-brightness-slider').value) / 100 * 5.0;
+                            blackHoleUniforms.uDiskIntensity.value = e.target.checked ? (currentSliderVal > 0.1 ? currentSliderVal : 1.0) : 0.0; 
+                        }
+                    });
+
+                    const blueCheck = document.getElementById('cb-blue-mode');
+                    const newBlueCheck = blueCheck.cloneNode(true);
+                    blueCheck.parentNode.replaceChild(newBlueCheck, blueCheck);
+
+                    newBlueCheck.addEventListener('change', (e) => {
+                        if(blackHoleUniforms) {
+                            if(e.target.checked) {
+                                blackHoleUniforms.uColor.value.setHex(0x33CCFF);       
+                                blackHoleUniforms.uColorOuter.value.setHex(0x0066FF);  
+                                
+                                btn.style.borderColor = '#4fddff'; 
+                                btn.style.color = '#4fddff'; 
+                                controlsDiv.style.borderLeftColor = '#4fddff'; 
+                            } else {
+                                blackHoleUniforms.uColor.value.setHex(0xFF8C38);       
+                                blackHoleUniforms.uColorOuter.value.setHex(0x4D0D03);  
+                                
+                                btn.style.borderColor = '#ff8822'; 
+                                btn.style.color = '#ff8822'; 
+                                controlsDiv.style.borderLeftColor = '#ff8822';
+                            }
+                        }
+                    });
+                }, 100);
+            }
+                if (star.id === 'neutron_star') {
+                    const nsContent = document.getElementById('ns-specific-content');
+                    controlsDiv.appendChild(nsContent);
+                    setTimeout(() => {
+                        document.getElementById('cb-jets-visible').addEventListener('change', (e) => {
+                            const nsEntry = starMeshes['neutron_star'];
+                            if (nsEntry && nsEntry.group) {
+                                let model = null;
+                                nsEntry.group.traverse(c => { if(c.userData.jetUniforms) model = c; });
+                                if(model && model.userData.jetMeshes) { model.userData.jetMeshes.forEach(jet => { jet.visible = e.target.checked; }); }
+                            }
+                        });
+                    }, 0);
+                }
+            });
+
+            document.getElementById('toggle-ui').addEventListener('click', () => {
+                const ui = document.getElementById('ui-container'); ui.classList.toggle('minimized');
+                document.getElementById('toggle-ui').textContent = ui.classList.contains('minimized') ? '☰' : '✕';
+            });
+            document.getElementById('popup-close').addEventListener('click', () => document.getElementById('info-popup').style.display = 'none');
+            document.getElementById('speed-slider').addEventListener('input', (e) => rotationSpeed = parseFloat(e.target.value) * 0.2);
+            document.getElementById('star-spin-slider').addEventListener('input', (e) => selfRotationMultiplier = parseFloat(e.target.value));
+            
+            document.getElementById('shader-brightness-slider').addEventListener('input', (e) => {
+                const percent = parseFloat(e.target.value) / 100.0;
+                
+                // HIER IST DIE ÄNDERUNG: Wir prüfen auf 'black_hole' ODER 'endurance'
+                if (currentFocus === 'black_hole' || currentFocus === 'endurance') {
+                    renderer.toneMapping = THREE.NoToneMapping;
+                    renderer.toneMappingExposure = 1.0; 
+    
+                    if (percent <= 0.02) {
+                        usePostProcessing = false;
+                        // Mindest-Helligkeit für Sichtbarkeit (1.5), auch wenn Slider auf 0 ist
+                        if (blackHoleUniforms) blackHoleUniforms.uDiskIntensity.value = 1.5;
+                    } else {
+                        usePostProcessing = true;
+                        const addedIntensity = percent * 5.0; 
+                        if (blackHoleUniforms) blackHoleUniforms.uDiskIntensity.value = 1.5 + addedIntensity;
+                    }
+                    
+                    const displayVal = 1.5 + (percent * 5.0);
+                    document.getElementById('brightness-display').textContent = displayVal.toFixed(2);
+    
+                } else {
+                    // Logik für alle anderen normalen Sterne
+                    const range = currentMaxBrightness - currentMinBrightness;
+                    let actualValue = currentMinBrightness + (percent * range);
+                    
+                    document.getElementById('brightness-display').textContent = actualValue.toFixed(2);
+                    
+                    if (!usePostProcessing) {
+                        usePostProcessing = true;
+                        renderer.toneMapping = THREE.ReinhardToneMapping;
+                        renderer.toneMappingExposure = 1.5;
+                    }
+                    applyBrightness(actualValue);
+                }
+    
+                // Speichern der Helligkeit (nur für Sterne, Endurance ignorieren wir hier)
+                if (currentFocus && currentFocus !== 'galaxy' && currentFocus !== 'endurance') {
+                    const starObj = starTypes.find(s => s.id === currentFocus);
+                    if(starObj) {
+                        if (currentFocus === 'black_hole') {
+                            starObj.savedBrightness = blackHoleUniforms.uDiskIntensity.value;
+                        } else {
+                            starObj.savedBrightness = parseFloat(document.getElementById('brightness-display').textContent);
+                        }
+                    }
+                }
+                
+            });
+
+            document.getElementById('info-toast-button').addEventListener('click', () => { if(currentSelectedInfo) showPopup(currentSelectedInfo); });
+            setupDebugListeners();
+        }
+
+        function updateActiveButton(id) {
+            document.querySelectorAll('.btn').forEach(b => {
+                b.classList.remove('active'); b.style.backgroundColor = '#222'; b.style.boxShadow = 'none';
+            });
+            const btn = document.getElementById(id); 
+            if(btn) {
+                btn.classList.add('active');
+                const color = btn.style.borderColor;
+                btn.style.boxShadow = `0 0 15px ${color}`; btn.style.backgroundColor = 'rgba(255,255,255,0.1)';
+            }
+        }
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        function onClick(event) {
+            if (event.target.closest('#ui-container') || event.target.closest('#info-popup') || event.target.closest('#info-toast-button')) return;
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(clickableObjects);
+            if (intersects.length > 0) {
+                const obj = intersects[0].object;
+                if(obj.userData.info) {
+                    currentSelectedInfo = obj.userData.info;
+                    const toast = document.getElementById('info-toast-button');
+                    toast.textContent = `💡 Info: ${currentSelectedInfo.label}`; toast.style.display = 'block';
+                }
+            } else {
+                document.getElementById('info-toast-button').style.display = 'none'; currentSelectedInfo = null;
+            }
+        }
+
+        function showPopup(info) {
+            const popup = document.getElementById('info-popup');
+            document.getElementById('popup-title').textContent = info.label;
+            let html = `<p><em>${info.desc}</em></p><hr style="border-color:#444; margin: 10px 0;">`;
+            for (const [key, value] of Object.entries(info.details)) html += `<p><strong>${key}:</strong> ${value}</p>`;
+            document.getElementById('popup-details').innerHTML = html;
+            popup.style.display = 'block';
+            document.getElementById('info-toast-button').style.display = 'none';
+        }
+
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            if (composer) composer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function createParticleTexture() {
+            const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 32, 32);
+            const g = ctx.createRadialGradient(16,16,0,16,16,16);
+            g.addColorStop(0,'rgba(255,255,255,1)'); 
+            g.addColorStop(0.2,'rgba(255,255,255,0.8)');
+            g.addColorStop(0.5,'rgba(255,255,255,0.2)'); 
+            g.addColorStop(1,'rgba(0,0,0,0)');
+            ctx.fillStyle = g; ctx.fillRect(0,0,32,32);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createStarfield() {
+            const geo = new THREE.BufferGeometry();
+            const pos = [];
+            for(let i=0; i<3000; i++) pos.push((Math.random()-0.5)*5000, (Math.random()-0.5)*5000, (Math.random()-0.5)*5000);
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+            const mat = new THREE.PointsMaterial({size: 2, color: 0xffffff, transparent: true, opacity: 0.6});
+            scene.add(new THREE.Points(geo, mat));
+        }
+
+        window.addEventListener('keydown', function(event) {
+            if (event.key === 'p' || event.key === 'P') {
+                console.log("%c 📸 KAMERA SNAPSHOT ", "background: #222; color: #bada55; font-size: 12px; padding: 4px;");
+                console.log(`camera.position.set(${camera.position.x.toFixed(5)}, ${camera.position.y.toFixed(5)}, ${camera.position.z.toFixed(5)});`);
+                console.log(`controls.target.set(${controls.target.x.toFixed(5)}, ${controls.target.y.toFixed(5)}, ${controls.target.z.toFixed(5)});`);
+                alert("📸 Position in der Konsole gespeichert! (Drücke F12)");
+            }
+        });
+
+        window.addEventListener('keydown', function(e) {
+            if (e.key === 'i' || e.key === 'I') {
+                // Wir holen uns die Position des Schwarzen Lochs
+                const bhEntry = starMeshes['black_hole'];
+                if (!bhEntry) return;
+
+                const bhPos = bhEntry.data.galaxyPos;
+                const currentDist = camera.position.distanceTo(bhPos);
+
+                console.log(`%c 📏 MESSUNG BEI FOV ${camera.fov} `, "background: #00ffff; color: #000; font-weight: bold;");
+                console.log(`Aktueller FOV:      ${camera.fov}`);
+                console.log(`Distanz zum SL:     ${currentDist.toFixed(4)}`);
+                console.log(`Kamera Position:    new THREE.Vector3(${camera.position.x.toFixed(4)}, ${camera.position.y.toFixed(4)}, ${camera.position.z.toFixed(4)})`);
+                console.log("-------------------------------------------");
+                
+                alert(`Werte in Konsole (F12)!\nFOV: ${camera.fov}\nDistanz: ${currentDist.toFixed(2)}`);
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>
