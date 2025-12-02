@@ -518,6 +518,10 @@
         let skyboxMesh; 
         let starMeshes = {}; 
         let clickableObjects = [];
+        // NEU: Variablen für Touch-Steuerung (iPad Fix)
+        let lastTouchTime = 0;
+        let isUserControllingCamera = false;
+        let interactionTimeout;
         
         
         let rotationSpeed = 0.05; 
@@ -934,6 +938,20 @@
             controls.maxDistance = 3000;
             controls.minDistance = 2;
 
+            controls.addEventListener('start', () => {
+                isUserControllingCamera = true;
+                // Toast ausblenden, wenn man die Kamera bewegt
+                const toast = document.getElementById('info-toast-button');
+                if (toast) {
+                    toast.style.display = 'none';
+                    currentSelectedInfo = null;
+                }
+            });
+
+            controls.addEventListener('end', () => {
+                isUserControllingCamera = false;
+            });
+
             composer = new THREE.EffectComposer(renderer);
             const renderPass = new THREE.RenderPass(scene, camera);
             composer.addPass(renderPass);
@@ -963,7 +981,8 @@
             updateActiveButton('view-galaxy');
             
             window.addEventListener('resize', onResize);
-            window.addEventListener('click', onClick);
+            window.addEventListener('touchend', onTouchEnd, false); // Wichtig fürs iPad!
+            window.addEventListener('click', onMouseClick, false);  // Für PC Maus
 
             animate();
             
@@ -1700,16 +1719,73 @@
 
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
-        function onClick(event) {
-            if (event.target.closest('#ui-container') || event.target.closest('#info-popup') || event.target.closest('#info-toast-button')) return;
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        // --- NEUE INTERAKTIONS-LOGIK (iPad kompatibel) ---
+
+        // 1. Die zentrale Funktion, die prüft, was getroffen wurde
+        function handleInteraction(x, y, targetElement) {
+            // Prüfen, ob wir auf UI-Elemente geklickt haben (dann ignorieren)
+            if (targetElement.closest('#ui-container') || 
+                targetElement.closest('#info-popup') || 
+                targetElement.closest('#info-toast-button') ||
+                targetElement.closest('#debug-panel')) {
+                return false;
+            }
+
+            // Maus/Touch Koordinaten umrechnen
+            mouse.x = (x / window.innerWidth) * 2 - 1;
+            mouse.y = -(y / window.innerHeight) * 2 + 1;
+
             raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(clickableObjects);
+            
+            // Prüfen was getroffen wurde
+            const intersects = raycaster.intersectObjects(clickableObjects); // 'true' nicht nötig, da wir Meshes direkt pushen
+
             if (intersects.length > 0) {
-                const obj = intersects[0].object;
-                if(obj.userData.info) { currentSelectedInfo = obj.userData.info; const toast = document.getElementById('info-toast-button'); toast.textContent = `💡 Info: ${currentSelectedInfo.label}`; toast.style.display = 'block'; }
-            } else { document.getElementById('info-toast-button').style.display = 'none'; currentSelectedInfo = null; }
+                // Wir nehmen das vorderste Objekt
+                let obj = intersects[0].object;
+                
+                // Falls wir ein Child getroffen haben, aber die Info im Parent liegt (Sicherheitshalber)
+                while (obj.parent && !obj.userData.info && obj.parent.userData.info) {
+                    obj = obj.parent;
+                }
+
+                if (obj.userData.info) {
+                    currentSelectedInfo = obj.userData.info;
+                    const toast = document.getElementById('info-toast-button');
+                    toast.textContent = `💡 Info: ${currentSelectedInfo.label}`;
+                    toast.style.display = 'block';
+                    return true; // Treffer!
+                }
+            } else {
+                // Ins Leere geklickt -> Toast weg
+                document.getElementById('info-toast-button').style.display = 'none';
+                currentSelectedInfo = null;
+            }
+            return false;
+        }
+
+        // 2. Touch Handler (Speziell für iPad/Mobile)
+        function onTouchEnd(event) {
+            // Wenn wir gerade die Kamera gedreht haben -> Abbruch (kein Klick)
+            if (isUserControllingCamera) return;
+
+            // Zeitstempel merken für Ghost-Click-Fix
+            lastTouchTime = new Date().getTime();
+
+            const touch = event.changedTouches[0];
+            if (!touch) return;
+            
+            // Interaktion ausführen
+            handleInteraction(touch.clientX, touch.clientY, event.target);
+        }
+
+        // 3. Maus Klick Handler (Desktop)
+        function onMouseClick(event) {
+            // Ghost Click verhindern (wenn kurz vorher ein Touch war)
+            if (new Date().getTime() - lastTouchTime < 500) return;
+
+            handleInteraction(event.clientX, event.clientY, event.target);
         }
 
         function showPopup(info) {
