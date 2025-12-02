@@ -144,10 +144,82 @@
         }
 
         /* SLIDER & INPUTS */
-        input[type=range] {
-            width: 100%; box-sizing: border-box; margin: 5px 0;
-            accent-color: #e0b0ff;
+        /* SLIDER & INPUTS (Index-Style) */
+        
+        /* 1. Basis-Styling & Hitbox vergrössern */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 24px;             /* Erhöht die "Tap-Fläche" */
+            background: transparent;
+            cursor: pointer;
+            margin: 8px 0;
+            box-sizing: border-box;
         }
+
+        /* Fokus-Rahmen entfernen */
+        input[type="range"]:focus {
+            outline: none;
+        }
+
+        /* 2. Die LEISTE (Track) stylen */
+        
+        /* WebKit (Chrome, Safari, iOS) */
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            background: #4a4a4a;
+            border-radius: 3px;
+            border: 1px solid #333;
+        }
+
+        /* Firefox */
+        input[type="range"]::-moz-range-track {
+            width: 100%;
+            height: 6px;
+            background: #4a4a4a;
+            border-radius: 3px;
+            border: 1px solid #333;
+        }
+
+        /* 3. Den DAUMEN (Knopf) stylen */
+
+        /* WebKit (Chrome, Safari, iOS) */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            
+            height: 30px;  /* Grösserer Kreis wie in index.html */
+            width: 30px;
+            border-radius: 50%;
+            background: #e0b0ff; /* Dein Lila statt Blau */
+            border: 2px solid #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            
+            /* Wichtig: Vertikal zentrieren */
+            margin-top: -12px; 
+        }
+
+        /* Firefox */
+        input[type="range"]::-moz-range-thumb {
+            height: 20px; 
+            width: 20px;
+            border-radius: 50%;
+            background: #e0b0ff; /* Dein Lila statt Blau */
+            border: 2px solid #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            /* Firefox braucht meist kein margin-top für die Zentrierung */
+        }
+
+        /* Optional: Glow-Effekt beim Anfassen */
+        input[type="range"]:focus::-webkit-slider-thumb {
+            box-shadow: 0 0 10px rgba(224, 176, 255, 0.8);
+        }
+        input[type="range"]:focus::-moz-range-thumb {
+            box-shadow: 0 0 10px rgba(224, 176, 255, 0.8);
+        }
+
         label {
             font-size: 11px; color: #ddd; display: flex; align-items: center;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -174,15 +246,69 @@
             padding: 8px 12px; font-weight: bold; cursor: pointer; font-size: 12px; border-radius: 20px;
         }
 
+        /* --- NEUER LADEBILDSCHIRM --- */
         #loading-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #050011; z-index: 9999; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; transition: opacity 0.5s;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            
+            /* HIER DAS BILD ÄNDERN */
+            background-image: url('Deep_space_Files/deep_space_loading_screen.webp'); 
+            
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out;
+            color: #fff;
         }
-        .loader { width: 40px; height: 40px; border: 4px solid #FFF; border-bottom-color: #e0b0ff; border-radius: 50%; animation: rotation 1s linear infinite; }
-        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .slider-val { float: right; font-family: monospace; color: #e0b0ff; font-size: 10px; }
-        
+
+        #loading-screen::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* Etwas dunkler als Index für Deep Space */
+            z-index: -1;
+        }
+
+        #loading-screen p {
+            font-size: 18px;
+            font-family: monospace;
+            margin-top: 20px;
+            margin-bottom: 0;
+            color: #e0b0ff; /* Lila Text passend zum Theme */
+            text-shadow: 0 0 10px rgba(224, 176, 255, 0.5);
+            z-index: 2;
+        }
+
+        #progress-bar-container {
+            width: 80%;
+            max-width: 300px;
+            height: 6px;
+            background-color: #1a0b2e; /* Dunkles Lila */
+            border: 1px solid #444;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 15px;
+            position: relative;
+            z-index: 2;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #e0b0ff; /* Dein Deep-Space Lila */
+            box-shadow: 0 0 10px #e0b0ff;
+            border-radius: 5px;
+            transition: width 0.2s ease-out;
+        }
+
         /* Debug Panel */
         #debug-panel {
             font-size: 10px !important; width: 200px !important;
@@ -200,6 +326,310 @@
             label { font-size: 10px; }
             #toggle-ui { top: 2px; right: 2px; }
         }
+
+        /* --- FOTO MODUS STYLES --- */
+
+        /* Der Container für das Kamera-Overlay */
+        #camera-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2000;
+            pointer-events: none; /* Klicks gehen durch, außer auf Buttons */
+        }
+
+        /* Der Sucher-Rahmen (HUD) */
+        .viewfinder-border {
+            position: absolute;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            width: 90%;
+            height: 80%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5); /* Dunkelt den Rand ab */
+            pointer-events: none;
+        }
+
+        /* Fadenkreuz in der Mitte */
+        .viewfinder-crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .viewfinder-crosshair::before, .viewfinder-crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.7);
+        }
+        .viewfinder-crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
+        .viewfinder-crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
+
+        /* Kamera-Steuerung (ISO, Zoom) */
+        #camera-controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            pointer-events: auto;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 30px;
+            border: 1px solid #444;
+        }
+
+        /* --- BUTTONS OBEN RECHTS --- */
+
+        /* 1. Fullscreen Button (Ganz rechts) - Index Style */
+        #fullscreen-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 10000 !important;
+            
+            background: transparent !important;
+            border: none !important;
+            
+            width: 44px; 
+            height: 44px; 
+            padding: 0;
+
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            
+            cursor: pointer; 
+            transition: transform 0.2s ease; /* Nur Transform animieren */
+        }
+
+        #fullscreen-btn:hover {
+            transform: scale(1.2); /* Nur vergrössern, Deckkraft ist schon im SVG geregelt */
+        }
+
+        /* SVG Icon Style */
+        #fullscreen-btn svg {
+            width: 30px;  /* 30px statt 32px für den feineren Look */
+            height: 30px;
+            fill: #ffffff70; /* WICHTIG: 70% Weiss (Transparent) wie im Index */
+            filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));
+        }
+
+        /* 2. Kamera Button (Links daneben) */
+        /* --- Kamera Button (Einheitlicher Style) --- */
+        #camera-mode-btn {
+            position: fixed;
+            top: 10px;
+            /* Position: Links neben dem Fullscreen Button */
+            right: 60px; 
+            z-index: 10001;
+            
+            background: transparent !important;
+            border: none !important;
+            
+            width: 44px; 
+            height: 44px; 
+            padding: 0;
+
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            
+            cursor: pointer; 
+            transition: transform 0.2s ease;
+        }
+
+        #camera-mode-btn:hover {
+            transform: scale(1.2);
+        }
+
+        /* Design des komplexen SVG Icons */
+        #camera-mode-btn svg {
+            width: 30px;
+            height: 30px;
+            /* Hier wird die Farbe gesteuert: 70% transparentes Weiss */
+            fill: #ffffff70; 
+            filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));
+        }
+
+        /* Der Auslöser-Knopf */
+        #shutter-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: #fff;
+            border: 5px solid #ccc;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: transform 0.1s;
+        }
+        #shutter-btn:active { transform: scale(0.9); background: #eee; }
+
+        /* Sliders im Kamera-Menü */
+        .cam-slider-group {
+            display: flex;
+            flex-direction: column;
+            color: #fff;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: monospace;
+            flex-grow: 1;
+        }
+        .cam-slider-group input { margin-top: 5px; cursor: pointer; }
+
+        /* Buttons oben (Schließen, Galerie) */
+        #camera-top-bar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        /* Der weiße Blitz beim Foto machen */
+        #camera-flash {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 2001;
+            transition: opacity 0.1s ease-out;
+        }
+
+        /* --- GALERIE OVERLAY --- */
+        #gallery-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 10, 15, 0.95);
+            z-index: 2100;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        
+
+        #gallery-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #fff;
+            border-bottom: 1px solid #444;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        #gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            overflow-y: auto;
+            padding-bottom: 50px;
+        }
+
+        .gallery-item {
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .gallery-actions {
+            padding: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .gallery-btn {
+            background: #444; color: #fff; border: none;
+            padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;
+        }
+        .gallery-btn:hover { background: #666; }
+
+        /* Kleiner Indikator am Galerie-Button, wenn neue Fotos da sind */
+        .badge-new {
+            position: absolute;
+            top: -5px; right: -5px;
+            background: red; color: white;
+            border-radius: 50%;
+            width: 18px; height: 18px;
+            font-size: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold;
+        }
+
+        /* --- LIGHTBOX (Bildvergrößerung) --- */
+        #lightbox-overlay {
+            display: none; /* Standardmäßig unsichtbar */
+            position: fixed;
+            z-index: 5000; /* Ganz oben */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9); /* Fast schwarzer Hintergrund */
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+            cursor: zoom-out; /* Zeigt an, dass man klicken kann zum Schließen */
+        }
+
+        #lightbox-img {
+            max-width: 95%;
+            max-height: 95%;
+            object-fit: contain; /* Bild behält Proportionen */
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            border: 1px solid #444;
+            cursor: default; /* Auf dem Bild selbst normaler Mauszeiger */
+        }
+
+        #lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+
+        #lightbox-close:hover {
+            color: #ff3300;
+        }
+
+        /* Cursor über den Galerie-Bildern anpassen */
+        .gallery-item img {
+            cursor: zoom-in; /* Lupe anzeigen */
+            transition: transform 0.2s;
+        }
+        .gallery-item img:hover {
+            transform: scale(1.05); /* Leichter Zoom-Effekt beim Hover */
+        }
     </style>
 </head>
 <body>
@@ -208,11 +638,68 @@
     <div id="labels-container"></div>
 
     <div id="loading-screen">
-        <div class="loader"></div>
-        <p id="loading-text" style="margin-top: 20px; color: #e0b0ff;">Lade Universum...</p>
+        <p id="loading-text">Lade Deep Space...</p>
+        <div id="progress-bar-container">
+            <div id="progress-bar"></div>
+        </div>
     </div>
 
     <div id="container"></div>
+
+    <button id="fullscreen-btn" title="Vollbild umschalten"></button>
+    <button id="camera-mode-btn" title="Fotomodus öffnen">
+        <svg viewBox="0 0 24 24">
+            <path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
+            <circle cx="12" cy="13" r="3"/>
+        </svg>
+    </button>
+
+    <div id="camera-overlay">
+        <div class="viewfinder-border">
+            <div class="viewfinder-crosshair"></div>
+            <div style="position: absolute; top: 10px; left: 10px; color: rgba(255,255,255,0.7); font-family: monospace; font-size: 12px;">REC ● [RAW]</div>
+            <div style="position: absolute; bottom: 10px; right: 10px; color: rgba(255,255,255,0.7); font-family: monospace; font-size: 12px;">DEEP SPACE</div>
+        </div>
+
+        <div id="camera-top-bar">
+            <button id="open-gallery-btn" class="btn btn-secondary" style="position: relative; border-color: #e0b0ff;">
+                🖼️ Galerie
+                <span id="gallery-badge" class="badge-new" style="display: none;">0</span>
+            </button>
+            <button id="close-camera-btn" class="btn btn-secondary" style="border-color: #ff3300; color: #ff3300;">❌ Beenden</button>
+        </div>
+
+        <div id="camera-controls">
+            <div class="cam-slider-group">
+                <label>ISO (Belichtung)</label>
+                <input type="range" id="cam-iso" min="0.1" max="5.0" step="0.1" value="1.5">
+            </div>
+            
+            <button id="shutter-btn" title="Foto aufnehmen"></button>
+            
+            <div class="cam-slider-group">
+                <label>Zoom (FOV)</label>
+                <input type="range" id="cam-zoom" min="5" max="100" step="1" value="60">
+            </div>
+        </div>
+    </div>
+
+    <div id="camera-flash"></div>
+
+    <div id="gallery-overlay">
+        <div id="gallery-header">
+            <h2 style="margin:0; color: #e0b0ff;">Deep Space Aufnahmen</h2>
+            <button id="close-gallery-btn" class="btn btn-secondary">Schliessen</button>
+        </div>
+        <div id="gallery-grid">
+            <p style="color: #666; width: 100%; text-align: center; grid-column: 1/-1;">Noch keine Fotos aufgenommen.</p>
+        </div>
+    </div>
+
+    <div id="lightbox-overlay">
+        <span id="lightbox-close">&times;</span>
+        <img id="lightbox-img" src="">
+    </div>
 
     <div id="ui-container">
         <button id="toggle-ui">✕</button>
@@ -220,7 +707,6 @@
             <div class="control-group">
                 <h3>Navigation</h3>
                 <button id="view-galaxy" class="btn btn-focus active" style="border-color: #e0b0ff;">🌌 Gesamtansicht Galaxie</button>
-                <button id="back-to-solar" class="btn btn-secondary" style="border-color: #aaa;">☀️ Zurück zum Sonnensystem</button>
                 <button id="toggle-comparison" class="btn btn-secondary" style="border-color: #4fddff; margin-top: 5px;">📏 Grössenvergleich</button>
             </div>
             
@@ -237,6 +723,11 @@
 
             <div id="info-box" style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px; font-size: 13px; text-align: center; margin-top: 10px;">
                 Ansicht: Milchstrasse
+            </div>
+            <div class="control-group" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; border-bottom: none;">
+                <button id="back-to-solar" class="btn btn-secondary" style="border-color: #aaa; width: 100%; color: #ffcc00;">
+                    ☀️ Zurück zum Sonnensystem
+                </button>
             </div>
         </div>
     </div>
@@ -353,13 +844,12 @@
         const starTypes = [
             {
                 id: 'black_hole', 
-                label: 'Sagittarius A*', 
+                label: 'Sagittarius A* (Schwarzes Loch)', 
                 color: '#111111', 
                 radius: 12.0, 
                 isShader: true,
                 radiusText: 'Ereignishorizont ~12.3 Mio. km',
                 massText: '4.1 Mio. Sonnenmassen',
-                // NEUE DATENSTRUKTUR
                 details: { 
                     'Klassifikation': 'Supermassereiches Schwarzes Loch',
                     'Typ': 'Singularität',
@@ -374,7 +864,8 @@
                 ],
                 galaxyPos: new THREE.Vector3(0, 0, 0), 
                 rotationSpeed: 0.0,
-                brightness: 3.0, minBrightness: 0.21, savedBrightness: 0.21,
+                // UPDATE: Heller als Neutronenstern, da extreme Reibungshitze in der Scheibe
+                brightness: 7.0, minBrightness: 0.21, savedBrightness: 0.21,
                 imposterScale: 12.0 
             },
             {
@@ -398,7 +889,8 @@
                 ],
                 galaxyPos: new THREE.Vector3(-150, -10, 80), 
                 rotationSpeed: 0.2,
-                brightness: 2.5, minBrightness: 1.34, savedBrightness: 2.5,
+                // UPDATE: Reduziert auf 1.5. Oberfläche ist kühl (rot), leuchtet weniger intensiv pro Fläche.
+                brightness: 1.5, minBrightness: 1.34, savedBrightness: 1.5,
                 shaderColors: { a: '#F58427', b: '#F54627' },
                 imposterScale: 35.0
             },
@@ -424,7 +916,8 @@
                 ],
                 galaxyPos: new THREE.Vector3(120, 5, 40), 
                 rotationSpeed: 0.5,
-                brightness: 2.0, minBrightness: 0.92, savedBrightness: 1.5,
+                // UPDATE: Leicht erhöht auf 2.2 für "gesundes" Leuchten, aber viel weniger als Neutronenstern.
+                brightness: 2.2, minBrightness: 0.92, savedBrightness: 2.2,
                 shaderColors: { a: '#ff9900', b: '#ffdd88' },
                 imposterScale: 5.0 
             },
@@ -449,7 +942,8 @@
                 ],
                 galaxyPos: new THREE.Vector3(200, 20, 100), 
                 rotationSpeed: 0.8,
-                brightness: 0.8, minBrightness: 0.2, savedBrightness: 0.8,
+                // UPDATE: Reduziert auf 0.6. Soll kaum leuchten.
+                brightness: 0.6, minBrightness: 0.2, savedBrightness: 0.6,
                 shaderColors: { a: '#663300', b: '#995511' },
                 imposterScale: 3.0 
             },
@@ -474,7 +968,8 @@
                 ],
                 galaxyPos: new THREE.Vector3(80, -5, -180), 
                 rotationSpeed: 1.0,
-                brightness: 3.5, minBrightness: 1.0, savedBrightness: 3.5,
+                // UPDATE: Erhöht auf 4.0. Sehr heiß und kompakt.
+                brightness: 4.0, minBrightness: 1.0, savedBrightness: 4.0,
                 shaderColors: { a: '#88ccff', b: '#eefaff' },
                 imposterScale: 2.5 
             },
@@ -499,6 +994,7 @@
                 ],
                 galaxyPos: new THREE.Vector3(-60, 15, -60), 
                 rotationSpeed: 8.0,
+                // REFERENCE: Bleibt bei 5.0 wie gewünscht.
                 brightness: 5.0, minBrightness: 1.95, savedBrightness: 5.0,
                 hasJets: true, 
                 shaderColors: { a: '#0011cc', b: '#88ccff' },
@@ -508,6 +1004,7 @@
         ];
 
         let scene, camera, renderer, controls;
+        let loadingManager;
         let composer; 
         let usePostProcessing = true;
         let bloomPass; 
@@ -919,13 +1416,107 @@
             });
         }
 
+        // --- VOLLBILD LOGIK ---
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        
+        // Icons als SVG Strings
+        const iconEnter = `<svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>`;
+        const iconExit = `<svg viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>`;
+
+        if (fullscreenBtn) {
+            fullscreenBtn.innerHTML = iconEnter; // Start-Icon setzen
+
+            function isFullscreen() {
+                return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            }
+
+            fullscreenBtn.addEventListener('click', () => {
+                const elem = document.documentElement;
+                if (!isFullscreen()) {
+                    if (elem.requestFullscreen) elem.requestFullscreen().catch(err => console.log(err));
+                    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+                    // Icon wird durch Event-Listener unten getauscht
+                } else {
+                    if (document.exitFullscreen) document.exitFullscreen();
+                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                }
+            });
+
+            // Reagiert auf ESC-Taste oder mobile Gesten
+            ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(
+                eventType => document.addEventListener(eventType, () => {
+                    if (isFullscreen()) {
+                        fullscreenBtn.innerHTML = iconExit;
+                        fullscreenBtn.title = "Vollbild beenden";
+                    } else {
+                        fullscreenBtn.innerHTML = iconEnter;
+                        fullscreenBtn.title = "Vollbild aktivieren";
+                    }
+                })
+            );
+        }
+
+        // --- LIGHTBOX LOGIK ---
+        
+        const lightboxOverlay = document.getElementById('lightbox-overlay');
+        const lightboxImg = document.getElementById('lightbox-img');
+        const lightboxClose = document.getElementById('lightbox-close');
+
+        // Funktion zum Öffnen
+        window.openLightbox = function(url) {
+            lightboxImg.src = url;
+            lightboxOverlay.style.display = 'flex';
+        };
+
+        // Funktion zum Schließen
+        function closeLightbox() {
+            lightboxOverlay.style.display = 'none';
+            lightboxImg.src = ''; // Speicher freigeben
+        }
+
+        // Event Listener für Schließen (X-Button)
+        if(lightboxClose) lightboxClose.addEventListener('click', closeLightbox);
+
+        // Event Listener: Schließen beim Klick auf den Hintergrund
+        if(lightboxOverlay) {
+            lightboxOverlay.addEventListener('click', (e) => {
+                if (e.target === lightboxOverlay) {
+                    closeLightbox();
+                }
+            });
+        }
+
         function init() {
+            // 1. MANAGER SETUP (Ganz am Anfang von init einfügen)
+            loadingManager = new THREE.LoadingManager();
+
+            loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
+                const progressBar = document.getElementById('progress-bar');
+                const loadingText = document.getElementById('loading-text');
+                const percent = (itemsLoaded / itemsTotal) * 100;
+                
+                if (progressBar) progressBar.style.width = percent + '%';
+                if (loadingText) loadingText.textContent = `Lade Daten... ${Math.round(percent)}%`;
+            };
+
+            loadingManager.onLoad = () => {
+                const screen = document.getElementById('loading-screen');
+                if (screen) {
+                    screen.style.opacity = 0;
+                    setTimeout(() => screen.style.display = 'none', 500);
+                }
+            };
+
             scene = new THREE.Scene();
             scene.fog = new THREE.FogExp2(0x050011, 0.0005);
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.00001, 20000);
             camera.position.set(0, 500, 700);
             
-            renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: false, 
+                alpha: false, 
+                preserveDrawingBuffer: true // <--- WICHTIG HINZUFÜGEN
+            });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.toneMapping = THREE.ReinhardToneMapping;
@@ -964,7 +1555,7 @@
             const sunLight = new THREE.PointLight(0xffffff, 0.5, 0); 
             scene.add(sunLight);
 
-            const textureLoader = new THREE.TextureLoader();
+            const textureLoader = new THREE.TextureLoader(loadingManager);
             
             noiseTexGlobal = textureLoader.load(CONFIG.texturePath, undefined, undefined, () => { console.warn("Noise fallback"); return textureLoader.load('https://assets.codepen.io/163598/noise.png'); });
             noiseTexGlobal.wrapS = THREE.ClampToEdgeWrapping;
@@ -986,24 +1577,30 @@
 
             animate();
             
-            setTimeout(() => {
-                document.getElementById('loading-screen').style.opacity = 0;
-                setTimeout(()=>document.getElementById('loading-screen').style.display='none', 500);
-            }, 1500);
+            
         }
 
         function createSkybox() {
             const textureLoader = new THREE.TextureLoader();
             const texture = textureLoader.load(CONFIG.starTexturePath);
             const geometry = new THREE.SphereGeometry(4000, 64, 64);
-            const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.BackSide, transparent: true, opacity: 1.0, depthWrite: false });
+            const material = new THREE.MeshBasicMaterial({ 
+                map: texture, 
+                side: THREE.BackSide, 
+                transparent: true, 
+                opacity: 1.0, 
+                depthWrite: false,
+                blending: THREE.AdditiveBlending,
+                color: new THREE.Color(1.5, 1.5, 1.5), // Werte > 1.0 erzwingen Bloom (HDR)
+                toneMapped: false // Verhindert, dass das Tone Mapping das Leuchten dimmt
+            });
             skyboxMesh = new THREE.Mesh(geometry, material);
             skyboxMesh.visible = false; 
             scene.add(skyboxMesh);
         }
 
         function createGalaxyBackground() {
-            const textureLoader = new THREE.TextureLoader();
+            const textureLoader = new THREE.TextureLoader(loadingManager);
             const texture = textureLoader.load(CONFIG.galaxyBgPath);
             const geometry = new THREE.PlaneGeometry(1200, 1200);
             const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending });
@@ -1014,38 +1611,129 @@
         }
 
         function createGalaxyCore() {
-            const spriteMaterial = new THREE.SpriteMaterial({ map: createParticleTexture(), color: 0xffeebb, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+            // 1. Eine weichere Textur speziell für den Kern erstellen
+            const canvas = document.createElement('canvas'); 
+            canvas.width = 128; canvas.height = 128; // Größere Auflösung für weicheren Verlauf
+            const ctx = canvas.getContext('2d');
+            const g = ctx.createRadialGradient(64,64,0, 64,64,64);
+            
+            // Ganz weicher Verlauf, keine harte weiße Mitte
+            g.addColorStop(0, 'rgba(255, 220, 180, 0.8)'); // Startet schon halb-transparent!
+            g.addColorStop(0.4, 'rgba(200, 100, 50, 0.1)'); // Schnell abfallend
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            
+            ctx.fillStyle = g; ctx.fillRect(0,0,128,128);
+            const coreTexture = new THREE.CanvasTexture(canvas);
+
+            const spriteMaterial = new THREE.SpriteMaterial({ 
+                map: coreTexture, 
+                color: 0xebcf34, // Ein dunkleres Orange statt Weiß verhindert das Überstrahlen
+                transparent: true, 
+                opacity: 0.8, // Gesamtopazität
+                blending: THREE.AdditiveBlending, 
+                depthWrite: false 
+            });
+
             galaxyCoreMesh = new THREE.Sprite(spriteMaterial);
-            galaxyCoreMesh.scale.set(150, 150, 1);
+            
+            // 2. Skalierung drastisch erhöhen (Verteilen des Scheins)
+            // Vorher war es 150. Jetzt 600, damit es über die halbe Galaxie reicht.
+            galaxyCoreMesh.scale.set(600, 600, 1); 
+            
             galaxyCoreMesh.position.set(0, 0, 0);
             scene.add(galaxyCoreMesh);
         }
 
         function createGalaxy() {
-            const p = CONFIG.galaxy;
-            const geometry = new THREE.BufferGeometry();
-            const positions = new Float32Array(p.count * 3);
-            const colors = new Float32Array(p.count * 3);
-            const colorInside = new THREE.Color('#ffaa88');
-            const colorOutside = new THREE.Color('#3366ff');
+            if (galaxySystem) {
+                scene.remove(galaxySystem);
+                galaxySystem.geometry.dispose();
+                galaxySystem.material.dispose();
+            }
 
-            for(let i=0; i<p.count; i++) {
+            const parameters = {
+                count: 60000,     // Etwas mehr Sterne für Dichte
+                size: 3.5,
+                radius: 450,
+                branches: 2,
+                spin: 6,
+                randomness: 0.8,  // Etwas erhöht für mehr Chaos
+                randomnessPower: 4, 
+                insideColor: '#ffaa33',
+                outsideColor: '#3366ff'
+            };
+
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(parameters.count * 3);
+            const colors = new Float32Array(parameters.count * 3);
+
+            const colorInside = new THREE.Color(parameters.insideColor);
+            const colorOutside = new THREE.Color(parameters.outsideColor);
+
+            for (let i = 0; i < parameters.count; i++) {
                 const i3 = i * 3;
-                const radius = Math.random() * p.radius;
-                const angle = Math.random() * Math.PI * 2;
-                positions[i3] = Math.cos(angle) * radius; 
-                const spreadY = (p.randomness * 20) + (radius * 0.1); 
-                positions[i3+1] = (Math.random() - 0.5) * spreadY; 
-                positions[i3+2] = Math.sin(angle) * radius; 
+
+                // 1. Radius Berechnungen (mit Loch in der Mitte)
+                const radiusDistribution = Math.pow(Math.random(), 0.5); 
+                // HIER NEU: Leichtes "Wackeln" im Radius selbst, damit die Ringe nicht so perfekt wirken
+                const radiusWobble = (Math.random() - 0.5) * 20; 
+                const radius = (radiusDistribution * parameters.radius) + radiusWobble;
+
+                // 2. Winkel Berechnungen
+                const branchAngle = (i % parameters.branches) / parameters.branches * Math.PI * 2;
+                
+                // HIER NEU: Unregelmässigkeit im Spin
+                // Wir fügen einen Zufallswert hinzu, der den Winkel leicht verschiebt.
+                // (Math.random() - 0.5) * 0.5 bedeutet eine Abweichung von +/- ~15 Grad
+                const angleWobble = (Math.random() - 0.5) * 0.5; 
+                
+                const spinAngle = (radius * parameters.spin * 0.01) + angleWobble;
+
+                // 3. Streuung (Randomness)
+                // Hier nutzen wir Math.pow für die Konzentration auf die Arme
+                
+                // Asymmetrie-Trick: Wir stören die X/Z Berechnung leicht unterschiedlich
+                // Das sorgt dafür, dass die Wolke nicht kugelsymmetrisch streut.
+                const randomX = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
+                
+                // Y-Achse (Flach gedrückt, wie besprochen)
+                const randomY = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius * 0.1;
+                
+                const randomZ = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
+
+                // 4. Finale Position
+                positions[i3    ] = Math.cos(branchAngle + spinAngle) * radius + randomX;
+                positions[i3 + 1] = randomY; 
+                positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+
+                // 5. Farben
                 const mixedColor = colorInside.clone();
-                mixedColor.lerp(colorOutside, radius / p.radius);
+                mixedColor.lerp(colorOutside, radius / parameters.radius);
+                
+                // HIER NEU: Zufällige Farb-Variation
+                // Manche Sterne sind etwas heller oder dunkler als die perfekte Mischung
                 mixedColor.r += (Math.random() - 0.5) * 0.1;
                 mixedColor.b += (Math.random() - 0.5) * 0.1;
-                colors[i3] = mixedColor.r; colors[i3+1] = mixedColor.g; colors[i3+2] = mixedColor.b;
+
+                colors[i3    ] = mixedColor.r;
+                colors[i3 + 1] = mixedColor.g;
+                colors[i3 + 2] = mixedColor.b;
             }
+
             geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
             geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-            const material = new THREE.PointsMaterial({ size: 2.5, sizeAttenuation: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true, transparent: true, opacity: 0.8, map: createParticleTexture() });
+
+            const material = new THREE.PointsMaterial({
+                size: parameters.size,
+                sizeAttenuation: true,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.9,
+                map: createParticleTexture() 
+            });
+
             galaxySystem = new THREE.Points(geometry, material);
             scene.add(galaxySystem);
         }
@@ -1082,8 +1770,8 @@
         function createInterstellarContent(bhGroup) {
             interstellarGroup = new THREE.Group();
             bhGroup.add(interstellarGroup);
-            const loader = new THREE.TextureLoader();
-            const gltfLoader = new THREE.GLTFLoader();
+            const loader = new THREE.TextureLoader(loadingManager);
+            const gltfLoader = new THREE.GLTFLoader(loadingManager);
             const dracoLoader = new THREE.DRACOLoader();
             dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
             gltfLoader.setDRACOLoader(dracoLoader);
@@ -1143,8 +1831,8 @@
         }
 
         function loadDetailScenes() {
-            const gltfLoader = new THREE.GLTFLoader();
-            const textureLoader = new THREE.TextureLoader();
+            const gltfLoader = new THREE.GLTFLoader(loadingManager);
+            const textureLoader = new THREE.TextureLoader(loadingManager);
             const noiseTex = noiseTexGlobal;
             const starTex = textureLoader.load(CONFIG.starTexturePath, undefined, undefined, () => { return textureLoader.load('https://assets.codepen.io/163598/milkyway.jpg'); });
             starTex.wrapS = starTex.wrapT = THREE.RepeatWrapping;
@@ -1645,41 +2333,111 @@
             document.getElementById('toggle-comparison').addEventListener('click', toggleSizeComparison);
 
             const btnContainer = document.getElementById('star-buttons');
+            // --- IN SETUP UI (Diesen Block ersetzen) ---
             starTypes.forEach(star => {
-                const wrapper = document.createElement('div'); wrapper.style.marginBottom = "5px";
+                const wrapper = document.createElement('div'); 
+                wrapper.style.marginBottom = "5px";
+                
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-secondary star-type-btn';
                 btn.id = `btn-${star.id}`;
-                btn.innerHTML = `<span class="star-icon" style="background-color: ${star.color}; box-shadow: 0 0 5px ${star.color};"></span>${star.label}`;
-                btn.style.borderColor = star.color; btn.style.color = star.color; 
+                
+                // --- DESIGN FIX FÜR SCHWARZES LOCH ---
+                let textColor = star.color;
+                let iconBg = star.color;
+                let iconShadow = `0 0 5px ${star.color}`;
+                
+                if (star.id === 'black_hole') {
+                    textColor = '#ffaa33'; // Akkretions-Orange für Text & Rand
+                    iconBg = '#000000';    // Das Loch selbst ist schwarz
+                    iconShadow = `0 0 8px #ffaa33`; // Oranger Glüheffekt um den Punkt
+                }
+                // -------------------------------------
+
+                // Hier nutzen wir jetzt die neuen Variablen (textColor, iconBg, iconShadow)
+                btn.innerHTML = `<span class="star-icon" style="background-color: ${iconBg}; box-shadow: ${iconShadow}; border: 1px solid ${textColor};"></span>${star.label}`;
+                btn.style.borderColor = textColor; 
+                btn.style.color = textColor; 
+                
                 btn.addEventListener('click', () => transitionToStar(star.id));
+                
                 wrapper.appendChild(btn);
+                
                 const controlsDiv = document.createElement('div');
-                controlsDiv.id = `controls-${star.id}`; controlsDiv.className = 'star-controls-wrapper';
-                controlsDiv.style.borderLeftColor = star.color; 
+                controlsDiv.id = `controls-${star.id}`; 
+                controlsDiv.className = 'star-controls-wrapper';
+                controlsDiv.style.borderLeftColor = textColor; // Auch den Rand des Sub-Menüs anpassen
+                
                 wrapper.appendChild(controlsDiv);
                 btnContainer.appendChild(wrapper);
 
+                // ... (Hier folgt dein bestehender Code für black_hole controls, neutron_star controls etc.) ...
+                // ... (Füge hier den Rest deines Codes wieder an, der in der Schleife war) ...
+                
+                // Falls du unsicher bist, hier der Rest des Blocks für Black Hole und Neutronenstern:
                 if (star.id === 'black_hole') {
-                const bhContent = document.getElementById('bh-specific-content');
-                controlsDiv.appendChild(bhContent);
-                document.getElementById('cb-fov-cinematic').addEventListener('change', (e) => { if (currentFocus === 'black_hole') { const newFov = e.target.checked ? 10 : 60; animateFOV(newFov); } });
-                document.getElementById('focus-endurance').addEventListener('click', transitionToEndurance);
-                setTimeout(() => {
-                    const diskCheck = document.getElementById('cb-disk-visible');
-                    const newDiskCheck = diskCheck.cloneNode(true);
-                    diskCheck.parentNode.replaceChild(newDiskCheck, diskCheck);
-                    newDiskCheck.addEventListener('change', (e) => { if(blackHoleUniforms) { const currentSliderVal = parseFloat(document.getElementById('shader-brightness-slider').value) / 100 * 5.0; blackHoleUniforms.uDiskIntensity.value = e.target.checked ? (currentSliderVal > 0.1 ? currentSliderVal : 1.0) : 0.0; } });
-                    const blueCheck = document.getElementById('cb-blue-mode');
-                    const newBlueCheck = blueCheck.cloneNode(true);
-                    blueCheck.parentNode.replaceChild(newBlueCheck, blueCheck);
-                    newBlueCheck.addEventListener('change', (e) => { if(blackHoleUniforms) { if(e.target.checked) { blackHoleUniforms.uColor.value.setHex(0x33CCFF); blackHoleUniforms.uColorOuter.value.setHex(0x0066FF); btn.style.borderColor = '#4fddff'; btn.style.color = '#4fddff'; controlsDiv.style.borderLeftColor = '#4fddff'; } else { blackHoleUniforms.uColor.value.setHex(0xFF8C38); blackHoleUniforms.uColorOuter.value.setHex(0x4D0D03); btn.style.borderColor = '#ff8822'; btn.style.color = '#ff8822'; controlsDiv.style.borderLeftColor = '#ff8822'; } } });
-                }, 100);
-            }
+                    const bhContent = document.getElementById('bh-specific-content');
+                    controlsDiv.appendChild(bhContent);
+                    document.getElementById('cb-fov-cinematic').addEventListener('change', (e) => { if (currentFocus === 'black_hole') { const newFov = e.target.checked ? 10 : 60; animateFOV(newFov); } });
+                    document.getElementById('focus-endurance').addEventListener('click', transitionToEndurance);
+                    
+                    // Einmaliger Fix für die Checkboxen (damit sie nicht mehrfach geklont werden beim Reload)
+                    if (!btn.dataset.listenersAttached) {
+                        setTimeout(() => {
+                            const diskCheck = document.getElementById('cb-disk-visible');
+                            const newDiskCheck = diskCheck.cloneNode(true);
+                            diskCheck.parentNode.replaceChild(newDiskCheck, diskCheck);
+                            newDiskCheck.addEventListener('change', (e) => { if(blackHoleUniforms) { const currentSliderVal = parseFloat(document.getElementById('shader-brightness-slider').value) / 100 * 5.0; blackHoleUniforms.uDiskIntensity.value = e.target.checked ? (currentSliderVal > 0.1 ? currentSliderVal : 1.0) : 0.0; } });
+                            
+                            const blueCheck = document.getElementById('cb-blue-mode');
+                            const newBlueCheck = blueCheck.cloneNode(true);
+                            blueCheck.parentNode.replaceChild(newBlueCheck, blueCheck);
+                            
+                            newBlueCheck.addEventListener('change', (e) => { 
+                                if(blackHoleUniforms) { 
+                                    // Update Button Design bei Blau-Wechsel
+                                    const newColor = e.target.checked ? '#4fddff' : '#ffaa33';
+                                    const newIconBg = '#000';
+                                    
+                                    blackHoleUniforms.uColor.value.setHex(e.target.checked ? 0x33CCFF : 0xFF8C38); 
+                                    blackHoleUniforms.uColorOuter.value.setHex(e.target.checked ? 0x0066FF : 0x4D0D03); 
+                                    
+                                    btn.style.borderColor = newColor; 
+                                    btn.style.color = newColor; 
+                                    controlsDiv.style.borderLeftColor = newColor;
+                                    // Icon aktualisieren
+                                    const icon = btn.querySelector('.star-icon');
+                                    if(icon) {
+                                        icon.style.boxShadow = `0 0 8px ${newColor}`;
+                                        icon.style.borderColor = newColor;
+                                    }
+                                } 
+                            });
+                        }, 100);
+                        btn.dataset.listenersAttached = "true";
+                    }
+                }
+                
                 if (star.id === 'neutron_star') {
                     const nsContent = document.getElementById('ns-specific-content');
                     controlsDiv.appendChild(nsContent);
-                    setTimeout(() => { document.getElementById('cb-jets-visible').addEventListener('change', (e) => { const nsEntry = starMeshes['neutron_star']; if (nsEntry && nsEntry.group) { let model = null; nsEntry.group.traverse(c => { if(c.userData.jetUniforms) model = c; }); if(model && model.userData.jetMeshes) { model.userData.jetMeshes.forEach(jet => { jet.visible = e.target.checked; }); } } }); }, 0);
+                    setTimeout(() => { 
+                        const cb = document.getElementById('cb-jets-visible');
+                        // Clone trick um alte listener zu entfernen
+                        const newCb = cb.cloneNode(true);
+                        cb.parentNode.replaceChild(newCb, cb);
+                        
+                        newCb.addEventListener('change', (e) => { 
+                            const nsEntry = starMeshes['neutron_star']; 
+                            if (nsEntry && nsEntry.group) { 
+                                let model = null; 
+                                nsEntry.group.traverse(c => { if(c.userData.jetUniforms) model = c; }); 
+                                if(model && model.userData.jetMeshes) { 
+                                    model.userData.jetMeshes.forEach(jet => { jet.visible = e.target.checked; }); 
+                                } 
+                            } 
+                        }); 
+                    }, 0);
                 }
             });
 
@@ -1836,8 +2594,16 @@
             const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32;
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, 32, 32);
+            
+            // Neuer Gradient für mehr "Punch"
             const g = ctx.createRadialGradient(16,16,0,16,16,16);
-            g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.2,'rgba(255,255,255,0.8)'); g.addColorStop(0.5,'rgba(255,255,255,0.2)'); g.addColorStop(1,'rgba(0,0,0,0)');
+            
+            // Kern bleibt länger weiß/hell
+            g.addColorStop(0, 'rgba(255,255,255,1)'); 
+            g.addColorStop(0.3, 'rgba(255,255,255,0.9)'); // Dieser neue Stopp hält die Helligkeit länger
+            g.addColorStop(0.6, 'rgba(255,255,255,0.3)'); 
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            
             ctx.fillStyle = g; ctx.fillRect(0,0,32,32);
             return new THREE.CanvasTexture(canvas);
         }
@@ -1870,7 +2636,183 @@
             }
         });
 
+        // --- FOTO MODUS LOGIK (Deep Space Version) ---
+
+        const cameraModeBtn = document.getElementById('camera-mode-btn');
+        const cameraOverlay = document.getElementById('camera-overlay');
+        const closeCameraBtn = document.getElementById('close-camera-btn');
+        const shutterBtn = document.getElementById('shutter-btn');
+        const camIsoSlider = document.getElementById('cam-iso');
+        const camZoomSlider = document.getElementById('cam-zoom');
+        const cameraFlash = document.getElementById('camera-flash');
+        
+        const galleryOverlay = document.getElementById('gallery-overlay');
+        const openGalleryBtn = document.getElementById('open-gallery-btn');
+        const closeGalleryBtn = document.getElementById('close-gallery-btn');
+        const galleryGrid = document.getElementById('gallery-grid');
+        const galleryBadge = document.getElementById('gallery-badge');
+
+        let isPhotoMode = false;
+        let photoCount = 0;
+        let storedPhotos = [];
+        let defaultToneMappingExposure = 1.5;
+        let defaultFov = 60;
+
+        function toggleCameraMode() {
+            isPhotoMode = !isPhotoMode;
+            const uiContainer = document.getElementById('ui-container');
+            const debugPanel = document.getElementById('debug-panel');
+            const movableControls = document.getElementById('movable-controls');
+            
+            const camBtn = document.getElementById('camera-mode-btn'); 
+            // NEU: Fullscreen Button holen
+            const fsBtn = document.getElementById('fullscreen-btn'); 
+
+            if (isPhotoMode) {
+                // Modus AN
+                cameraOverlay.style.display = 'block';
+                
+                if(camBtn) camBtn.style.display = 'none'; 
+                // NEU: Auch Fullscreen verstecken
+                if(fsBtn) fsBtn.style.display = 'none'; 
+
+                uiContainer.style.display = 'none'; 
+                if(debugPanel) debugPanel.style.display = 'none';
+                if(movableControls) movableControls.style.display = 'none';
+                
+                // ... (Werte speichern etc.)
+                defaultToneMappingExposure = renderer.toneMappingExposure;
+                defaultFov = camera.fov;
+                camIsoSlider.value = defaultToneMappingExposure;
+                camZoomSlider.value = defaultFov;
+                
+            } else {
+                // Modus AUS
+                cameraOverlay.style.display = 'none';
+                
+                if(camBtn) camBtn.style.display = 'flex'; 
+                // NEU: Wieder anzeigen
+                if(fsBtn) fsBtn.style.display = 'flex'; 
+
+                uiContainer.style.display = 'flex';
+                
+                if(currentFocus !== 'galaxy') {
+                     if(movableControls) movableControls.style.display = 'block';
+                }
+                
+                renderer.toneMappingExposure = defaultToneMappingExposure;
+                camera.fov = defaultFov;
+                camera.updateProjectionMatrix();
+                
+                if(blackHoleUniforms) {
+                    blackHoleUniforms.uFovScale.value = 60.0 / defaultFov;
+                }
+            }
+        }
+
+        // Kamera-Einstellungen live anwenden
+        camIsoSlider.addEventListener('input', (e) => {
+            renderer.toneMappingExposure = parseFloat(e.target.value);
+        });
+
+        camZoomSlider.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            camera.fov = val;
+            camera.updateProjectionMatrix();
+            
+            // Anpassung für Deep Space: Shader müssen Zoom kennen
+            if(blackHoleUniforms) {
+                blackHoleUniforms.uFovScale.value = 60.0 / val;
+            }
+        });
+
+        // Foto aufnehmen
+        shutterBtn.addEventListener('click', takePhoto);
+
+        function takePhoto() {
+            cameraOverlay.style.display = 'none';
+            
+            // WICHTIG FÜR DEEP SPACE:
+            // Wir müssen den COMPOSER rendern, nicht den Renderer direkt,
+            // sonst fehlt der Bloom-Effekt auf dem Foto!
+            if (composer && usePostProcessing) {
+                composer.render();
+            } else {
+                renderer.render(scene, camera);
+            }
+
+            const dataURL = renderer.domElement.toDataURL('image/png');
+
+            cameraFlash.style.opacity = 0.8;
+            setTimeout(() => { cameraFlash.style.opacity = 0; }, 100);
+
+            cameraOverlay.style.display = 'block';
+            savePhotoToGallery(dataURL);
+        }
+
+        function savePhotoToGallery(dataURL) {
+            const timestamp = new Date().toLocaleTimeString();
+            const photoObj = { id: Date.now(), url: dataURL, time: timestamp };
+            storedPhotos.unshift(photoObj);
+            photoCount++;
+
+            galleryBadge.style.display = 'flex';
+            galleryBadge.textContent = photoCount;
+
+            const btn = shutterBtn;
+            const oldBorder = btn.style.borderColor;
+            btn.style.borderColor = '#00ff00';
+            setTimeout(() => btn.style.borderColor = oldBorder, 300);
+
+            refreshGallery();
+        }
+
+        function refreshGallery() {
+            galleryGrid.innerHTML = '';
+            
+            if (storedPhotos.length === 0) {
+                galleryGrid.innerHTML = '<p style="color: #aaa; grid-column: 1/-1; text-align: center;">Keine Fotos vorhanden.</p>';
+                return;
+            }
+
+            storedPhotos.forEach(photo => {
+                const div = document.createElement('div');
+                div.className = 'gallery-item';
+                div.innerHTML = `
+                    <img src="${photo.url}" alt="Foto" onclick="openLightbox('${photo.url}')">
+                    <div class="gallery-actions">
+                        <span style="font-size: 10px; color: #aaa; align-self: center;">${photo.time}</span>
+                        <div>
+                            <a href="${photo.url}" download="space_foto_${photo.id}.png" class="gallery-btn" style="text-decoration: none; display:inline-block;">💾</a>
+                            <button class="gallery-btn" onclick="deletePhoto(${photo.id})">🗑️</button>
+                        </div>
+                    </div>
+                `;
+                galleryGrid.appendChild(div);
+            });
+        }
+
+        window.deletePhoto = function(id) {
+            storedPhotos = storedPhotos.filter(p => p.id !== id);
+            refreshGallery();
+        };
+
+        if(cameraModeBtn) cameraModeBtn.addEventListener('click', toggleCameraMode);
+        closeCameraBtn.addEventListener('click', toggleCameraMode);
+        
+        openGalleryBtn.addEventListener('click', () => {
+            galleryOverlay.style.display = 'flex';
+            galleryBadge.style.display = 'none';
+            photoCount = 0;
+        });
+        
+        closeGalleryBtn.addEventListener('click', () => {
+            galleryOverlay.style.display = 'none';
+        });
+
         init();
+
+
     </script>
 </body>
 </html>

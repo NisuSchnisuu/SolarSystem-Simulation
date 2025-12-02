@@ -941,6 +941,271 @@
             border: none;
         }
 
+        /* --- FOTO MODUS STYLES --- */
+
+        /* Der Container für das Kamera-Overlay */
+        #camera-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2000;
+            pointer-events: none; /* Klicks gehen durch, außer auf Buttons */
+        }
+
+        /* Der Sucher-Rahmen (HUD) */
+        .viewfinder-border {
+            position: absolute;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            width: 90%;
+            height: 80%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5); /* Dunkelt den Rand ab */
+            pointer-events: none;
+        }
+
+        /* Fadenkreuz in der Mitte */
+        .viewfinder-crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .viewfinder-crosshair::before, .viewfinder-crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.7);
+        }
+        .viewfinder-crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
+        .viewfinder-crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
+
+        /* Kamera-Steuerung (ISO, Zoom) */
+        #camera-controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            pointer-events: auto;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 30px;
+            border: 1px solid #444;
+        }
+
+        /* Der Auslöser-Knopf */
+        #shutter-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: #fff;
+            border: 5px solid #ccc;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: transform 0.1s;
+        }
+        #shutter-btn:active { transform: scale(0.9); background: #eee; }
+
+        /* Sliders im Kamera-Menü */
+        .cam-slider-group {
+            display: flex;
+            flex-direction: column;
+            color: #fff;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: monospace;
+            flex-grow: 1;
+        }
+        .cam-slider-group input { margin-top: 5px; cursor: pointer; }
+
+        /* Buttons oben (Schließen, Galerie) */
+        #camera-top-bar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        /* Der weiße Blitz beim Foto machen */
+        #camera-flash {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 2001;
+            transition: opacity 0.1s ease-out;
+        }
+
+        /* --- GALERIE OVERLAY --- */
+        #gallery-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 10, 15, 0.95);
+            z-index: 2100;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #gallery-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #fff;
+            border-bottom: 1px solid #444;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        #gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            overflow-y: auto;
+            padding-bottom: 50px;
+        }
+
+        .gallery-item {
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .gallery-actions {
+            padding: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .gallery-btn {
+            background: #444; color: #fff; border: none;
+            padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;
+        }
+        .gallery-btn:hover { background: #666; }
+
+        /* Kleiner Indikator am Galerie-Button, wenn neue Fotos da sind */
+        .badge-new {
+            position: absolute;
+            top: -5px; right: -5px;
+            background: red; color: white;
+            border-radius: 50%;
+            width: 18px; height: 18px;
+            font-size: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold;
+        }
+
+        /* --- LIGHTBOX (Bildvergrößerung) --- */
+        #lightbox-overlay {
+            display: none; /* Standardmäßig unsichtbar */
+            position: fixed;
+            z-index: 5000; /* Ganz oben */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9); /* Fast schwarzer Hintergrund */
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+            cursor: zoom-out; /* Zeigt an, dass man klicken kann zum Schließen */
+        }
+
+        #lightbox-img {
+            max-width: 95%;
+            max-height: 95%;
+            object-fit: contain; /* Bild behält Proportionen */
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            border: 1px solid #444;
+            cursor: default; /* Auf dem Bild selbst normaler Mauszeiger */
+        }
+
+        #lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+
+        #lightbox-close:hover {
+            color: #ff3300;
+        }
+
+        /* Cursor über den Galerie-Bildern anpassen */
+        .gallery-item img {
+            cursor: zoom-in; /* Lupe anzeigen */
+            transition: transform 0.2s;
+        }
+        .gallery-item img:hover {
+            transform: scale(1.05); /* Leichter Zoom-Effekt beim Hover */
+        }
+
+        /* --- Kamera Button (Einheitlicher Style) --- */
+        #camera-mode-btn {
+            position: fixed;
+            top: 10px;
+            /* Position: Links neben dem Fullscreen Button */
+            right: 60px; 
+            z-index: 10001;
+            
+            background: transparent !important;
+            border: none !important;
+            
+            width: 44px; 
+            height: 44px; 
+            padding: 0;
+
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            
+            cursor: pointer; 
+            transition: transform 0.2s ease;
+        }
+
+        #camera-mode-btn:hover {
+            transform: scale(1.2);
+        }
+
+        /* Design des komplexen SVG Icons */
+        #camera-mode-btn svg {
+            width: 30px;
+            height: 30px;
+            /* Hier wird die Farbe gesteuert: 70% transparentes Weiss */
+            fill: #ffffff70; 
+            filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));
+        }
+
 
     </style>
 </head>
@@ -956,9 +1221,62 @@
 
     <div id="distance-label">0 Mio. km</div>
 
+    <div id="camera-overlay">
+        <div class="viewfinder-border">
+            <div class="viewfinder-crosshair"></div>
+            <div style="position: absolute; top: 10px; left: 10px; color: rgba(255,255,255,0.7); font-family: monospace; font-size: 12px;">REC ● [RAW]</div>
+            <div style="position: absolute; bottom: 10px; right: 10px; color: rgba(255,255,255,0.7); font-family: monospace; font-size: 12px;">16mm</div>
+        </div>
+
+        <div id="camera-top-bar">
+            <button id="open-gallery-btn" class="btn btn-secondary" style="position: relative;">
+                🖼️ Galerie
+                <span id="gallery-badge" class="badge-new" style="display: none;">0</span>
+            </button>
+            <button id="close-camera-btn" class="btn btn-danger">❌ Beenden</button>
+        </div>
+
+        <div id="camera-controls">
+            <div class="cam-slider-group">
+                <label>ISO (Helligkeit)</label>
+                <input type="range" id="cam-iso" min="0.1" max="5.0" step="0.1" value="1.0">
+            </div>
+            
+            <button id="shutter-btn" title="Foto aufnehmen"></button>
+            
+            <div class="cam-slider-group">
+                <label>Zoom (FOV)</label>
+                <input type="range" id="cam-zoom" min="10" max="100" step="1" value="45">
+            </div>
+        </div>
+    </div>
+
+    <div id="camera-flash"></div>
+
+    <div id="gallery-overlay">
+        <div id="gallery-header">
+            <h2 style="margin:0;">Meine Astro-Fotos</h2>
+            <button id="close-gallery-btn" class="btn btn-secondary">Schliessen</button>
+        </div>
+        <div id="gallery-grid">
+            <p style="color: #666; width: 100%; text-align: center; grid-column: 1/-1;">Noch keine Fotos aufgenommen.</p>
+        </div>
+    </div>
+
+    <div id="lightbox-overlay">
+        <span id="lightbox-close">&times;</span>
+        <img id="lightbox-img" src="">
+    </div>
+
     <div id="ui-container">
         <button id="fullscreen-btn" title="Vollbild umschalten"></button>
         <button id="toggle-ui" class="btn btn-secondary" title="Menü verbergen">✕</button>
+        <button id="camera-mode-btn" title="Fotomodus öffnen">
+            <svg viewBox="0 0 24 24">
+                <path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
+                <circle cx="12" cy="13" r="3"/>
+            </svg>
+        </button>
 
         <div id="ui-fixed-header">
             <div class="control-group" style="margin-top: 25px; margin-bottom: 0;"> <h3>Steuerung</h3>
@@ -1125,6 +1443,7 @@
             
         
     </div> <div id="scroll-indicator">▼</div>
+    
 </div>
     <div id="info-popup">
         <div id="info-popup-content">
@@ -1160,6 +1479,8 @@
         </div>
         <div id="hud-bar"></div>
     </div>
+
+    
 
     <script>
         //  Globale Variablen 
@@ -3601,6 +3922,194 @@
             });
         }
 
+        // --- FOTO MODUS LOGIK ---
+
+        const cameraModeBtn = document.getElementById('camera-mode-btn');
+        const cameraOverlay = document.getElementById('camera-overlay');
+        const closeCameraBtn = document.getElementById('close-camera-btn');
+        const shutterBtn = document.getElementById('shutter-btn');
+        const camIsoSlider = document.getElementById('cam-iso');
+        const camZoomSlider = document.getElementById('cam-zoom');
+        const cameraFlash = document.getElementById('camera-flash');
+        
+        const galleryOverlay = document.getElementById('gallery-overlay');
+        const openGalleryBtn = document.getElementById('open-gallery-btn');
+        const closeGalleryBtn = document.getElementById('close-gallery-btn');
+        const galleryGrid = document.getElementById('gallery-grid');
+        const galleryBadge = document.getElementById('gallery-badge');
+
+        let isPhotoMode = false;
+        let photoCount = 0;
+        let storedPhotos = []; // Speichert die Base64 Strings
+        let defaultToneMappingExposure = 1.0; // Speichert den Standardwert
+        let defaultFov = 45;
+
+        // Renderer muss konfiguriert werden, damit Screenshots funktionieren!
+        // Wir müssen preserveDrawingBuffer: true setzen, sonst ist das Bild schwarz.
+        // Das musst du in deiner 'init()' Funktion anpassen:
+        // renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true }); 
+        
+        // Da wir renderer schon initiiert haben, tricksen wir später beim Aufnehmen.
+
+        function toggleCameraMode() {
+            isPhotoMode = !isPhotoMode;
+            const uiContainer = document.getElementById('ui-container');
+            
+            if (isPhotoMode) {
+                // Modus AN
+                cameraOverlay.style.display = 'block';
+                uiContainer.style.display = 'none'; // Normales UI verstecken
+                document.getElementById('distance-label').style.display = 'none'; // Label weg
+                
+                // Werte speichern
+                defaultToneMappingExposure = renderer.toneMappingExposure;
+                defaultFov = camera.fov;
+
+                // Slider initialisieren
+                camIsoSlider.value = renderer.toneMappingExposure;
+                camZoomSlider.value = camera.fov;
+                
+            } else {
+                // Modus AUS
+                cameraOverlay.style.display = 'none';
+                uiContainer.style.display = 'flex'; // Normales UI zeigen
+                
+                // Werte zurücksetzen
+                renderer.toneMappingExposure = defaultToneMappingExposure;
+                camera.fov = defaultFov;
+                camera.updateProjectionMatrix();
+            }
+        }
+
+        // Kamera-Einstellungen live anwenden
+        camIsoSlider.addEventListener('input', (e) => {
+            // ISO steuert die globale Belichtung
+            renderer.toneMappingExposure = parseFloat(e.target.value);
+        });
+
+        camZoomSlider.addEventListener('input', (e) => {
+            camera.fov = parseFloat(e.target.value);
+            camera.updateProjectionMatrix();
+        });
+
+        // Foto aufnehmen
+        shutterBtn.addEventListener('click', takePhoto);
+
+        function takePhoto() {
+            // 1. UI kurz komplett ausblenden für den Screenshot
+            cameraOverlay.style.display = 'none';
+            
+            // 2. Einmal rendern erzwingen, damit der Buffer frisch ist
+            renderer.render(scene, camera);
+
+            // 3. Bilddaten holen
+            const dataURL = renderer.domElement.toDataURL('image/png');
+
+            // 4. Blitz-Effekt
+            cameraFlash.style.opacity = 0.8;
+            setTimeout(() => { cameraFlash.style.opacity = 0; }, 100);
+
+            // 5. UI wieder anzeigen
+            cameraOverlay.style.display = 'block';
+
+            // 6. Speichern
+            savePhotoToGallery(dataURL);
+        }
+
+        function savePhotoToGallery(dataURL) {
+            const timestamp = new Date().toLocaleTimeString();
+            const photoObj = { id: Date.now(), url: dataURL, time: timestamp };
+            storedPhotos.unshift(photoObj); // Neuestes zuerst
+            photoCount++;
+
+            // Badge updaten
+            galleryBadge.style.display = 'flex';
+            galleryBadge.textContent = photoCount;
+
+            // Optional: Kleiner Toast "Gespeichert"
+            const btn = shutterBtn;
+            const oldColor = btn.style.borderColor;
+            btn.style.borderColor = '#00ff00'; // Grün blinken
+            setTimeout(() => btn.style.borderColor = '#ccc', 300);
+
+            refreshGallery();
+        }
+
+        function refreshGallery() {
+            galleryGrid.innerHTML = '';
+            
+            if (storedPhotos.length === 0) {
+                galleryGrid.innerHTML = '<p style="color: #aaa; grid-column: 1/-1; text-align: center;">Keine Fotos vorhanden.</p>';
+                return;
+            }
+
+            storedPhotos.forEach(photo => {
+                const div = document.createElement('div');
+                div.className = 'gallery-item';
+                div.innerHTML = `
+                    <img src="${photo.url}" alt="Foto" onclick="openLightbox('${photo.url}')">
+                    <div class="gallery-actions">
+                        <span style="font-size: 10px; color: #aaa; align-self: center;">${photo.time}</span>
+                        <div>
+                            <a href="${photo.url}" download="space_foto_${photo.id}.png" class="gallery-btn" style="text-decoration: none; display:inline-block;">💾</a>
+                            <button class="gallery-btn" onclick="deletePhoto(${photo.id})">🗑️</button>
+                        </div>
+                    </div>
+                `;
+                galleryGrid.appendChild(div);
+            });
+        }
+
+        // Global verfügbar machen für den onclick im HTML
+        window.deletePhoto = function(id) {
+            storedPhotos = storedPhotos.filter(p => p.id !== id);
+            refreshGallery();
+        };
+
+        // Event Listeners
+        if(cameraModeBtn) cameraModeBtn.addEventListener('click', toggleCameraMode);
+        closeCameraBtn.addEventListener('click', toggleCameraMode);
+        
+        openGalleryBtn.addEventListener('click', () => {
+            galleryOverlay.style.display = 'flex';
+            galleryBadge.style.display = 'none'; // Badge resetten beim Öffnen
+            photoCount = 0; // Zähler resetten (nur visuell für "Neue")
+        });
+        
+        closeGalleryBtn.addEventListener('click', () => {
+            galleryOverlay.style.display = 'none';
+        });
+
+        // --- LIGHTBOX LOGIK ---
+        
+        const lightboxOverlay = document.getElementById('lightbox-overlay');
+        const lightboxImg = document.getElementById('lightbox-img');
+        const lightboxClose = document.getElementById('lightbox-close');
+
+        // Funktion zum Öffnen
+        window.openLightbox = function(url) {
+            lightboxImg.src = url;
+            lightboxOverlay.style.display = 'flex';
+        };
+
+        // Funktion zum Schließen
+        function closeLightbox() {
+            lightboxOverlay.style.display = 'none';
+            lightboxImg.src = ''; // Speicher freigeben
+        }
+
+        // Event Listener für Schließen (X-Button)
+        if(lightboxClose) lightboxClose.addEventListener('click', closeLightbox);
+
+        // Event Listener: Schließen beim Klick auf den Hintergrund
+        if(lightboxOverlay) {
+            lightboxOverlay.addEventListener('click', (e) => {
+                if (e.target === lightboxOverlay) {
+                    closeLightbox();
+                }
+            });
+        }
+
         function init() {
 
             //Loading Screen
@@ -3662,8 +4171,13 @@
 
             renderer = new THREE.WebGLRenderer({ 
                 antialias: true,
-                alpha: false  // < DAS IST DER E LÖSUNGSANSATZ
+                alpha: false,
+                preserveDrawingBuffer: true // <--- WICHTIG FÜR SCREENSHOTS
             });
+
+            renderer.toneMapping = THREE.LinearToneMapping; // Aktiviert die Belichtungssteuerung
+            renderer.toneMappingExposure = 1.0;             // Standard-Helligkeit
+
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
@@ -3945,7 +4459,7 @@
 
                     // Nach 1.5 Sekunden zur neuen Datei wechseln
                     setTimeout(() => {
-                        window.location.href = 'deep_space.html';
+                        window.location.href = 'Deep_Space.html';
                     }, 1500);
                 });
             }
@@ -4218,7 +4732,7 @@
             clickableObjects.push(earth); 
             earthTiltPivot.add(earth); 
             
-//  Achsenlinie erstellen 
+            //  Achsenlinie erstellen 
             const axisMat = new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 2 }); // Helles Gelb
             const axisPoints = [
                 new THREE.Vector3(0, -EARTH_RADIUS * 1.5, 0),
@@ -4230,7 +4744,7 @@
             earthTiltPivot.add(earthAxisLine); // Zur Pivot-Gruppe hinzufügen
             
 
-//  Äquatorlinie erstellen 
+            //  Äquatorlinie erstellen 
             const equatorRadius = EARTH_RADIUS * 1.01; // 1% größer als die Erde
             const equatorPoints = [];
             const equatorSegments = 64;
@@ -8039,5 +8553,7 @@
 
         init();
     </script>
+
+    
 </body>
 </html>
