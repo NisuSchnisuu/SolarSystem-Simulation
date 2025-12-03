@@ -1075,26 +1075,34 @@
 
         #gallery-grid {
             display: grid;
+            /* Kleinere Kacheln: 150px statt 300px */
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 15px;
-            overflow-y: auto;
+            gap: 10px;
+            
+            /* --- SCROLL-VERHALTEN --- */
+            overflow-y: auto;   /* Vertikal scrollen: JA */
+            overflow-x: hidden; /* Horizontal scrollen: VERBOTEN */
+            
+            /* Layout & Platzierung */
+            padding: 10px;      /* Kleiner Innenabstand */
             padding-bottom: 50px;
-        }
-
-        .gallery-item {
-            background: #222;
-            border: 1px solid #444;
-            border-radius: 8px;
-            overflow: hidden;
-            position: relative;
-            animation: fadeIn 0.3s ease;
+            
+            /* Höhe berechnen (100% minus Header-Höhe) */
+            height: calc(100% - 70px); 
+            
+            /* WICHTIG: Verhindert, dass Padding die Breite vergrößert */
+            box-sizing: border-box; 
+            width: 100%;
+            
+            align-content: start; 
         }
 
         .gallery-item img {
             width: 100%;
-            height: 100px;
-            object-fit: cover;
+            aspect-ratio: 1 / 1; /* Erzwingt ein quadratisches Seitenverhältnis 1:1 */
+            object-fit: cover;   /* WICHTIG: Schneidet Ränder ab, statt das Bild zu verzerren */
             display: block;
+            border-radius: 4px;  /* Optional: Hübscht die Ecken leicht auf */
         }
 
         .gallery-actions {
@@ -1245,8 +1253,8 @@
             <button id="shutter-btn" title="Foto aufnehmen"></button>
             
             <div class="cam-slider-group">
-                <label>Zoom (FOV)</label>
-                <input type="range" id="cam-zoom" min="10" max="100" step="1" value="45">
+                <label>🔭 Teleskop-Zoom</label>
+                <input type="range" id="cam-zoom" min="0" max="100" step="0.5" value="30">
             </div>
         </div>
     </div>
@@ -1255,8 +1263,13 @@
 
     <div id="gallery-overlay">
         <div id="gallery-header">
-            <h2 style="margin:0;">Meine Astro-Fotos</h2>
-            <button id="close-gallery-btn" class="btn btn-secondary">Schliessen</button>
+            <h2 style="margin:0; color: #e0b0ff;">Deep Space Aufnahmen</h2>
+            <div style="display: flex; gap: 10px;">
+                <button id="delete-all-btn" class="btn btn-secondary" style="border-color: #ff3300; color: #ff3300; width: auto; min-width: 120px;">
+                    🗑️ Alle löschen
+                </button>
+                <button id="close-gallery-btn" class="btn btn-secondary" style="width: auto;">Schliessen</button>
+            </div>
         </div>
         <div id="gallery-grid">
             <p style="color: #666; width: 100%; text-align: center; grid-column: 1/-1;">Noch keine Fotos aufgenommen.</p>
@@ -3967,7 +3980,10 @@
 
                 // Slider initialisieren
                 camIsoSlider.value = renderer.toneMappingExposure;
-                camZoomSlider.value = camera.fov;
+                // Setzt den Slider auf ca. 30% (entspricht etwa dem Standard 60° FOV)
+                camZoomSlider.value = 33; 
+                // Event feuern, damit der Zoom sofort angewendet wird
+                camZoomSlider.dispatchEvent(new Event('input'));
                 
             } else {
                 // Modus AUS
@@ -3987,9 +4003,26 @@
             renderer.toneMappingExposure = parseFloat(e.target.value);
         });
 
+        // --- NEUER TELESKOP-ZOOM EVENT LISTENER ---
         camZoomSlider.addEventListener('input', (e) => {
-            camera.fov = parseFloat(e.target.value);
+            const zoomPercent = parseFloat(e.target.value); // 0 bis 100
+            
+            // Definition: 
+            // 0% Zoom = 90 Grad FOV (Weitwinkel)
+            // 100% Zoom = 1 Grad FOV (Extremes Teleskop)
+            const maxFov = 90; 
+            const minFov = 1; 
+
+            // Formel: Je mehr Zoom (Slider nach rechts), desto kleiner der FOV
+            const newFov = maxFov - ((zoomPercent / 100) * (maxFov - minFov));
+
+            camera.fov = newFov;
             camera.updateProjectionMatrix();
+            
+            // WICHTIG: Shader des Schwarzen Lochs anpassen, damit es nicht verzerrt
+            if(blackHoleUniforms) {
+                blackHoleUniforms.uFovScale.value = 60.0 / newFov;
+            }
         });
 
         // Foto aufnehmen
@@ -4051,8 +4084,9 @@
                     <div class="gallery-actions">
                         <span style="font-size: 10px; color: #aaa; align-self: center;">${photo.time}</span>
                         <div>
-                            <a href="${photo.url}" download="space_foto_${photo.id}.png" class="gallery-btn" style="text-decoration: none; display:inline-block;">💾</a>
-                            <button class="gallery-btn" onclick="deletePhoto(${photo.id})">🗑️</button>
+                            <a href="${photo.url}" download="space_foto_${photo.id}.png" class="gallery-btn" style="text-decoration: none; display:inline-block; font-size: 16px;">⬇</a>
+                            
+                            <button class="gallery-btn" onclick="deletePhoto(${photo.id})" style="font-size: 16px;">✕</button>
                         </div>
                     </div>
                 `;
@@ -4065,6 +4099,35 @@
             storedPhotos = storedPhotos.filter(p => p.id !== id);
             refreshGallery();
         };
+
+        // --- NEU: Funktion zum Löschen aller Bilder ---
+        function deleteAllPhotos() {
+            // Sicherheitsabfrage, damit man nicht aus Versehen klickt
+            if (storedPhotos.length === 0) return; // Nichts zu tun
+            
+            const confirmDelete = confirm("Möchtest du wirklich ALLE Fotos unwiderruflich löschen?");
+            
+            if (confirmDelete) {
+                // Array leeren
+                storedPhotos = [];
+                photoCount = 0;
+                
+                // Badge (roter Punkt) ausblenden
+                if (galleryBadge) {
+                    galleryBadge.style.display = 'none';
+                    galleryBadge.textContent = '0';
+                }
+                
+                // Galerie neu rendern (zeigt dann "Keine Fotos vorhanden")
+                refreshGallery();
+            }
+        }
+
+        // Event Listener für den neuen Button registrieren
+        const deleteAllBtn = document.getElementById('delete-all-btn');
+        if (deleteAllBtn) {
+            deleteAllBtn.addEventListener('click', deleteAllPhotos);
+        }
 
         // Event Listeners
         if(cameraModeBtn) cameraModeBtn.addEventListener('click', toggleCameraMode);
@@ -4328,15 +4391,21 @@
 
                 // Wir warten die berechnete Zeit
                 setTimeout(() => {
-                    if (rocketControls) rocketControls.style.display = 'block';
                     
-                    // HUD als "Einladung" anzeigen!
-                    updateLaunchHUD(true, "SYSTEM CHECK", "Warte auf Startfreigabe...", "⏱️", 0);
+                    // KORREKTUR: Nur anzeigen, wenn NICHT im Real-Scale-Modus
+                    if (!isRealScaleActive) {
+                        if (rocketControls) rocketControls.style.display = 'block';
+                        
+                        // HUD als "Einladung" anzeigen!
+                        updateLaunchHUD(true, "SYSTEM CHECK", "Warte auf Startfreigabe...", "⏱️", 0);
+                    } else {
+                        console.log("Rakete ist bereit, wird aber erst nach Beenden des Real-Scale-Modus angezeigt.");
+                    }
                     
                     // Kleiner Sound oder Log-Hinweis, wenn er erscheint
                     console.log("🚀 Raketenstart JETZT verfügbar!");
                     
-                }, randomDelay); 
+                }, randomDelay);
             } else {
                 console.log("❌ Kein Raketenstart in dieser Sitzung.");
             }
@@ -4395,45 +4464,7 @@
                 playPauseBtn.innerHTML = iconPlay;
             }
 
-            // --- DEEP SPACE / BLACK HOLE LOGIK ---
-
-            // 1. Der Zustand: Ist die Mission freigeschaltet?
-            let isDeepSpaceUnlocked = false;
-
-            // 2. Die Funktion zum Freischalten (Das ist der Teil, den du später mit Aliens verbindest)
-            function unlockDeepSpaceMission() {
-                if (isDeepSpaceUnlocked) return; // Schon offen? Dann nichts tun.
-
-                isDeepSpaceUnlocked = true;
-                
-                // UI sichtbar machen
-                const controls = document.getElementById('deep-space-controls');
-                if (controls) {
-                    controls.style.display = 'block';
-                    
-                    // Optional: Automatisch dorthin scrollen, damit man es sieht
-                    controls.scrollIntoView({ behavior: 'smooth' });
-                }
-
-                // Optional: Ein Sound oder eine Toast-Nachricht abspielen
-                // (Hier nutzen wir deinen existierenden Toast-Button für Feedback)
-                const toast = document.getElementById('info-toast-button');
-                if (toast) {
-                    toast.textContent = "⚠️ WARNUNG: Wurmloch-Koordinaten empfangen!";
-                    toast.style.display = 'block';
-                    toast.style.backgroundColor = '#9900cc'; // Lila Warnung
-                    toast.style.color = '#fff';
-                    
-                    setTimeout(() => { 
-                        toast.style.display = 'none'; 
-                        // Farbe zurücksetzen für normale Infos
-                        toast.style.backgroundColor = '#00ffff'; 
-                        toast.style.color = '#000';
-                    }, 5000);
-                }
-                
-                console.log("Deep Space Mission freigeschaltet!");
-            }
+            
 
             // 3. Der Shortcut (Shift + D)
             window.addEventListener('keydown', (e) => {
@@ -4464,6 +4495,41 @@
                 });
             }
             
+        }
+
+        // --- DEEP SPACE LOGIK (Global) ---
+        let isDeepSpaceUnlocked = false;
+
+        function unlockDeepSpaceMission() {
+            if (isDeepSpaceUnlocked) return; 
+
+            isDeepSpaceUnlocked = true;
+            
+            // UI sichtbar machen
+            const controls = document.getElementById('deep-space-controls');
+            if (controls) {
+                controls.style.display = 'block';
+                // Automatisch dorthin scrollen
+                controls.scrollIntoView({ behavior: 'smooth' });
+            }
+
+            // Feedback Toast anzeigen
+            const toast = document.getElementById('info-toast-button');
+            if (toast) {
+                // Hier der Text, den du wolltest:
+                toast.textContent = "👽 EINGEHEND: Aliens haben Warpantrieb-Technologie geteilt!";
+                toast.style.display = 'block';
+                toast.style.backgroundColor = '#9900cc'; // Lila Warnung
+                toast.style.color = '#fff';
+                
+                setTimeout(() => { 
+                    toast.style.display = 'none'; 
+                    toast.style.backgroundColor = '#00ffff'; 
+                    toast.style.color = '#000';
+                }, 6000);
+            }
+            
+            console.log("Deep Space Mission durch Aliens freigeschaltet!");
         }
         
         function definePlanetData() {
@@ -4674,6 +4740,8 @@
                 }
             ];
         }
+
+
 
         function easeInOutCubic(t) {
             return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -6192,7 +6260,7 @@
             } else if (ufoEncounterCount === 1) {
                 // Begegnung 2: Eine e Nachricht
                 titleEl.textContent = "🛸 Signal [Priorität Rot]";
-                textEl.textContent = "Wir sind es nochmal! Wir konnten Herrn Maurer nicht festnehmen, Er hatte einen Gehilfen namens Bursatsch oder so ähnlich. Wir hatten keine Chance gegen die Zwei. Ausserdem sehen wir auf unserem Radar, dass ein feindliches Raumschiff auf dem Weg zur Erde ist, um diese zu zerstören. Sollen wir das Problem für euch beseitigen?";
+                textEl.textContent = "Wir sind es nochmal! Wir konnten Herrn Maurer nicht festnehmen, Er hatte einen Gehilfen namens Bursatsch oder so ähnlich. Wir hatten keine Chance gegen die Zwei 😡. Ausserdem sehen wir auf unserem Radar, dass ein feindliches Raumschiff auf dem Weg zur Erde ist, um diese zu zerstören. Sollen wir das Problem für euch beseitigen?";
                 
                 // Button-Texte anpassen
                 document.getElementById('ufo-yes-btn').textContent = "Ja, gerne! ☄️";
@@ -6204,7 +6272,7 @@
             } else {
                 // Begegnung 3 (und alle weiteren)
                 titleEl.textContent = "🛸 [Übertragung gestört]";
-                textEl.textContent = "Verbindung instabil... *kzzrt* ... Herr Maurer ist... *bzzzt* ... in Gewahrsam. Mission ... *krrk* ... erfolgreich. Danke für die ... *rausch* ... Kooperation. Das Spaceship ... *bzzz* ... ist jetzt euer Probl ... *Klick* ...";
+                textEl.textContent = "Verbindung instabil... *kzzrt* ... Herr Maurer ist... *bzzzt* ... in Gewahrsam. Mission ... *krrk* ... erfolgreich. Danke für die ... *rausch* ... Kooperation. Als Dank, ... *krch* ... teilen wir unsere Technologie mit dir. Das Raumschiff ... *bzzz* ... ist jetzt euer Probl ... *Klick* ...";
                 
                 // Nur den "Schliessen"-Button anzeigen
                 initialButtons.style.display = 'none';
@@ -6214,6 +6282,11 @@
                 // Eigene Klick-Logik für diesen "End-Dialog"
                 closeBtn.onclick = () => {
                      document.getElementById('ufo-dialog').style.display = 'none';
+                     // --- NEU: HIER WIRD FREIGESCHALTET ---
+                     // Wenn es das 3. Treffen ist (Index 2, da wir bei 0 starten)
+                     if (ufoEncounterCount === 2) {
+                         unlockDeepSpaceMission();
+                     }
                      ufoState = 'leaving';
                      ufoDepartureTarget = null; 
                      ufoLeaveTimer = 0; 
