@@ -1853,7 +1853,7 @@
                 const group = new THREE.Group();
                 group.position.copy(star.galaxyPos);
                 if (star.id === 'neutron_star') { group.rotation.z = 0.25; }
-                if (star.id === 'black_hole') { group.visible = false; } else { group.visible = true; const imposterSize = star.imposterScale || star.radius; const imposter = createImposterSprite(star.color, imposterSize); group.add(imposter); }
+                group.visible = false;
                 if (star.id === 'black_hole') {
                     blackHoleUniforms = { iTime: { value: 0 }, iChannel0: { value: starTex }, iChannel1: { value: noiseTex }, uColor: { value: new THREE.Color(1.0, 0.55, 0.2) }, uColorOuter: { value: new THREE.Color(0.3, 0.05, 0.01) }, uDiskIntensity: { value: 1.0 }, uAngle: { value: 0.0 }, uTilt: { value: -0.2 }, uDiskRotation: { value: 0.0 }, uBlackHolePos: { value: star.galaxyPos }, uFovScale: { value: 1.0 } };
                     const geometry = new THREE.BoxGeometry(star.radius * 5.0, star.radius * 5.0, star.radius * 5.0);
@@ -1930,8 +1930,8 @@
 
             Object.values(starMeshes).forEach(entry => {
                 entry.group.position.copy(entry.data.galaxyPos); 
-                if(entry.data.id === 'black_hole') entry.group.visible = false;
-                else entry.group.visible = true;
+                // Alles unsichtbar machen, da nur die Partikel-Galaxie zu sehen sein soll
+                entry.group.visible = false;
             });
 
             flyTo(new THREE.Vector3(0, 500, 700), new THREE.Vector3(0,0,0), 3.0, () => {
