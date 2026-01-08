@@ -1,0 +1,25 @@
+{
+  "name": "solar-system-simulation",
+  "version": "1.0.0",
+  "description": "Eine interaktive Sonnensystem-Simulation",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "space",
+    "simulation",
+    "threejs",
+    "solar-system"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "vite": "^6.0.0",
+    "vite-plugin-pwa": "^1.2.0"
+  },
+  "dependencies": {
+    "three": "^0.128.0"
+  }
+}

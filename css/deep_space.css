@@ -1,0 +1,619 @@
+/* BASIS-SETUP */
+        html, body {
+            height: 100%; width: 100%; margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #000; color: #fff; overflow: hidden; /* Kein Scrollen am Body */
+            overscroll-behavior: none;
+            user-select: none; /* Verhindert Textauswahl beim Tippen */
+            -webkit-user-select: none;
+        }
+        
+        #container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        
+        /* TRANSITION OVERLAY */
+        #scene-transition-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 9999; pointer-events: none;
+            opacity: 0; transition: opacity 1.5s ease-in-out;
+        }
+
+        /* LABELS (Größenvergleich) */
+        #labels-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 50; display: none;
+        }
+        .star-label {
+            position: absolute;
+            display: flex; flex-direction: column; align-items: center;
+            pointer-events: none;
+            transform: translate(-50%, -100%);
+            transition: top 0.1s, left 0.1s;
+        }
+        .label-content {
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid rgba(79, 221, 255, 0.5);
+            border-radius: 4px; padding: 6px 12px; text-align: center;
+            min-width: 100px; /* Etwas kleiner für Mobile */
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        .label-title { font-weight: bold; color: #e0b0ff; margin-bottom: 4px; font-size: 12px; }
+        .label-detail { color: #ccc; font-size: 10px; line-height: 1.4; }
+        .label-line {
+            width: 1px; background: rgba(255, 255, 255, 0.5); margin-top: -1px;
+        }
+
+        /* UI CONTAINER */
+        #ui-container {
+            position: fixed; top: 10px; left: 10px;
+            background: rgba(0, 0, 0, 0.85); 
+            padding: 12px; /* Etwas weniger Padding */
+            border-radius: 12px;
+            
+            /* Dynamische Breite, die sich anpasst */
+            width: calc(100% - 20px); 
+            max-width: 300px; /* Maximale Breite begrenzt */
+            
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: 85dvh; display: flex; flex-direction: column;
+            overflow: hidden; /* Verhindert Overflow am Container selbst */
+            z-index: 1000;
+            transition: max-width 0.3s ease, padding 0.3s ease;
+        }
+
+        #ui-container.minimized { max-width: 40px; padding: 8px; height: 30px; }
+        #ui-container.minimized .control-group, 
+        #ui-container.minimized #ui-scrollable-content { display: none !important; }
+        
+        #toggle-ui {
+            position: absolute; top: 5px; right: 5px; width: 30px; height: 30px;
+            background: transparent; border: none; color: white; font-size: 18px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            z-index: 1001;
+        }
+
+        /* SCROLLBEREICH */
+        #ui-scrollable-content { 
+            flex-grow: 1; 
+            overflow-y: auto; 
+            overflow-x: hidden; /* Horizontales Scrollen verbieten */
+            padding-right: 5px; /* Platz für Scrollbar */
+            margin-top: 25px; /* Platz für X Button */
+            scrollbar-width: thin; scrollbar-color: #555 #333; 
+        }
+
+        .control-group { margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
+        .control-group:last-child { border-bottom: none; }
+        .control-group h3 { font-size: 13px; font-weight: 600; margin: 0 0 8px 0; color: #e0b0ff; letter-spacing: 0.5px; }
+
+        /* BUTTONS */
+        .btn {
+            background-color: #222; color: white; border: 1px solid #555; 
+            padding: 8px 10px; /* Kompakter */
+            border-radius: 6px; cursor: pointer; 
+            font-size: 13px; font-weight: 500;
+            width: 100%; margin-bottom: 4px; transition: all 0.2s ease;
+            position: relative; 
+            
+            /* WICHTIG FÜR MOBILE: Text abschneiden statt Container sprengen */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            box-sizing: border-box; 
+        }
+        .btn:hover { filter: brightness(1.2); }
+        .btn.active { font-weight: bold; box-shadow: inset 0 0 10px rgba(255,255,255,0.1); }
+
+        .star-controls-wrapper {
+            display: none;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            margin-top: 5px; margin-bottom: 5px; padding: 8px;
+            border-left: 2px solid transparent; 
+        }
+        
+        .star-type-btn { 
+            display: flex; align-items: center; justify-content: flex-start; text-align: left; 
+        }
+        .star-icon { 
+            min-width: 10px; width: 10px; height: 10px; 
+            border-radius: 50%; display: inline-block; margin-right: 8px; flex-shrink: 0; 
+        }
+
+        /* SLIDER & INPUTS */
+        /* SLIDER & INPUTS (Index-Style) */
+        
+        /* 1. Basis-Styling & Hitbox vergrössern */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 24px;             /* Erhöht die "Tap-Fläche" */
+            background: transparent;
+            cursor: pointer;
+            margin: 8px 0;
+            box-sizing: border-box;
+        }
+
+        /* Fokus-Rahmen entfernen */
+        input[type="range"]:focus {
+            outline: none;
+        }
+
+        /* 2. Die LEISTE (Track) stylen */
+        
+        /* WebKit (Chrome, Safari, iOS) */
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            background: #4a4a4a;
+            border-radius: 3px;
+            border: 1px solid #333;
+        }
+
+        /* Firefox */
+        input[type="range"]::-moz-range-track {
+            width: 100%;
+            height: 6px;
+            background: #4a4a4a;
+            border-radius: 3px;
+            border: 1px solid #333;
+        }
+
+        /* 3. Den DAUMEN (Knopf) stylen */
+
+        /* WebKit (Chrome, Safari, iOS) */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            
+            height: 30px;  /* Grösserer Kreis wie in index.html */
+            width: 30px;
+            border-radius: 50%;
+            background: #e0b0ff; /* Dein Lila statt Blau */
+            border: 2px solid #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            
+            /* Wichtig: Vertikal zentrieren */
+            margin-top: -12px; 
+        }
+
+        /* Firefox */
+        input[type="range"]::-moz-range-thumb {
+            height: 20px; 
+            width: 20px;
+            border-radius: 50%;
+            background: #e0b0ff; /* Dein Lila statt Blau */
+            border: 2px solid #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            /* Firefox braucht meist kein margin-top für die Zentrierung */
+        }
+
+        /* Optional: Glow-Effekt beim Anfassen */
+        input[type="range"]:focus::-webkit-slider-thumb {
+            box-shadow: 0 0 10px rgba(224, 176, 255, 0.8);
+        }
+        input[type="range"]:focus::-moz-range-thumb {
+            box-shadow: 0 0 10px rgba(224, 176, 255, 0.8);
+        }
+
+        label {
+            font-size: 11px; color: #ddd; display: flex; align-items: center;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* INFO & POPUP */
+        #info-box {
+            background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; 
+            font-size: 11px; text-align: center; margin-top: 5px; color: #aaa;
+        }
+
+        #info-popup {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95); padding: 20px; border-radius: 12px;
+            border: 1px solid #e0b0ff; z-index: 2000; width: 85%; max-width: 350px;
+            box-shadow: 0 0 30px rgba(111, 66, 193, 0.4);
+        }
+        #popup-title { margin: 0 0 10px 0; color: #e0b0ff; border-bottom: 1px solid #555; padding-bottom: 8px; font-size: 16px;}
+        #popup-details p { font-size: 13px; line-height: 1.4; color: #ccc; margin: 5px 0; }
+        
+        #info-toast-button {
+            display: none; position: fixed; bottom: 20px; right: 20px; z-index: 980;
+            background-color: #e0b0ff; color: #000; border: 2px solid #fff;
+            padding: 8px 12px; font-weight: bold; cursor: pointer; font-size: 12px; border-radius: 20px;
+        }
+
+        /* --- NEUER LADEBILDSCHIRM --- */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            
+            /* HIER DAS BILD ÄNDERN */
+            background-image: url('../Deep_space_Files/deep_space_loading_screen.webp'); 
+            
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out;
+            color: #fff;
+        }
+
+        #loading-screen::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* Etwas dunkler als Index für Deep Space */
+            z-index: -1;
+        }
+
+        #loading-screen p {
+            font-size: 18px;
+            font-family: monospace;
+            margin-top: 20px;
+            margin-bottom: 0;
+            color: #e0b0ff; /* Lila Text passend zum Theme */
+            text-shadow: 0 0 10px rgba(224, 176, 255, 0.5);
+            z-index: 2;
+        }
+
+        #progress-bar-container {
+            width: 80%;
+            max-width: 300px;
+            height: 6px;
+            background-color: #1a0b2e; /* Dunkles Lila */
+            border: 1px solid #444;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 15px;
+            position: relative;
+            z-index: 2;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #e0b0ff; /* Dein Deep-Space Lila */
+            box-shadow: 0 0 10px #e0b0ff;
+            border-radius: 5px;
+            transition: width 0.2s ease-out;
+        }
+
+        /* Debug Panel */
+        #debug-panel {
+            font-size: 10px !important; width: 200px !important;
+        }
+
+        /* --- MOBILE OPTIMIERUNG (Kleine Bildschirme) --- */
+        @media (max-width: 400px) {
+            #ui-container {
+                left: 5px; width: calc(100% - 10px); padding: 10px;
+            }
+            .btn {
+                font-size: 11px; padding: 6px 8px;
+            }
+            h3 { font-size: 12px; }
+            label { font-size: 10px; }
+            #toggle-ui { top: 2px; right: 2px; }
+        }
+
+        /* --- FOTO MODUS STYLES --- */
+
+        /* Der Container für das Kamera-Overlay */
+        #camera-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2000;
+            pointer-events: none; /* Klicks gehen durch, außer auf Buttons */
+        }
+
+        /* Der Sucher-Rahmen (HUD) */
+        .viewfinder-border {
+            position: absolute;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            width: 90%;
+            height: 80%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5); /* Dunkelt den Rand ab */
+            pointer-events: none;
+        }
+
+        /* Fadenkreuz in der Mitte */
+        .viewfinder-crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .viewfinder-crosshair::before, .viewfinder-crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.7);
+        }
+        .viewfinder-crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
+        .viewfinder-crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
+
+        /* Kamera-Steuerung (ISO, Zoom) */
+        #camera-controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            pointer-events: auto;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 30px;
+            border: 1px solid #444;
+        }
+
+        /* --- BUTTONS OBEN RECHTS --- */
+
+        /* 1. Fullscreen Button (Ganz rechts) - Index Style */
+        #fullscreen-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 10000 !important;
+            
+            background: transparent !important;
+            border: none !important;
+            
+            width: 44px; 
+            height: 44px; 
+            padding: 0;
+
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            
+            cursor: pointer; 
+            transition: transform 0.2s ease; /* Nur Transform animieren */
+        }
+
+        #fullscreen-btn:hover {
+            transform: scale(1.2); /* Nur vergrössern, Deckkraft ist schon im SVG geregelt */
+        }
+
+        /* SVG Icon Style */
+        #fullscreen-btn svg {
+            width: 30px;  /* 30px statt 32px für den feineren Look */
+            height: 30px;
+            fill: #ffffff70; /* WICHTIG: 70% Weiss (Transparent) wie im Index */
+            filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));
+        }
+
+        /* 2. Kamera Button (Links daneben) */
+        /* --- Kamera Button (Einheitlicher Style) --- */
+        #camera-mode-btn {
+            position: fixed;
+            top: 10px;
+            /* Position: Links neben dem Fullscreen Button */
+            right: 60px; 
+            z-index: 10001;
+            
+            background: transparent !important;
+            border: none !important;
+            
+            width: 44px; 
+            height: 44px; 
+            padding: 0;
+
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            
+            cursor: pointer; 
+            transition: transform 0.2s ease;
+        }
+
+        #camera-mode-btn:hover {
+            transform: scale(1.2);
+        }
+
+        /* Design des komplexen SVG Icons */
+        #camera-mode-btn svg {
+            width: 30px;
+            height: 30px;
+            /* Hier wird die Farbe gesteuert: 70% transparentes Weiss */
+            fill: #ffffff70; 
+            filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));
+        }
+
+        /* Der Auslöser-Knopf */
+        #shutter-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: #fff;
+            border: 5px solid #ccc;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: transform 0.1s;
+        }
+        #shutter-btn:active { transform: scale(0.9); background: #eee; }
+
+        /* Sliders im Kamera-Menü */
+        .cam-slider-group {
+            display: flex;
+            flex-direction: column;
+            color: #fff;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: monospace;
+            flex-grow: 1;
+        }
+        .cam-slider-group input { margin-top: 5px; cursor: pointer; }
+
+        /* Buttons oben (Schließen, Galerie) */
+        #camera-top-bar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        /* Der weiße Blitz beim Foto machen */
+        #camera-flash {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 2001;
+            transition: opacity 0.1s ease-out;
+        }
+
+        /* --- GALERIE OVERLAY --- */
+        #gallery-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 10, 15, 0.95);
+            z-index: 2100;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        
+
+        #gallery-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #fff;
+            border-bottom: 1px solid #444;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        #gallery-grid {
+            display: grid;
+            /* Kleinere Kacheln: 150px statt 300px */
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            
+            /* --- SCROLL-VERHALTEN --- */
+            overflow-y: auto;   /* Vertikal scrollen: JA */
+            overflow-x: hidden; /* Horizontal scrollen: VERBOTEN */
+            
+            /* Layout & Platzierung */
+            padding: 10px;      /* Kleiner Innenabstand */
+            padding-bottom: 50px;
+            
+            /* Höhe berechnen (100% minus Header-Höhe) */
+            height: calc(100% - 70px); 
+            
+            /* WICHTIG: Verhindert, dass Padding die Breite vergrößert */
+            box-sizing: border-box; 
+            width: 100%;
+            
+            align-content: start; 
+        }
+
+        .gallery-item img {
+            width: 100%;
+            aspect-ratio: 1 / 1; /* Erzwingt ein quadratisches Seitenverhältnis 1:1 */
+            object-fit: cover;   /* WICHTIG: Schneidet Ränder ab, statt das Bild zu verzerren */
+            display: block;
+            border-radius: 4px;  /* Optional: Hübscht die Ecken leicht auf */
+        }
+
+        .gallery-actions {
+            padding: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .gallery-btn {
+            background: #444; color: #fff; border: none;
+            padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;
+        }
+        .gallery-btn:hover { background: #666; }
+
+        /* Kleiner Indikator am Galerie-Button, wenn neue Fotos da sind */
+        .badge-new {
+            position: absolute;
+            top: -5px; right: -5px;
+            background: red; color: white;
+            border-radius: 50%;
+            width: 18px; height: 18px;
+            font-size: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold;
+        }
+
+        /* --- LIGHTBOX (Bildvergrößerung) --- */
+        #lightbox-overlay {
+            display: none; /* Standardmäßig unsichtbar */
+            position: fixed;
+            z-index: 5000; /* Ganz oben */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9); /* Fast schwarzer Hintergrund */
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+            cursor: zoom-out; /* Zeigt an, dass man klicken kann zum Schließen */
+        }
+
+        #lightbox-img {
+            max-width: 95%;
+            max-height: 95%;
+            object-fit: contain; /* Bild behält Proportionen */
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            border: 1px solid #444;
+            cursor: default; /* Auf dem Bild selbst normaler Mauszeiger */
+        }
+
+        #lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+
+        #lightbox-close:hover {
+            color: #ff3300;
+        }
+
+        /* Cursor über den Galerie-Bildern anpassen */
+        .gallery-item img {
+            cursor: zoom-in; /* Lupe anzeigen */
+            transition: transform 0.2s;
+        }
+        .gallery-item img:hover {
+            transform: scale(1.05); /* Leichter Zoom-Effekt beim Hover */
+        }
+        
+        .debug-row{display:flex;align-items:center;font-size:11px;margin-top:4px;color:#ddd;}.debug-row input{flex-grow:1;margin:0 5px;}.debug-row span{width:35px;text-align:right;}

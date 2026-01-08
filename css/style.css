@@ -1,0 +1,1202 @@
+        html {
+            height: 100%;
+            height: 100dvh;
+            width: 100%;
+            margin: 0;
+        }
+        body {
+            height: 100%;
+            height: 100dvh;
+            width: 100%;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        #container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+	}
+
+        #ui-container {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 15px;
+            border-radius: 12px;
+            max-width: 320px;
+            width: calc(100% - 40px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: 85dvh;
+            max-height: calc(100dvh - 20px - env(safe-area-inset-bottom));
+            
+            /*  Flex-Layout für die Stapelung  */
+            display: flex;
+            flex-direction: column;
+            
+            /*  GEÄNDERT: Scrollen wird an Kind-Element übergeben  */
+            overflow-y: hidden; /* ALT: auto */
+            
+            transition: max-width 0.3s ease, padding 0.3s ease;
+            z-index: 1000;
+
+            /*  GEÄNDERT: Bottom-Padding wird an Scroll-Element übergeben  */
+            padding-bottom: 15px; /* ALT: 120px */
+        }
+
+        /* Der fixe Header-Bereich */
+        #ui-fixed-header {
+            flex-shrink: 0; /* Verhindert, dass dieser Bereich schrumpft */
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #777; /* KORREKTUR: Klarere Trennlinie */
+        }
+
+        /* Der scrollbare Inhalts-Bereich */
+        #ui-scrollable-content {
+            flex-grow: 1; /* Nimmt den restlichen Platz ein */
+            overflow-y: auto; /* NUR dieser Bereich scrollt */
+            padding-bottom: 30px; /* Das alte Padding für das Scroll-Ende */
+            
+            /* Optional: Scrollbar-Styling für bessere Optik */
+            scrollbar-width: thin;
+            scrollbar-color: #555 #333;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /*  FIX: Versteckt Header & Inhalt komplett, wenn minimiert  */
+        #ui-container.minimized #ui-fixed-header,
+        #ui-container.minimized #ui-scrollable-content,
+        #ui-container.minimized #scroll-indicator { /* Dazu kommen wir gleich */
+            display: none !important;
+            border: none;
+        }
+
+
+
+        #toggle-ui {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        #toggle-ui:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        #ui-container.minimized {
+            max-width: 50px; 
+            padding: 10px;
+            overflow: hidden;
+            height: 30px; 
+        }
+        #ui-container.minimized .control-group {
+            display: none;
+        }
+        #ui-container.minimized #toggle-ui {
+             top: 50%;
+             left: 50%;
+             transform: translate(-50%, -50%);
+             border: none;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+        #ui-scrollable-content .control-group:first-of-type {
+            margin-top: 0;
+        }
+
+        .control-group h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0 0 10px 0;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+
+        #fullscreen-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            
+            /* ÄNDERUNG: Transparent und kein Rahmen */
+            background: transparent;
+            border: none;
+            
+            /* WICHTIG: Wir behalten eine "unsichtbare" Größe von 44x44px 
+               damit man den Knopf auf dem iPad gut mit dem Finger trifft */
+            width: 44px; 
+            height: 44px;
+            padding: 0;
+
+            /* Flexbox zum Zentrieren des Icons in der unsichtbaren Box */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        #fullscreen-btn:hover {
+            /* Beim Drüberfahren nur größer werden, kein Hintergrund */
+            transform: scale(1.2);
+        }
+        
+        /* Style für das SVG Icon */
+        #fullscreen-btn svg {
+            width: 30px;  /* Etwas größer, da kein Rahmen mehr da ist */
+            height: 30px;
+            fill: #ffffff70;   /* Icon-Farbe Weiß */
+            
+            /* WICHTIG: Ein Schlagschatten, damit man das weiße Icon 
+               auch sieht, wenn es über der hellen Sonne liegt */
+            filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));
+        }
+        
+        /* Greift nur auf Geräten mit Touchscreen (keine Maus) -> iPad/Tablet */
+        @media (hover: none) and (pointer: coarse) {
+            
+            /* Nur wenn JavaScript die Klasse 'is-fullscreen' gesetzt hat 
+               UND das Menü minimiert ist */
+            body.is-fullscreen #ui-container.minimized {
+                top: 60px !important; /* Schiebt das Menü unter den Apple-Button */
+                transition: top 0.3s ease; /* Macht die Bewegung flüssig */
+            }
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease; 
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        #play-pause-btn.playing {
+            background-color: #28a745; 
+            box-shadow: 0 0 10px rgba(40, 167, 69, 0.5); 
+        }
+        #play-pause-btn.playing:hover {
+            background-color: #218838;
+        }
+        
+        /*  Style für Zurückspul-Button  */
+        #rewind-btn.playing {
+            background-color: #007bff; 
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+        }
+        #rewind-btn.playing:hover {
+            background-color: #0056b3;
+        }
+
+        #play-pause-btn {
+            /* Flexbox sorgt dafür, dass das Icon perfekt mittig ist */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            
+            /* Verhindert, dass der Button springt, wenn sich das Icon ändert */
+            min-width: 44px; 
+            padding: 8px 12px;
+        }
+
+        /* Style für das SVG im Button */
+        #play-pause-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor; /* WICHTIG: Nimmt die Textfarbe (Weiss) an */
+            pointer-events: none; /* Klicks gehen durch das Icon auf den Button */
+        }
+
+        #rewind-btn {
+            /* Flexbox sorgt für perfekte Zentrierung */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            
+            /* Optional: Padding leicht anpassen, falls der Button zu breit/hoch wirkt */
+            padding: 8px 12px; 
+        }
+
+        #rewind-btn svg {
+            width: 18px; /* Angenehme Größe im Verhältnis zum Text daneben */
+            height: 18px;
+            fill: currentColor; /* WICHTIG: Nimmt die Textfarbe (Weiß) an */
+            pointer-events: none; /* Klicks gehen durch das Icon auf den Button */
+        }
+        /*  --------   */
+
+
+        .btn-secondary {
+            background-color: #4a4a4a;
+        }
+        .btn-secondary:hover {
+            background-color: #666;
+        }
+
+        .btn-focus {
+            background-color: #388e3c; 
+            color: white;
+        }
+        .btn-focus:hover {
+            background-color: #4caf50; 
+        }
+
+        .btn-planet {
+            background-color: #d87c1c; 
+            color: white;
+            font-size: 12px !important; 
+            padding: 6px 8px !important;
+        }
+        .btn-planet:hover {
+            background-color: #e69545; 
+        }
+
+        .btn-moon {
+            background-color: #6f42c1; 
+            color: white;
+            font-size: 11px !important; 
+            padding: 4px 8px !important;
+        }
+        .btn-moon:hover {
+            background-color: #59359a;
+        }
+        
+        .btn-warning {
+            background-color: #ffc107;
+            color: #000;
+        }
+        .btn-warning:hover {
+            background-color: #e0a800;
+        }
+        
+        .btn-danger { 
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        .btn-info { 
+            background-color: #00ffff;
+            color: #000;
+            font-weight: 700;
+            z-index: 500;
+        }
+        .btn-info:hover {
+            background-color: #00aaaa;
+            color: #fff;
+        }
+
+        .btn-pulse {
+            animation: pulse-animation 2s infinite;
+        }
+        @keyframes pulse-animation {
+            0% { box-shadow: 0 0 0 0 rgba(0, 255, 255, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 255, 255, 0); }
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        
+        .btn-group button {
+            flex-grow: 1;
+            font-size: 12px;
+            padding: 6px 8px;
+        }
+        
+        /*  Style für Frequenz-Button  */
+        #demo-freq {
+            width: 100%;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+
+        /* NEU: 4x2 Raster für die Planeten-Buttons */
+        #planet-focus-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 4 Spalten mit gleicher Breite */
+            gap: 5px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #444;
+        }
+        
+        /* Damit die Buttons im Grid die volle Höhe/Breite füllen */
+        #planet-focus-buttons button {
+            width: 100%;
+            margin: 0;
+        }
+
+        #moon-focus-container {
+            display: none; 
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #555;
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+        
+        #info-box {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-top: 10px;
+            min-height: 2.5em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+        
+        #moon-phases-ui {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+        }
+        
+        #moon-phases-ui button {
+            background: #333;
+            border: 1px solid #555;
+            color: #fff;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 5px;
+            height: 42px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            line-height: 1;
+        }
+        
+        #moon-phases-ui button:hover {
+            background: #444;
+        }
+        
+        #moon-phases-ui button.active {
+            background: #4A4A4A; 
+            border-color: #ffc107; 
+            font-weight: bold;
+            box-shadow: 0 0 8px 1px rgba(255, 193, 7, 0.7); 
+        }
+
+        #demo-speed-control {
+            display: none; 
+            margin-top: 10px;
+        }
+
+        #info-popup {
+            display: none; 
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 990; 
+            width: 90%;
+            max-width: 400px;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        #info-popup-content {
+            width: 100%;
+            text-align: left;
+        }
+        #popup-title {
+            margin: 0 0 15px 0;
+            font-size: 20px;
+            font-weight: 600;
+            border-bottom: 1px solid #555;
+            padding-bottom: 10px;
+            text-align: center;
+            color: #ffc107; 
+        }
+        #popup-details p {
+            margin: 8px 0;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        #popup-details strong {
+            color: #fff; 
+            font-weight: 600;
+            min-width: 140px; 
+            display: inline-block;
+        }
+        #popup-details span {
+            color: #ddd;
+        }
+        #popup-details .fun-fact {
+            margin-top: 8px; 
+            padding-top: 0; 
+            border-top: none; 
+            font-style: italic;
+            color: #ccc;
+        }
+
+        #info-toast-button {
+            display: none; 
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 980; 
+            background-color: #00ffff;
+            color: #000;
+            border: 2px solid #000;
+            box-shadow: 0 4px 10px rgba(0, 255, 255, 0.3);
+            font-size: 14px;
+            font-weight: 700;
+            font-family: "Courier New", monospace;
+            padding: 10px 15px;
+        }
+
+        /*  UFO Dialog Styles  */
+        #ufo-dialog {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 20, 0, 0.95); 
+            color: #0f0; 
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
+            border: 2px solid #0f0;
+            z-index: 991;
+            width: 80%;
+            max-width: 350px;
+            font-family: "Courier New", monospace;
+            text-align: center;
+        }
+        #ufo-dialog h3 {
+            margin-top: 0;
+            color: #0f0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        #ufo-dialog-text {
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+        .ufo-btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .ufo-btn {
+            background: #000;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-family: "Courier New", monospace;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .ufo-btn:hover {
+            background: #0f0;
+            color: #000;
+            box-shadow: 0 0 15px rgba(31, 152, 31, 0.8);
+        }
+
+        /* Styling für das Alien-Bild */
+        #ufo-alien-image {
+            width: 100%;          /* Nutze die volle Breite des Dialogs */
+            max-width: 150px;     /* Aber nicht breiter als 150px (damit es nicht riesig wird) */
+            height: auto;         /* Höhe passt sich automatisch an */
+            border-radius: 8px;   /* Abgerundete Ecken */
+            margin-bottom: 15px;  /* Abstand zum Text darunter */
+            border: 2px solid #0f0; /* Grüner Rahmen passend zum Theme */
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3); /* Leichter Glow-Effekt */
+            
+            /* Optional: Animation beim Erscheinen */
+            animation: alien-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes alien-pop {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /*  REALITÄTSCHECK STYLES  */
+        hr.separator {
+            width: 100%;
+            border: 0;
+            border-top: 1px dashed #555;
+            margin: 5px 0;
+        }
+
+        #real-scale-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #555;
+        }
+
+        #real-scale-controls #planet-focus-buttons { order: 1; }
+        #real-scale-controls #real-scale-sep1 { order: 2; }
+        #real-scale-controls #real-dist-btn { order: 3; }
+        #real-scale-controls #real-scale-sep2 { order: 4; }
+        #real-scale-controls #real-scale-btn { order: 5; }
+
+        #distance-label {
+            display: none; 
+            position: absolute;
+            top: 0;
+            left: 0;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            white-space: nowrap;
+            pointer-events: none; 
+            text-shadow: 
+                -1px -1px 2px #000,  
+                 1px -1px 2px #000,
+                -1px  1px 2px #000,
+                 1px  1px 2px #000; 
+            z-index: 500; 
+        }
+
+        /*  Jahreszeiten-Button-Stile  */
+        .btn-spring {
+            background-color: #66BB6A; /* Grün */
+            color: white;
+        }
+        .btn-spring:hover {
+            background-color: #4CAF50;
+        }
+        .btn-summer {
+            background-color: #FFA726; /* Hellorange */
+            color: #000;
+        }
+        .btn-summer:hover {
+            background-color: #FB8C00;
+        }
+        .btn-autumn {
+            background-color: #8D6E63; /* Braun */
+            color: white;
+        }
+        .btn-autumn:hover {
+            background-color: #6D4C41;
+        }
+        .btn-winter {
+            background-color: #E0E0E0; /* Weiss/Hellgrau */
+            color: #000;
+        }
+        .btn-winter:hover {
+            background-color: #BDBDBD;
+        }
+        
+        /*  Indikator für aktive Knöpfe  */
+        .btn-focus.active,
+        .btn-spring.active,
+        .btn-summer.active,
+        .btn-autumn.active,
+        .btn-winter.active,
+        .btn-planet.active,
+        .btn-moon.active {
+            border: 2px solid #ffc107 !important; /* !important to override default borders */
+            box-shadow: 0 0 8px 1px rgba(255, 193, 7, 0.7);
+        }
+        /*  Ende   */
+        /*  Touch-Freundliche Slider  */
+
+        /* 1. Basis-Styling & Hitbox vergrössern */
+        input[type="range"] {
+            -webkit-appearance: none; /* Standard-Look entfernen (für Chrome/Safari) */
+            appearance: none;         /* Standard-Look entfernen (allgemein) */
+            width: 100%;
+            height: 24px;             /* ❗ WICHTIG: Erhöht die "Tap-Fläche" */
+            background: transparent;  /* Eigenen Track-Style definieren wir unten */
+            cursor: pointer;
+            margin: 8px 0;            /* Etwas mehr vertikaler Abstand */
+        }
+
+        /* 2. Fokus-Stil entfernen (optional, aber sauberer) */
+        input[type="range"]:focus {
+            outline: none;
+        }
+
+
+        /* 3. Die LEISTE (Track) stylen */
+
+        /* WebKit (Chrome, Safari, iOS, Android) */
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            background: #4a4a4a;
+            border-radius: 3px;
+            border: 1px solid #333;
+        }
+
+        /* Firefox */
+        input[type="range"]::-moz-range-track {
+            width: 100%;
+            height: 6px;
+            background: #4a4a4a;
+            border-radius: 3px;
+            border: 1px solid #333;
+        }
+
+
+        /* 4. Den DAUMEN (Thumb) stylen - Der wichtigste Teil! */
+
+        /* WebKit (Chrome, Safari, iOS, Android) */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            
+            height: 30px;  /* ❗ Grösserer Kreis */
+            width: 30px;   /* ❗ Grösserer Kreis */
+            border-radius: 50%;
+            background: #007bff; /* Deine Button-Farbe */
+            border: 2px solid #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            
+            /* Wichtig: Vertikal zentrieren */
+            margin-top: -12px; /* (Track-Höhe - Daumen-Höhe) / 2 ... plus Ränder */ 
+        }
+
+        /* Firefox */
+        input[type="range"]::-moz-range-thumb {
+            height: 20px;  /* ❗ Grösserer Kreis (FF rechnet etwas anders) */
+            width: 20px;   /* ❗ Grösserer Kreis */
+            border-radius: 50%;
+            background: #007bff;
+            border: 2px solid #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            
+            /* Bei FF ist kein margin-top nötig, wenn die Basis `height` stimmt */
+        }
+
+        /* Optional: Ein "Glow"-Effekt, wenn der Slider aktiv ist */
+        input[type="range"]:focus::-webkit-slider-thumb {
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.8);
+        }
+        input[type="range"]:focus::-moz-range-thumb {
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.8);
+        }
+
+        /*  Ende Touch-Freundliche Slider  */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('../ImagesGit/loading_screen_g.webp');
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999; /* Über allem anderen */
+            transition: opacity 0.5s ease-out; /* Für sanftes Ausblenden */
+            color: #fff;
+            position: relative;
+            flex-grow: 1;
+        }
+
+        #loading-screen::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* Passe die Deckkraft (0.6 = 60%) an, wie es dir gefällt */
+            background-color: rgba(0, 0, 0, 0.6); 
+            z-index: 1; /* Liegt zwischen Hintergrundbild und Inhalt */
+        }
+
+        #loading-screen p {
+            font-size: 18px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+            margin-top: 20px;
+            margin-bottom: 0;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Simpler CSS-Spinner */
+        
+
+        /*  Ladebalken-Stile  */
+        #progress-bar-container {
+            width: 80%; /* Breite des Balkens */
+            max-width: 300px;
+            height: 10px; /* Höhe des Balkens */
+            background-color: #333; /* Hintergrundfarbe (leerer Balken) */
+            border: 1px solid #555;
+            border-radius: 5px;
+            overflow: hidden; /* Stellt sicher, dass der innere Balken abgerundet ist */
+            margin-top: 15px; /* Abstand zum Text */
+            position: relative;
+            z-index: 2;
+        }
+
+        #progress-bar {
+            width: 0%; /* Startet bei 0% */
+            height: 100%;
+            background-color: #00ffff; /* Füllfarbe (deine Akzentfarbe) */
+            border-radius: 5px;
+            transition: width 0.3s ease-out; /* Für sanften Fortschritt */
+        }
+
+        /* 1. Styles für den Pfeil */
+        #scroll-indicator {
+            position: absolute;
+            bottom: 0px;
+            left: 50%;
+            /* Staucht das Dreieck flacher/kürzer */
+            transform: translateX(-50%) scaleY(0.6); 
+            
+            font-size: 20px; 
+            font-weight: 900; 
+            
+            /* Weiss mit 50% Transparenz */
+            color: rgba(255, 255, 255, 0.5); 
+            
+            text-shadow: none; 
+            
+            
+            
+            pointer-events: none; 
+            transition: opacity 0.3s;
+            z-index: 1001;
+            display: none; 
+        }
+
+        /* --- RAKETEN HUD STYLES --- */
+        #launch-hud {
+            display: none; /* Standardmäßig unsichtbar */
+            position: fixed;
+            top: 30px;           /* Abstand von oben */
+            left: 50%;
+            transform: translateX(-50%);
+            
+            background: rgba(0, 20, 40, 0.85); /* Dunkelblau/Schwarz transparent */
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            
+            border-radius: 8px;
+            padding: 10px 20px;
+            min-width: 280px;
+            
+            /* Flexbox für Icon + Text nebeneinander */
+            
+            align-items: center;
+            gap: 15px;
+            
+            z-index: 2000; /* Über allem anderen */
+            font-family: "Courier New", monospace; /* Technischer Look */
+            transition: opacity 0.3s ease;
+        }
+
+        /* Das Icon links */
+        #hud-icon {
+            font-size: 32px;
+            filter: drop-shadow(0 0 5px rgba(255,255,255,0.5));
+        }
+
+        #hud-content {
+            flex-grow: 1;
+            text-align: left;
+        }
+
+        #hud-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00ffff; /* Cyan */
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+
+        #hud-sub {
+            font-size: 13px;
+            color: #cccccc;
+        }
+
+        /* Animierter Balken unten am Fenster */
+        #hud-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: #00ffff;
+            width: 0%; /* Wird per JS animiert */
+            transition: width 0.2s linear;
+            box-shadow: 0 0 10px #00ffff;
+        }
+
+        /* Animation fürs Einblenden */
+        @keyframes hud-pop {
+            0% { transform: translateX(-50%) scale(0.8); opacity: 0; }
+            100% { transform: translateX(-50%) scale(1); opacity: 1; }
+        }
+        
+        .hud-visible {
+            display: flex !important;
+            animation: hud-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* 2. WICHTIG: Versteckt Pfeil, Header & Inhalt wenn minimiert (löst auch dein Trennstrich-Problem) */
+        #ui-container.minimized #ui-fixed-header,
+        #ui-container.minimized #ui-scrollable-content,
+        #ui-container.minimized #scroll-indicator {
+            display: none !important;
+            border: none;
+        }
+
+        /* --- FOTO MODUS STYLES --- */
+
+        /* Der Container für das Kamera-Overlay */
+        #camera-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2000;
+            pointer-events: none; /* Klicks gehen durch, außer auf Buttons */
+        }
+
+        /* Der Sucher-Rahmen (HUD) */
+        .viewfinder-border {
+            position: absolute;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            width: 90%;
+            height: 80%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5); /* Dunkelt den Rand ab */
+            pointer-events: none;
+        }
+
+        /* Fadenkreuz in der Mitte */
+        .viewfinder-crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .viewfinder-crosshair::before, .viewfinder-crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.7);
+        }
+        .viewfinder-crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
+        .viewfinder-crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
+
+        /* Kamera-Steuerung (ISO, Zoom) */
+        #camera-controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            pointer-events: auto;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 30px;
+            border: 1px solid #444;
+        }
+
+        /* Der Auslöser-Knopf */
+        #shutter-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: #fff;
+            border: 5px solid #ccc;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: transform 0.1s;
+        }
+        #shutter-btn:active { transform: scale(0.9); background: #eee; }
+
+        /* Sliders im Kamera-Menü */
+        .cam-slider-group {
+            display: flex;
+            flex-direction: column;
+            color: #fff;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: monospace;
+            flex-grow: 1;
+        }
+        .cam-slider-group input { margin-top: 5px; cursor: pointer; }
+
+        /* Buttons oben (Schließen, Galerie) */
+        #camera-top-bar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        /* Der weiße Blitz beim Foto machen */
+        #camera-flash {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 2001;
+            transition: opacity 0.1s ease-out;
+        }
+
+        /* --- GALERIE OVERLAY --- */
+        #gallery-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 10, 15, 0.95);
+            z-index: 2100;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #gallery-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #fff;
+            border-bottom: 1px solid #444;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        #gallery-grid {
+            display: grid;
+            /* Kleinere Kacheln: 150px statt 300px */
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            
+            /* --- SCROLL-VERHALTEN --- */
+            overflow-y: auto;   /* Vertikal scrollen: JA */
+            overflow-x: hidden; /* Horizontal scrollen: VERBOTEN */
+            
+            /* Layout & Platzierung */
+            padding: 10px;      /* Kleiner Innenabstand */
+            padding-bottom: 50px;
+            
+            /* Höhe berechnen (100% minus Header-Höhe) */
+            height: calc(100% - 70px); 
+            
+            /* WICHTIG: Verhindert, dass Padding die Breite vergrößert */
+            box-sizing: border-box; 
+            width: 100%;
+            
+            align-content: start; 
+        }
+
+        .gallery-item img {
+            width: 100%;
+            aspect-ratio: 1 / 1; /* Erzwingt ein quadratisches Seitenverhältnis 1:1 */
+            object-fit: cover;   /* WICHTIG: Schneidet Ränder ab, statt das Bild zu verzerren */
+            display: block;
+            border-radius: 4px;  /* Optional: Hübscht die Ecken leicht auf */
+        }
+
+        .gallery-actions {
+            padding: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .gallery-btn {
+            background: #444; color: #fff; border: none;
+            padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;
+        }
+        .gallery-btn:hover { background: #666; }
+
+        /* Kleiner Indikator am Galerie-Button, wenn neue Fotos da sind */
+        .badge-new {
+            position: absolute;
+            top: -5px; right: -5px;
+            background: red; color: white;
+            border-radius: 50%;
+            width: 18px; height: 18px;
+            font-size: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold;
+        }
+
+        /* --- LIGHTBOX (Bildvergrößerung) --- */
+        #lightbox-overlay {
+            display: none; /* Standardmäßig unsichtbar */
+            position: fixed;
+            z-index: 5000; /* Ganz oben */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9); /* Fast schwarzer Hintergrund */
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+            cursor: zoom-out; /* Zeigt an, dass man klicken kann zum Schließen */
+        }
+
+        #lightbox-img {
+            max-width: 95%;
+            max-height: 95%;
+            object-fit: contain; /* Bild behält Proportionen */
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            border: 1px solid #444;
+            cursor: default; /* Auf dem Bild selbst normaler Mauszeiger */
+        }
+
+        #lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+
+        #lightbox-close:hover {
+            color: #ff3300;
+        }
+
+        /* Cursor über den Galerie-Bildern anpassen */
+        .gallery-item img {
+            cursor: zoom-in; /* Lupe anzeigen */
+            transition: transform 0.2s;
+        }
+        .gallery-item img:hover {
+            transform: scale(1.05); /* Leichter Zoom-Effekt beim Hover */
+        }
+
+        /* --- Kamera Button (Einheitlicher Style) --- */
+        #camera-mode-btn {
+            position: fixed;
+            top: 10px;
+            /* Position: Links neben dem Fullscreen Button */
+            right: 60px; 
+            z-index: 10001;
+            
+            background: transparent !important;
+            border: none !important;
+            
+            width: 44px; 
+            height: 44px; 
+            padding: 0;
+
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            
+            cursor: pointer; 
+            transition: transform 0.2s ease;
+        }
+
+        #camera-mode-btn:hover {
+            transform: scale(1.2);
+        }
+
+        /* Design des komplexen SVG Icons */
+        #camera-mode-btn svg {
+            width: 30px;
+            height: 30px;
+            /* Hier wird die Farbe gesteuert: 70% transparentes Weiss */
+            fill: #ffffff70; 
+            filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));
+        }
