@@ -3133,6 +3133,13 @@ if (deleteAllBtn) {
     deleteAllBtn.addEventListener('click', deleteAllPhotos);
 }
 
+const reloadBtn = document.getElementById('reload-btn');
+if(reloadBtn) {
+    reloadBtn.addEventListener('click', () => {
+        window.location.reload();
+    });
+}
+
 if(cameraModeBtn) cameraModeBtn.addEventListener('click', toggleCameraMode);
 closeCameraBtn.addEventListener('click', toggleCameraMode);
 
