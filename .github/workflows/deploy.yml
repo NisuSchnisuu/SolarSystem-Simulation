@@ -1,0 +1,47 @@
+name: Deploy Vite App to GitHub Pages
+
+on:
+  push:
+    branches: ['main'] # Oder 'master', je nachdem wie dein Hauptbranch heißt
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  # Job zum Bauen der App
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout module
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Oder die Version, die du nutzt
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci # Installiert alles sauber aus der package-lock.json
+      - name: Build
+        run: npm run build # Der Befehl aus deinem Screenshot
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist' # Hier liegt dein fertiger Code
+
+  # Job zum Veröffentlichen
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
