@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  base: '/SolarSystem-Simulation/',
+  base: '/Simulation-Mondphasen/',
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
