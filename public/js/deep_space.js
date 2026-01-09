@@ -769,6 +769,17 @@ function init() {
     updateActiveButton('view-galaxy');     
 
     window.addEventListener('resize', onResize);
+    
+    // Fix für iPadOS Sperrbildschirm/Hintergrund-Maße
+    window.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            setTimeout(onResize, 200);
+        }
+    });
+    window.addEventListener('focus', () => {
+        setTimeout(onResize, 200);
+    });
+
     window.addEventListener('touchend', onTouchEnd, false); 
     window.addEventListener('click', onMouseClick, false); 
 

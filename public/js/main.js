@@ -203,6 +203,16 @@ function init() {
     window.addEventListener('click', onMouseClick, false);
     window.addEventListener('touchend', onTouchEnd, false);
 
+    // Fix für iPadOS Sperrbildschirm/Hintergrund-Maße
+    window.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            setTimeout(onWindowResize, 200);
+        }
+    });
+    window.addEventListener('focus', () => {
+        setTimeout(onWindowResize, 200);
+    });
+
     window.addEventListener('keydown', (e) => {
         if (e.shiftKey && (e.key === 'U' || e.key === 'u')) {
             if (ufoState === 'inactive') {
