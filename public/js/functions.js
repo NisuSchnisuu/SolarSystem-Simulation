@@ -397,7 +397,7 @@ function resetActiveIndicators() {
 function createSolarSystem() {
     const textureLoader = new THREE.TextureLoader(loadingManager);
 
-    const sunTexture = textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/ImagesGit/Objects/8k_sun.webp');
+    const sunTexture = textureLoader.load('ImagesGit/Objects/8k_sun.webp');
     const sunMaterial = new THREE.MeshBasicMaterial({ map: sunTexture });
     sun = new THREE.Mesh(new THREE.SphereGeometry(SUN_RADIUS, 32, 32), sunMaterial);
     
@@ -419,8 +419,8 @@ function createSolarSystem() {
     const earthMaterial = new THREE.ShaderMaterial({
         vertexShader: earthVertexShader, fragmentShader: earthFragmentShader,
         uniforms: {
-            dayTexture: { value: textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/ImagesGit/Objects/earth_day.webp') },
-            nightTexture: { value: textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/ImagesGit/Objects/2k_earth_nightmap.webp') },
+            dayTexture: { value: textureLoader.load('ImagesGit/Objects/earth_day.webp') },
+            nightTexture: { value: textureLoader.load('ImagesGit/Objects/2k_earth_nightmap.webp') },
             uSunPosition: { value: new THREE.Vector3(0, 0, 0) }, uObjectWorldPosition: { value: new THREE.Vector3() }, uNightBrightness: { value: 0.3 },
             uSofiDemoActive: { value: false }, uMoonPosition: { value: new THREE.Vector3() }, uMoonRadius: { value: MOON_RADIUS }, uSunRadius: { value: SUN_RADIUS }, 
 
@@ -473,7 +473,7 @@ function createSolarSystem() {
     originalMoonMaterial = new THREE.ShaderMaterial({
         vertexShader: moonVertexShader, fragmentShader: moonFragmentShader,
         uniforms: {
-            dayTexture: { value: textureLoader.load('https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/ImagesGit/Objects/Moons/2k_moon.webp') },
+            dayTexture: { value: textureLoader.load('ImagesGit/Objects/Moons/2k_moon.webp') },
             uSunPosition: { value: new THREE.Vector3(0, 0, 0) }, uEarthPosition: { value: new THREE.Vector3() }, uObjectWorldPosition: { value: new THREE.Vector3() },
             uEarthRadius: { value: EARTH_RADIUS }, uSunRadius: { value: SUN_RADIUS }, uMoonRadius: { value: MOON_RADIUS }, uNightBrightness: { value: 0.3 },
             uDemoActive: { value: false }, uShadowBrightness: { value: 0.0 }, uRedOverlayIntensity: { value: 0.0 } 

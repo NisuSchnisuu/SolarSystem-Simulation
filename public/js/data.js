@@ -3,8 +3,8 @@
 // ===========================================
 
 function definePlanetData() {
-    const textureBasePath = 'https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/ImagesGit/Objects/';
-    const moonTextureBasePath = 'https://cdn.jsdelivr.net/gh/NisuSchnisuu/Simulation-Mondphasen@main/ImagesGit/Objects/Moons/';
+    const textureBasePath = 'ImagesGit/Objects/';
+    const moonTextureBasePath = 'ImagesGit/Objects/Moons/';
     const degToRad = Math.PI / 180;
     
     planetsData = [

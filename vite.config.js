@@ -1,8 +1,18 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+import { resolve } from 'path';
+
 export default defineConfig({
-  base: '/Simulation-Mondphasen/',
+  base: './',
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        deep_space: resolve(__dirname, 'deep_space.html')
+      }
+    }
+  },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
