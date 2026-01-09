@@ -81,6 +81,93 @@ function createSkybox() {
 }
 
 // --- Orbits ---
+function saveAppState() {
+    const state = {
+        currentDay: currentDay,
+        speed: speed,
+        isPlaying: isPlaying,
+        cameraFocus: (cameraFocus && typeof cameraFocus !== 'string') ? (cameraFocus.name || cameraFocus.uuid) : cameraFocus,
+        cameraPos: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+        controlsTarget: { x: controls.target.x, y: controls.target.y, z: controls.target.z },
+        timestamp: Date.now(),
+        isRealScaleActive: isRealScaleActive,
+        isRealDistanceActive: isRealDistanceActive,
+        ufoEncounterCount: ufoEncounterCount
+    };
+    localStorage.setItem('solar_system_state', JSON.stringify(state));
+}
+
+function loadAppState() {
+    const saved = localStorage.getItem('solar_system_state');
+    if (!saved) return null;
+
+    try {
+        const state = JSON.parse(saved);
+        const now = Date.now();
+        const oneHour = 60 * 60 * 1000;
+
+        // Wenn die App länger als 1 Stunde nicht benutzt wurde, fangen wir frisch an
+        if (now - state.timestamp > oneHour) {
+            localStorage.removeItem('solar_system_state');
+            return null;
+        }
+        return state;
+    } catch (e) {
+        console.error("Fehler beim Laden des App-Zustands", e);
+        return null;
+    }
+}
+
+function applyAppState(state) {
+    if (!state) return;
+
+    if (state.currentDay !== undefined) currentDay = state.currentDay;
+    if (state.speed !== undefined) speed = state.speed;
+    if (state.isPlaying !== undefined) isPlaying = state.isPlaying;
+    if (state.isRealScaleActive !== undefined) isRealScaleActive = state.isRealScaleActive;
+    if (state.isRealDistanceActive !== undefined) isRealDistanceActive = state.isRealDistanceActive;
+    if (state.ufoEncounterCount !== undefined) ufoEncounterCount = state.ufoEncounterCount;
+
+    // Kamera-Position und Ziel
+    if (state.cameraPos) {
+        camera.position.set(state.cameraPos.x, state.cameraPos.y, state.cameraPos.z);
+    }
+    if (state.controlsTarget) {
+        controls.target.set(state.controlsTarget.x, state.controlsTarget.y, state.controlsTarget.z);
+    }
+
+    // Fokus-Objekt finden
+    if (state.cameraFocus) {
+        if (typeof state.cameraFocus === 'string') {
+            if (state.cameraFocus === 'system' || state.cameraFocus === 'earthView' || state.cameraFocus === 'transitioning') {
+                cameraFocus = state.cameraFocus;
+            } else if (state.cameraFocus === 'Sun' || state.cameraFocus === 'sun') {
+                cameraFocus = sun;
+            } else if (state.cameraFocus === 'Earth' || state.cameraFocus === 'earth') {
+                cameraFocus = earth;
+            } else if (state.cameraFocus === 'Moon' || state.cameraFocus === 'moon') {
+                cameraFocus = moon;
+            } else {
+                // Suche in anderen Planeten
+                const planet = otherPlanets.find(p => p.name === state.cameraFocus);
+                if (planet) {
+                    cameraFocus = planet;
+                } else {
+                    // Suche in anderen Monden
+                    const moonEntry = otherMoons.find(m => m.mesh.name === state.cameraFocus);
+                    if (moonEntry) {
+                        cameraFocus = moonEntry.mesh;
+                    } else {
+                        cameraFocus = state.cameraFocus;
+                    }
+                }
+            }
+        }
+    }
+    
+    controls.update();
+}
+
 function createOrbits() {
     const createEllipticalOrbitLine = (a, e, perihelionAngle, color, segments = 1024) => {
         const points = [];
@@ -400,6 +487,7 @@ function createSolarSystem() {
     const sunTexture = textureLoader.load('ImagesGit/Objects/8k_sun.webp');
     const sunMaterial = new THREE.MeshBasicMaterial({ map: sunTexture });
     sun = new THREE.Mesh(new THREE.SphereGeometry(SUN_RADIUS, 32, 32), sunMaterial);
+    sun.name = 'Sun';
     
     const sunLight = new THREE.PointLight(0xffffff, 1.5, 0, 2);
     sun.add(sunLight);
@@ -428,6 +516,7 @@ function createSolarSystem() {
         }
     });
     earth = new THREE.Mesh(new THREE.SphereGeometry(EARTH_RADIUS, 32, 32), earthMaterial);
+    earth.name = 'Earth';
     
     
     earth.userData.info = {
@@ -480,6 +569,7 @@ function createSolarSystem() {
         }
     });
     moon = new THREE.Mesh(new THREE.SphereGeometry(MOON_RADIUS, 32, 32), originalMoonMaterial);
+    moon.name = 'Moon';
     moon.position.x = -MOON_DISTANCE; 
     
     moon.userData.info = {
@@ -549,6 +639,7 @@ function createSolarSystem() {
         }
 
         const planet = new THREE.Mesh(new THREE.SphereGeometry(data.radius, 32, 32), material);
+        planet.name = data.name;
         planet.position.set(0, 0, 0); 
 
         planet.userData.info = { ...data }; 
@@ -605,6 +696,7 @@ function createSolarSystem() {
                     }
                 });
                 const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(moonData.radius, 32, 32), moonMat);
+                moonMesh.name = moonData.name;
                 moonMesh.position.x = moonData.distance;
                 moonOrbitPivot.add(moonMesh);
                 otherMoons.push({ mesh: moonMesh, pivot: moonOrbitPivot, speed: moonData.speed, data: moonData, parentPlanet: planet });

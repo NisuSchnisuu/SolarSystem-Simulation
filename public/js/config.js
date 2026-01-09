@@ -143,6 +143,7 @@ let clickableObjects = [];
 let lastTouchTime = 0;
 let interactionTimeout;
 let userInteractedRecently = false;
+let lastSaveTime = 0;
 
 // ===========================================
 // KONSTANTEN

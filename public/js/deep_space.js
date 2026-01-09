@@ -223,6 +223,57 @@ let rotationSpeed = 0.05;
 let selfRotationMultiplier = 1.0; 
 
 let currentFocus = 'galaxy';
+let lastSaveTime = 0;
+
+function saveDeepSpaceState() {
+    const state = {
+        currentFocus: currentFocus,
+        cameraPos: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+        controlsTarget: { x: controls.target.x, y: controls.target.y, z: controls.target.z },
+        timestamp: Date.now()
+    };
+    localStorage.setItem('deep_space_state', JSON.stringify(state));
+}
+
+function loadDeepSpaceState() {
+    const saved = localStorage.getItem('deep_space_state');
+    if (!saved) return null;
+    try {
+        const state = JSON.parse(saved);
+        if (Date.now() - state.timestamp > 3600000) return null; 
+        return state;
+    } catch(e) { return null; }
+}
+
+function applyDeepSpaceState(state) {
+    if (!state) return;
+    
+    if (state.cameraPos) {
+        camera.position.set(state.cameraPos.x, state.cameraPos.y, state.cameraPos.z);
+    }
+    if (state.controlsTarget) {
+        controls.target.set(state.controlsTarget.x, state.controlsTarget.y, state.controlsTarget.z);
+    }
+    
+    if (state.currentFocus && state.currentFocus !== 'galaxy') {
+        // Wir setzen den Fokus ohne Animation, wenn wir laden
+        const star = starTypes.find(s => s.id === state.currentFocus);
+        if (star) {
+            currentFocus = state.currentFocus;
+            // UI aktualisieren (ähnlich wie in transitionToStar)
+            document.querySelectorAll('#star-buttons .btn').forEach(b => b.classList.remove('active'));
+            const btn = document.querySelector(`#star-buttons .btn[data-id="${star.id}"]`);
+            if (btn) btn.classList.add('active');
+            document.getElementById('view-galaxy').classList.remove('active');
+            document.getElementById('info-box').textContent = `Ansicht: ${star.label}`;
+            
+            if (star.id === 'black_hole') {
+                document.getElementById('bh-specific-content').style.display = 'block';
+            }
+        }
+    }
+    controls.update();
+}
 let currentSelectedInfo = null;
 let blackHoleUniforms = null;
 let noiseTexGlobal;
@@ -720,6 +771,11 @@ function init() {
     window.addEventListener('resize', onResize);
     window.addEventListener('touchend', onTouchEnd, false); 
     window.addEventListener('click', onMouseClick, false); 
+
+    const saved = loadDeepSpaceState();
+    if (saved) {
+        applyDeepSpaceState(saved);
+    }
 
     animate();
 }
@@ -1330,6 +1386,11 @@ function flyTo(endPos, endTarget, duration, callback, easing = 'easeInOut') {
 function animate() {
     requestAnimationFrame(animate);        
     const delta = 0.016;
+
+    if (Date.now() - lastSaveTime > 2000) {
+        saveDeepSpaceState();
+        lastSaveTime = Date.now();
+    }
 
     // Labels Position aktualisieren       
     updateLabels();

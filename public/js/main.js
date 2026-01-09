@@ -192,6 +192,11 @@ function init() {
         console.log("❌ Kein Raketenstart in dieser Sitzung.");
     }
 
+    const savedState = loadAppState();
+    if (savedState) {
+        applyAppState(savedState);
+    }
+
     animate();
     
     window.addEventListener('resize', onWindowResize);
@@ -269,6 +274,12 @@ function init() {
 function animate() {
     requestAnimationFrame(animate);
     const deltaTime = clock.getDelta();
+
+    // --- APP STATE SAVING ---
+    if (Date.now() - lastSaveTime > 2000) {
+        saveAppState();
+        lastSaveTime = Date.now();
+    }
 
     // --- FLAT EARTH ANIMATION ---
     if (flatAnimPhase !== 'idle') {
