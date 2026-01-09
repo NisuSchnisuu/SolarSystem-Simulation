@@ -25,4 +25,4 @@ dist-ssr
 *.sw?
 GEMINI.md
 dist-electron/*
-Commands.txt
+commands.txt
