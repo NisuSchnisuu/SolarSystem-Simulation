@@ -24,4 +24,4 @@ dist-ssr
 *.sln
 *.sw?
 GEMINI.md
-dist-electron/
+dist-electron/*
