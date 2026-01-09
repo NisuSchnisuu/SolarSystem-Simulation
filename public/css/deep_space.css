@@ -441,6 +441,44 @@
             filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));
         }
 
+        /* --- Reload Button (Einheitlicher Style) --- */
+        #reload-btn {
+            position: fixed;
+            top: 10px;
+            /* Position: Zwischen Kamera (60px) und Fullscreen (10px)? 
+               Nein, im Index ist Fullscreen 10, Kamera 60, Reload 105.
+               In Deep Space war Fullscreen 10, Kamera 60. 
+               Also setzen wir Reload auf 110px oder 105px. */
+            right: 110px; 
+            z-index: 10002;
+            
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            
+            width: 44px; 
+            height: 44px; 
+            padding: 0;
+
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            
+            cursor: pointer; 
+            transition: transform 0.4s ease;
+        }
+
+        #reload-btn:hover {
+            transform: rotate(180deg) scale(1.2);
+        }
+
+        #reload-btn svg {
+            width: 30px;
+            height: 30px;
+            fill: #ffffff70; 
+            filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));
+        }
+
         /* Der Auslöser-Knopf */
         #shutter-btn {
             width: 70px;

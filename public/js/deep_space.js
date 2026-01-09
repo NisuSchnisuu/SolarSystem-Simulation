@@ -822,7 +822,8 @@ function createGalaxy() {
 
         const angleWobble = (Math.random() - 0.5) * 0.5;
 
-        const spinAngle = (radius * parameters.spin * 0.01) + angleWobble;
+        // Fix: Swirl-Richtung umkehren (negatives Vorzeichen)
+        const spinAngle = -(radius * parameters.spin * 0.01) + angleWobble;
 
         const randomX = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;   
 
@@ -1195,6 +1196,12 @@ function transitionToStar(starId) {
     const targetData = starMeshes[starId]; 
     if (!targetData) return;
     currentFocus = starId;
+
+    // Fix: Schwarzes Loch explizit ausblenden, wenn zu einem anderen Stern gewechselt wird
+    if (starMeshes['black_hole']) {
+        starMeshes['black_hole'].group.visible = false;
+    }
+
     updateActiveButton('btn-'+starId);     
     document.getElementById('info-box').textContent = `Reiseziel: ${targetData.data.label}`;
     const controlsWrapper = document.getElementById(`controls-${starId}`);
@@ -1376,6 +1383,8 @@ function animate() {
     }
 
     if (currentFocus === 'galaxy' && !isComparisonMode) {
+        // Fix: Keine Rotation der Galaxie mehr
+        /* 
         const rotStep = rotationSpeed * 0.02;
         if (galaxySystem && galaxySystem.visible) galaxySystem.rotation.y -= rotStep;
         if (galaxyBgMesh && galaxyBgMesh.visible) galaxyBgMesh.rotation.z -= rotStep;
@@ -1384,6 +1393,7 @@ function animate() {
             entry.group.position.applyAxisAngle(axis, -rotStep);
             entry.data.galaxyPos.copy(entry.group.position);
         });
+        */
     }
 
     if (blackHoleUniforms) {
@@ -1454,6 +1464,13 @@ function animate() {
 }
 
 function setupUI() {
+    const reloadBtn = document.getElementById('reload-btn');
+    if (reloadBtn) {
+        reloadBtn.addEventListener('click', () => {
+            window.location.reload();
+        });
+    }
+
     document.getElementById('view-galaxy').addEventListener('click', transitionToGalaxy);     
     document.getElementById('back-to-solar').addEventListener('click', () => { window.location.href = 'index.html'; });
 
@@ -1558,7 +1575,10 @@ function setupUI() {
 
     document.getElementById('toggle-ui').addEventListener('click', () => { const ui = document.getElementById('ui-container'); ui.classList.toggle('minimized'); document.getElementById('toggle-ui').textContent = ui.classList.contains('minimized') ? '☰' : '✕'; });
     document.getElementById('popup-close').addEventListener('click', () => document.getElementById('info-popup').style.display = 'none');        
-    document.getElementById('speed-slider').addEventListener('input', (e) => rotationSpeed = parseFloat(e.target.value) * 0.2);
+    
+    // Fix: Speed-Slider Event Listener entfernt
+    // document.getElementById('speed-slider').addEventListener('input', (e) => rotationSpeed = parseFloat(e.target.value) * 0.2);
+
     document.getElementById('star-spin-slider').addEventListener('input', (e) => selfRotationMultiplier = parseFloat(e.target.value));
     document.getElementById('shader-brightness-slider').addEventListener('input', (e) => {    
         const percent = parseFloat(e.target.value) / 100.0;
@@ -1759,12 +1779,14 @@ function toggleCameraMode() {
 
     const camBtn = document.getElementById('camera-mode-btn');
     const fsBtn = document.getElementById('fullscreen-btn');
+    const reloadBtn = document.getElementById('reload-btn');
 
     if (isPhotoMode) {
         cameraOverlay.style.display = 'block';
 
         if(camBtn) camBtn.style.display = 'none';
         if(fsBtn) fsBtn.style.display = 'none';
+        if(reloadBtn) reloadBtn.style.display = 'none';
 
         uiContainer.style.display = 'none';
 
@@ -1782,6 +1804,7 @@ function toggleCameraMode() {
 
         if(camBtn) camBtn.style.display = 'flex';
         if(fsBtn) fsBtn.style.display = 'flex';
+        if(reloadBtn) reloadBtn.style.display = 'flex';
 
         uiContainer.style.display = 'flex';
 
